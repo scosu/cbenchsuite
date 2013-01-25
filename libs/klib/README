@@ -1,0 +1,17 @@
+Kernel library
+
+
+This library uses some kernel files to offer basic kernel datastructures and
+routines for userspace projects. To use it, just include it into your build
+process, and call 'make'. This will generate an klib.o and libklib.a file.
+
+LICENSE
+
+Most files are from the Linux kernel sources. So klib is licensed as GPLv2.
+
+
+CONTRIBUTION
+
+If you have some kernel routines you would like to see in klib for your
+userspace projects, or you need a newer version of some functions, please
+create a merge request.
