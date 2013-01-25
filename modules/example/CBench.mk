@@ -1,0 +1,10 @@
+
+
+MODULE_NAME = example
+
+
+modules-$(CONFIG_$(MODULE_NAME_UPPER)) += $(MODULE_NAME)
+
+$(MODULE_TARGET): $(MODULE_BUILD_DEPS) $(TOP)/$(MODULE_NAME).c
+	$(CC) $(CFLAGS) $(MODULE_CFLAGS) -o $@ $^
+
