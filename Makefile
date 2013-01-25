@@ -3,7 +3,7 @@
 .DEFAULT_GOAL := all
 
 CC := gcc
-CFLAGS := -Wall
+CFLAGS := -Wall -Iinclude -std=c99
 
 
 BUILDDIR := build
@@ -20,7 +20,7 @@ include $(BUILD_CONFIG)
 
 MOBJDIR := $(OBJDIR)/modules
 MODULE_BUILD_DEPS := 
-MODULE_CFLAGS := -shared -I.
+MODULE_CFLAGS := -shared
 MODULE_FILE_EXTENSION := .so
 
 module_dirs := $(wildcard modules/*)
