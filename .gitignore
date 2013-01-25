@@ -1,0 +1,4 @@
+.config
+.*.swp
+build/
+tags
