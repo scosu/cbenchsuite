@@ -1,14 +1,29 @@
 #ifndef _BENCHSUITE_H_
 #define _BENCHSUITE_H_
 
+#include <version.h>
+
+struct mod_mgr;
+
 struct plugin_link {
-	char *name;
+	const char *name;
+	const char *options;
+	const char **version_rules;
 	int add_instances;
 };
 
-struct benchsuite {
-	char *name;
+struct benchsuite_id {
+	const char *name;
+	struct version version;
 	struct plugin_link **plugin_grps;
 };
+
+struct benchsuite {
+	const struct benchsuite_id *id;
+	struct module *mod;
+};
+
+int benchsuite_execute(struct mod_mgr *mm, struct benchsuite *suite);
+
 
 #endif  /* _BENCHSUITE_H_ */

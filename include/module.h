@@ -1,21 +1,29 @@
 #ifndef _MODULE_H_
 #define _MODULE_H_
 
-struct list_head;
+#include <klib/list.h>
+
 struct module_id;
 struct plugin;
 
 struct module {
+	char *name;
 	struct module_id *id;
 
+	char *so_path;
+	void *so_handle;
+
 	void *user_data;
+
+	struct list_head modules;
+
+	struct list_head plugins;
+	int benchsuites_in_use;
 };
 
 struct module_id {
-	const char *name;
-
 	const struct plugin_id *plugins;
-	const struct benchsuite *benchsuites;
+	const struct benchsuite_id *benchsuites;
 
 	int (*prepare)(struct module *mod);
 	int (*init)(struct module *mod);
@@ -24,19 +32,22 @@ struct module_id {
 	int (*plugin_init)(struct plugin *plug);
 	int (*plugin_free)(struct plugin *plug);
 
-	struct list_head *modules;
+	int (*option_parser)(struct plugin *plug, const char *opts);
 };
 
 
 #define MODULE_REGISTER(mod) \
 	__attribute__((unused)) const struct module_id *__module__ = &(mod);
 
+static inline void *module_get_user_data(struct module *mod)
+{
+	return mod->user_data;
+}
 
-struct run_settings {
-	int runtime_min;
-	int runtime_max;
-	int runs_min;
-	int runs_max;
-};
+static inline void module_set_user_data(struct module *mod, void *data)
+{
+	mod->user_data = data;
+}
+
 
 #endif  /* _MODULE_H_ */

@@ -1,18 +1,26 @@
 #ifndef _PLUGIN_H_
 #define _PLUGIN_H_
 
+#include <klib/list.h>
+
 struct module;
 struct plugin_id;
 struct version;
 
 struct plugin {
-	struct plugin_id *id;
+	const struct plugin_id *id;
 	struct module *mod;
-	struct version *version;
+	const struct version *version;
+
+	const char *bin_path;
+	const char *work_dir;
 
 	void *user_data;
 	void *plugin_data;
 	void *version_data;
+	void *options;
+
+	struct list_head plugins;
 };
 
 struct plugin_id {
@@ -32,11 +40,29 @@ struct plugin_id {
 	int (*exit_pre)(struct plugin *plug);
 	int (*exit)(struct plugin *plug);
 	int (*exit_post)(struct plugin *plug);
-	int (*deinstall)(struct plugin *plug);
+	int (*uninstall)(struct plugin *plug);
+
+	void (*stop)(struct plugin *plug);
 
 	int (*monitor)(struct plugin *plug);
 	int (*check_stderr)(struct plugin *plug);
 };
 
+static inline void plugin_set_options(struct plugin *plug, void *options)
+{
+	plug->options = options;
+}
+
+#define plugin_parse_options(plug, opt_str) \
+	(plug)->mod->id->option_parser(plug, opt_str);
+
+struct run_settings {
+	int warmup_runs;
+	int runtime_min;
+	int runtime_max;
+	int runs_min;
+	int runs_max;
+	double percent_stderr;
+};
 
 #endif  /* _PLUGIN_H_ */

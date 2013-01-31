@@ -1,0 +1,14 @@
+#ifdef OPTIONS_START
+#undef OPTIONS_START
+
+#ifdef OPTIONS_END
+#undef OPTIONS_END
+
+#ifdef OPTION_STRING
+#undef OPTION_STRING
+
+#ifdef OPTION_INT
+#undef OPTION_INT
+
+#ifdef OPTION_BOOL
+#undef OPTION_BOOL
