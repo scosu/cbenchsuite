@@ -53,25 +53,25 @@ int printk(const char *format, ...)
 				strcpy(buf, "EMERGENCY: ");
 				break;
 			case ALERT:
-				strcpy(buf, "ALERT: ");
+				strcpy(buf, "ALERT    : ");
 				break;
 			case CRIT:
-				strcpy(buf, "CRITICAL: ");
+				strcpy(buf, "CRITICAL : ");
 				break;
 			case ERR:
-				strcpy(buf, "ERROR: ");
+				strcpy(buf, "ERROR    : ");
 				break;
 			case WARNING:
-				strcpy(buf, "WARNING: ");
+				strcpy(buf, "WARNING  : ");
 				break;
 			case NOTICE:
-				strcpy(buf, "NOTICE: ");
+				strcpy(buf, "NOTICE   : ");
 				break;
 			case INFO:
-				strcpy(buf, "INFO: ");
+				strcpy(buf, "INFO     : ");
 				break;
 			case DEBUG_LOG:
-				strcpy(buf, "DEBUG: ");
+				strcpy(buf, "DEBUG    : ");
 				break;
 			default:
 				break;
