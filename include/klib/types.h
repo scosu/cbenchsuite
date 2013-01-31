@@ -54,4 +54,17 @@ typedef uint64_t		u64;
 
 
 #endif /*  __ASSEMBLY__ */
+
+struct list_head {
+	struct list_head *next, *prev;
+};
+
+struct hlist_head {
+	struct hlist_node *first;
+};
+
+struct hlist_node {
+	struct hlist_node *next, **pprev;
+};
+
 #endif /* _LINUX_TYPES_H */
