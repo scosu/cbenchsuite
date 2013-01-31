@@ -19,3 +19,4 @@ enum {
 #define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
 #endif
 #endif
+#endif  /* _LINUX_STDDEF_H */
