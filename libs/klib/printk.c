@@ -31,8 +31,10 @@ int printk(const char *format, ...)
 	static int last_log_level = DEBUG_LOG;
 	int cnt = 0;
 	char buf[2048];
+	int fmt_off = 0;
+	int buf_pos = 0;
 	if (likely(format[0] == '<' && format[2] == '>')) {
-		int buf_pos = 0;
+		fmt_off = 3;
 		switch (format[1]) {
 		case '0' ... '7':
 			log_level = format[1] - '0';
@@ -44,53 +46,53 @@ int printk(const char *format, ...)
 		default:
 			return 0;
 		}
-		last_log_level = log_level;
-		if (likely(log_level - printk_log_level > 0))
-			return 0;
-		if (!cnt) {
-			switch(log_level) {
-			case EMERG:
-				strcpy(buf, "EMERGENCY: ");
-				break;
-			case ALERT:
-				strcpy(buf, "ALERT    : ");
-				break;
-			case CRIT:
-				strcpy(buf, "CRITICAL : ");
-				break;
-			case ERR:
-				strcpy(buf, "ERROR    : ");
-				break;
-			case WARNING:
-				strcpy(buf, "WARNING  : ");
-				break;
-			case NOTICE:
-				strcpy(buf, "NOTICE   : ");
-				break;
-			case INFO:
-				strcpy(buf, "INFO     : ");
-				break;
-			case DEBUG_LOG:
-				strcpy(buf, "DEBUG    : ");
-				break;
-			default:
-				break;
-			}
-			buf_pos = strlen(buf);
-		} else {
-			buf[0] = '\0';
-			buf_pos = 0;
+	}
+	last_log_level = log_level;
+	if (likely(log_level - printk_log_level > 0))
+		return 0;
+	if (!cnt) {
+		switch(log_level) {
+		case EMERG:
+			strcpy(buf, "EMERGENCY: ");
+			break;
+		case ALERT:
+			strcpy(buf, "ALERT    : ");
+			break;
+		case CRIT:
+			strcpy(buf, "CRITICAL : ");
+			break;
+		case ERR:
+			strcpy(buf, "ERROR    : ");
+			break;
+		case WARNING:
+			strcpy(buf, "WARNING  : ");
+			break;
+		case NOTICE:
+			strcpy(buf, "NOTICE   : ");
+			break;
+		case INFO:
+			strcpy(buf, "INFO     : ");
+			break;
+		case DEBUG_LOG:
+			strcpy(buf, "DEBUG    : ");
+			break;
+		default:
+			break;
 		}
-		va_start(args, format);
-		vsnprintf(buf + buf_pos, 2048 - buf_pos, format + 3, args);
-		va_end(args);
-		if (log_level <= ERR) {
-			fputs(buf, stderr);
-			fflush(stderr);
-		} else {
-			fputs(buf, stdout);
-			fflush(stdout);
-		}
+		buf_pos = strlen(buf);
+	} else {
+		buf[0] = '\0';
+		buf_pos = 0;
+	}
+	va_start(args, format);
+	vsnprintf(buf + buf_pos, 2048 - buf_pos, format + fmt_off, args);
+	va_end(args);
+	if (log_level <= ERR) {
+		fputs(buf, stderr);
+		fflush(stderr);
+	} else {
+		fputs(buf, stdout);
+		fflush(stdout);
 	}
 	return 0;
 }
