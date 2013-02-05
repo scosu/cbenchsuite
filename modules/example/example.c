@@ -10,6 +10,77 @@
 
 #include <modules/example/options.h>
 
+static int plug_install(struct plugin *plug)
+{
+	printf("%s\n", __func__);
+	return 0;
+}
+static int plug_init_pre(struct plugin *plug)
+{
+	printf("%s\n", __func__);
+	return 0;
+}
+static int plug_init(struct plugin *plug)
+{
+	printf("%s\n", __func__);
+	return 0;
+}
+static int plug_init_post(struct plugin *plug)
+{
+	printf("%s\n", __func__);
+	return 0;
+}
+static int plug_run_pre(struct plugin *plug)
+{
+	printf("%s\n", __func__);
+	return 0;
+}
+static int plug_run(struct plugin *plug)
+{
+	printf("%s\n", __func__);
+	return 0;
+}
+static int plug_run_post(struct plugin *plug)
+{
+	printf("%s\n", __func__);
+	return 0;
+}
+static int plug_parse_results(struct plugin *plug)
+{
+	printf("%s\n", __func__);
+	return 0;
+}
+static int plug_monitor(struct plugin *plug)
+{
+	printf("%s\n", __func__);
+	return 0;
+}
+static int plug_exit_pre(struct plugin *plug)
+{
+	printf("%s\n", __func__);
+	return 0;
+}
+static int plug_exit(struct plugin *plug)
+{
+	printf("%s\n", __func__);
+	return 0;
+}
+static int plug_exit_post(struct plugin *plug)
+{
+	printf("%s\n", __func__);
+	return 0;
+}
+static int plug_check_stderr(struct plugin *plug)
+{
+	printf("%s\n", __func__);
+	return 0;
+}
+static int plug_uninstall(struct plugin *plug)
+{
+	printf("%s\n", __func__);
+	return 0;
+}
+
 static struct comp_version example_bench_comp_ver[] = {
 	{
 		.name = "component1",
@@ -24,12 +95,12 @@ static struct comp_version example_bench_comp_ver[] = {
 
 static struct version example_bench_ver[] = {
 	{
+		.version = "1.2",
+		.comp_versions = example_bench_comp_ver,
+	}, {
 		.version = "1.1",
 		.comp_versions = example_bench_comp_ver,
 		.data = NULL,
-	}, {
-		.version = "1.2",
-		.comp_versions = example_bench_comp_ver,
 	}, {
 
 	}
@@ -37,24 +108,24 @@ static struct version example_bench_ver[] = {
 
 static struct plugin_id example_plugs[] = {
 	{
-		.name = "example-bench",
+		.name = "bench",
 		.versions = example_bench_ver,
 		.data = NULL,
 
-		.install = NULL,
-		.init_pre = NULL,
-		.init = NULL,
-		.init_post = NULL,
-		.run_pre = NULL,
-		.run = NULL,
-		.run_post = NULL,
-		.parse_results = NULL,
-		.monitor = NULL,
-		.exit_pre = NULL,
-		.exit = NULL,
-		.exit_post = NULL,
-		.check_stderr = NULL,
-		.uninstall = NULL,
+		.install = plug_install,
+		.init_pre = plug_init_pre,
+		.init = plug_init,
+		.init_post = plug_init_post,
+		.run_pre = plug_run_pre,
+		.run = plug_run,
+		.run_post = plug_run_post,
+		.parse_results = plug_parse_results,
+		.monitor = plug_monitor,
+		.exit_pre = plug_exit_pre,
+		.exit = plug_exit,
+		.exit_post = plug_exit_post,
+		.check_stderr = plug_check_stderr,
+		.uninstall = plug_uninstall,
 	}, {
 		.name = "mon",
 		.versions = example_bench_ver,
@@ -65,9 +136,7 @@ static struct plugin_id example_plugs[] = {
 
 
 static struct plugin_link plug_grp_1[] = {
-	{ .name = "example.example-bench" },
-	{ .name = "example.example-monitor" },
-	{ .name = "example.example-bgload", .add_instances = 4 },
+	{ .name = "example.bench" },
 	{ }
 };
 
@@ -77,7 +146,7 @@ static struct plugin_link *example_plugin_groups[] = {
 
 static struct benchsuite_id example_suites[] = {
 	{
-		.name = "example-suite",
+		.name = "suite",
 		.plugin_grps = example_plugin_groups,
 	}, {
 
@@ -86,22 +155,25 @@ static struct benchsuite_id example_suites[] = {
 
 static int example_init(struct module *mod)
 {
-	printf("example init function\n");
+	printf("%s\n", __func__);
 	return 0;
 }
 
 static int example_exit(struct module *mod)
 {
+	printf("%s\n", __func__);
 	return 0;
 }
 
 static int example_plug_init(struct plugin *plug)
 {
+	printf("%s\n", __func__);
 	return 0;
 }
 
 static int example_plug_free(struct plugin *plug)
 {
+	printf("%s\n", __func__);
 	return 0;
 }
 
@@ -109,6 +181,7 @@ static int example_parser(struct plugin *plug, const char *optstr)
 {
 	struct option_iterator itr;
 	struct example_options *opts = malloc(sizeof(*opts));
+	printf("%s\n", __func__);
 	if (!opts)
 		return 1;
 	*opts = example_options_defaults;

@@ -3,6 +3,7 @@
 
 #include <version.h>
 
+struct environment;
 struct mod_mgr;
 
 struct plugin_link {
@@ -23,7 +24,8 @@ struct benchsuite {
 	struct module *mod;
 };
 
-int benchsuite_execute(struct mod_mgr *mm, struct benchsuite *suite);
+int benchsuite_execute(struct mod_mgr *mm, struct environment *env,
+		struct benchsuite *suite);
 
 
 #endif  /* _BENCHSUITE_H_ */

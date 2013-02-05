@@ -235,6 +235,7 @@ found_matching_plugin:
 	plug->mod = mod;
 
 	INIT_LIST_HEAD(&plug->plugins);
+	INIT_LIST_HEAD(&plug->plugin_grp);
 
 	list_add_tail(&plug->plugins, &mod->plugins);
 
@@ -249,6 +250,11 @@ void mod_mgr_module_put_plugin(struct mod_mgr *mm, struct module *mod,
 {
 	list_del(&plug->plugins);
 	free(plug);
+}
+
+void mod_mgr_plugin_free(struct mod_mgr *mm, struct plugin *plg)
+{
+	mod_mgr_module_put_plugin(mm, plg->mod, plg);
 }
 
 struct plugin *mod_mgr_plugin_create(struct mod_mgr *mm, const char *fid,
@@ -324,7 +330,7 @@ void mod_mgr_module_put_benchsuite(struct mod_mgr *mm, struct benchsuite *suite)
 }
 
 
-struct benchsuite *mod_mgr_benchsuite_get(struct mod_mgr *mm,
+struct benchsuite *mod_mgr_benchsuite_create(struct mod_mgr *mm,
 		const char *fid, const char **ver_restrictions)
 {
 	const char *suite_start;

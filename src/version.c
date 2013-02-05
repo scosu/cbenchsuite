@@ -82,6 +82,8 @@ int version_matching(const struct version *ver, const char **rules)
 {
 	int i;
 	int ret;
+	if (!rules)
+		return 1;
 	for (i = 0; rules[i] != NULL; ++i) {
 		int j;
 		const char *lt = strchr(rules[i], '<');

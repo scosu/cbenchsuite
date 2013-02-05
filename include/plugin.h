@@ -3,6 +3,7 @@
 
 #include <klib/list.h>
 
+struct environment;
 struct module;
 struct plugin_id;
 struct version;
@@ -21,6 +22,7 @@ struct plugin {
 	void *options;
 
 	struct list_head plugins;
+	struct list_head plugin_grp;
 };
 
 struct plugin_id {
@@ -53,16 +55,9 @@ static inline void plugin_set_options(struct plugin *plug, void *options)
 	plug->options = options;
 }
 
+int plugins_execute(struct environment *env, struct list_head *plugins);
+
 #define plugin_parse_options(plug, opt_str) \
 	(plug)->mod->id->option_parser(plug, opt_str);
-
-struct run_settings {
-	int warmup_runs;
-	int runtime_min;
-	int runtime_max;
-	int runs_min;
-	int runs_max;
-	double percent_stderr;
-};
 
 #endif  /* _PLUGIN_H_ */

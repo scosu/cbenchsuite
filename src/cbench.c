@@ -4,18 +4,31 @@
 
 #include <core/module_manager.h>
 
+#include <benchsuite.h>
+#include <environment.h>
 #include <plugin.h>
 
 int main(void)
 {
 	struct mod_mgr mm;
-	__attribute__((unused)) struct plugin *plug;
-	const char *vers[] = {"!=1.1", NULL};
+	const char *vers[] = {NULL};
+	struct benchsuite *suite;
+	struct environment env = {
+		.work_dir = "/tmp/cbench/",
+		.bin_dir = "/home/scosu/projects/cbench/build/modules/",
+		.settings = {
+			.warmup_runs = 1,
+			.runs_min = 5,
+			.runs_max = 10,
+		},
+	};
 	printk_set_log_level(7);
 
-	mod_mgr_init(&mm, "build/modules");
+	mod_mgr_init(&mm, env.bin_dir);
 
-	plug = mod_mgr_plugin_create(&mm, "example.example-bench", vers);
+	suite = mod_mgr_benchsuite_create(&mm, "example.suite", vers);
+
+	benchsuite_execute(&mm, &env, suite);
 
 	return 0;
 }

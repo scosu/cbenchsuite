@@ -5,7 +5,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
+#include <klib/list.h>
 #include <klib/printk.h>
 
 #include <environment.h>
@@ -49,12 +51,18 @@ struct mon_data {
 	struct plugin_exec_env *exec_env;
 };
 
+static inline void plugin_execenv_barrier(struct plugin_exec_env *env)
+{
+	int ret = pthread_barrier_wait(&env->barrier);
+	if (ret != 0 && ret != PTHREAD_BARRIER_SERIAL_THREAD) {
+		printk(KERN_ERR "Execution thread barrier error\n");
+		env->error_shutdown = 1;
+	}
+}
+
 static inline void plugin_exec_barrier(struct plugin_exec *exec)
 {
-	int ret = pthread_barrier_wait(&exec->exec_env->barrier);
-	if (ret != 0 && ret != PTHREAD_BARRIER_SERIAL_THREAD) {
-		exec->exec_env->error_shutdown = 1;
-	}
+	plugin_execenv_barrier(exec->exec_env);
 }
 
 static inline void plugin_exec_stop_bg(struct plugin_exec *exec)
@@ -114,6 +122,9 @@ static void *plugins_thread_execute(void *data)
 		plugin_exec_function(id->init, exec, 2, 0);
 		plugin_exec_function(id->init_post, exec, 3, 0);
 		plugin_exec_function(id->run_pre, exec, 4, 0);
+		plugin_exec_barrier(exec);
+		// Here the monitor thread is started
+		plugin_exec_barrier(exec);
 		plugin_exec_function(id->run, exec, 5, EXEC_FUNC_NOTIFY_BG);
 		plugin_exec_function(id->run_post, exec, 6, 0);
 		plugin_exec_function(id->parse_results, exec, 7, 0);
@@ -182,25 +193,16 @@ static void plugins_exec_controller(struct plugin_exec_env *exec_env,
 	struct plugin_exec *execs = exec_env->execs;
 	int nr_plugins = exec_env->nr_plugins;
 	int i;
-	int ret;
-	for (i = 0; i != exec_funcs_before_run; ++i) {
+	for (i = 0; i != nr_funcs; ++i) {
 		int j;
-		ret = pthread_barrier_wait(&exec_env->barrier);
-		if (ret) {
-			printk(KERN_ERR "barrier error\n");
-			exec_env->error_shutdown = 1;
-		}
+		plugin_execenv_barrier(exec_env);
 		for (j = 0; j != nr_plugins; ++j) {
 			if (exec_env->state == EXEC_WARMUP)
 				plugin_exec_drop_data(&execs[j]);
 			else
 				plugin_exec_persist(&execs[j]);
 		}
-		ret = pthread_barrier_wait(&exec_env->barrier);
-		if (ret) {
-			printk(KERN_ERR "barrier error\n");
-			exec_env->error_shutdown = 1;
-		}
+		plugin_execenv_barrier(exec_env);
 	}
 }
 
@@ -262,7 +264,7 @@ static void plugins_uninstall(struct plugin_exec_env *exec_env)
 		return;
 	}
 
-	plugins_exec_parallel(exec_env, plugins_thread_install);
+	plugins_exec_parallel(exec_env, plugins_thread_uninstall);
 
 	for (i = 0; i != exec_env->nr_plugins; ++i) {
 		sprintf(tmp_cmd, "rm -Rf %s/%d", exec_env->env->work_dir, i);
@@ -278,6 +280,17 @@ static void plugins_uninstall(struct plugin_exec_env *exec_env)
 	free(tmp_cmd);
 }
 
+static void timespec_sub(struct timespec *tgt, struct timespec *src)
+{
+	tgt->tv_sec -= src->tv_sec;
+	if (tgt->tv_nsec < src->tv_nsec) {
+		--tgt->tv_sec;
+		tgt->tv_nsec = 1000000000 + tgt->tv_nsec - src->tv_nsec;
+	} else {
+		tgt->tv_nsec -= src->tv_nsec;
+	}
+}
+
 void *plugin_thread_monitor(void *data)
 {
 	struct mon_data *mon = (struct mon_data*)data;
@@ -285,28 +298,51 @@ void *plugin_thread_monitor(void *data)
 	int nr_plugins = mon->exec_env->nr_plugins;
 	int i;
 	int ret;
+	struct timespec now;
+	struct timespec delta;
+	struct timespec started;
+	struct timespec sleeptime = {
+		.tv_sec = 1,
+		.tv_nsec = 0,
+	};
+	struct timespec one_second = {
+		.tv_sec = 1,
+		.tv_nsec = 0,
+	};
 	while (!mon->stop) {
 		ret = 0;
+		clock_gettime(CLOCK_MONOTONIC_RAW, &now);
+		started = now;
+		timespec_sub(&sleeptime, &one_second);
+		timespec_sub(&started, &sleeptime);
 		for (i = 0; i != nr_plugins; ++i) {
 			if (!execs[i].plug->id->monitor)
 				continue;
 			ret |= execs[i].plug->id->monitor(execs[i].plug);
 		}
+		clock_gettime(CLOCK_MONOTONIC_RAW, &delta);
+		timespec_sub(&delta, &started);
+		if (delta.tv_sec == 0) {
+			delta.tv_nsec = 1000000000 - delta.tv_nsec;
+			nanosleep(&delta, &sleeptime);
+		}
+
 	}
 	return NULL;
 }
 
-int plugins_execute(struct environment *env, struct plugin *plugins)
+int plugins_execute(struct environment *env, struct list_head *plugins)
 {
 	int i;
 	int nr_plugins;
 	int ret;
+	struct plugin *plg;
 	struct plugin_exec *execs;
 	struct plugin_exec_env exec_env = {
 		.error_shutdown = 0,
 		.state = EXEC_WARMUP,
 		.run = 0,
-		.settings = NULL,
+		.settings = &env->settings,
 		.env = env,
 		.execs = NULL,
 		.nr_plugins = 0,
@@ -320,8 +356,10 @@ int plugins_execute(struct environment *env, struct plugin *plugins)
 	struct timespec time_now;
 	u64 time_diff;
 
-	for (i = 0; plugins[i].id != NULL; ++i);
+	i = 0;
+	list_for_each_entry(plg, plugins, plugin_grp) ++i;
 	nr_plugins = exec_env.nr_plugins = i;
+	printk(KERN_DEBUG "nr_plugins: %d\n", nr_plugins);
 
 	ret = pthread_barrier_init(&exec_env.barrier, NULL, nr_plugins + 1);
 	if (ret) {
@@ -343,8 +381,9 @@ int plugins_execute(struct environment *env, struct plugin *plugins)
 	 * INSTALLATION
 	 */
 
-	for (i = 0; i != nr_plugins; ++i) {
-		execs[i].plug = &plugins[i];
+	i = 0;
+	list_for_each_entry(plg, plugins, plugin_grp) {
+		execs[i].plug = plg;
 		execs[i].exec_env = &exec_env;
 	}
 
@@ -378,21 +417,20 @@ int plugins_execute(struct environment *env, struct plugin *plugins)
 		} else {
 			exec_env.state = EXEC_RUN;
 		}
+		printk(KERN_DEBUG "Loop run %d state %d\n", exec_env.run,
+				exec_env.state);
+		plugin_execenv_barrier(&exec_env);
 
-		for (i = 0; i != nr_plugins; ++i) {
-			ret = pthread_create(&execs[i].thread, NULL,
-					plugins_thread_uninstall, &execs[i]);
-			if (ret) {
-				printk(KERN_ERR "Failed to create uninstall thread %d\n", i);
-				exec_env.error_shutdown = 1;
-			}
-		}
 
-		pthread_barrier_wait(&exec_env.barrier);
 
 		plugins_exec_controller(&exec_env, exec_funcs_before_run);
 
-		// RUN method
+
+
+		/*
+		 * RUN
+		 */
+		plugin_execenv_barrier(&exec_env);
 		ret = pthread_create(&monitor.thread, NULL, plugin_thread_monitor,
 				&monitor);
 		if (ret) {
@@ -400,11 +438,9 @@ int plugins_execute(struct environment *env, struct plugin *plugins)
 			exec_env.error_shutdown = 1;
 		}
 
-		ret = pthread_barrier_wait(&exec_env.barrier);
-		if (ret) {
-			printk(KERN_ERR "Failed barrier\n");
-			exec_env.error_shutdown = 1;
-		}
+		plugin_execenv_barrier(&exec_env);
+		// Waiting for execution to finish
+		plugin_execenv_barrier(&exec_env);
 
 		monitor.stop = 1;
 		ret = pthread_join(monitor.thread, NULL);
@@ -419,14 +455,17 @@ int plugins_execute(struct environment *env, struct plugin *plugins)
 			else
 				plugin_exec_persist(&execs[i]);
 		}
+		plugin_execenv_barrier(&exec_env);
+		/*
+		 * END RUN
+		 */
+
+
 
 		plugins_exec_controller(&exec_env, exec_funcs_after_run);
 
-		ret = pthread_barrier_wait(&exec_env.barrier);
-		if (ret) {
-			printk(KERN_ERR "Failed barrier\n");
-			exec_env.error_shutdown = 1;
-		}
+
+
 		++exec_env.run;
 		if (exec_env.state != EXEC_WARMUP) {
 			clock_gettime(CLOCK_MONOTONIC_RAW, &time_now);
@@ -440,11 +479,8 @@ int plugins_execute(struct environment *env, struct plugin *plugins)
 				exec_env.state = EXEC_STOP;
 			}
 		}
-		ret = pthread_barrier_wait(&exec_env.barrier);
-		if (ret) {
-			printk(KERN_ERR "Failed barrier\n");
-			exec_env.error_shutdown = 1;
-		}
+		plugin_execenv_barrier(&exec_env);
+		plugin_execenv_barrier(&exec_env);
 	}
 
 	for (i = 0; i != nr_plugins; ++i) {

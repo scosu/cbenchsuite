@@ -1,5 +1,5 @@
 
-.PHONY: all directories clean
+.PHONY: all directories clean libs menuconfig modules/Kconfig
 .DEFAULT_GOAL := all
 
 CC := gcc
@@ -22,7 +22,7 @@ core_hdr := $(shell find include/ -type f -name '*.h')
 #
 
 MOBJDIR := $(OBJDIR)/modules
-MODULE_BUILD_DEPS := $(core_src) $(core_hdr)
+MODULE_BUILD_DEPS := $(core_src) $(core_hdr) include/config.h
 MODULE_BUILD_SOURCES :=
 MODULE_CFLAGS := -shared -fPIC -I.
 
@@ -50,11 +50,27 @@ module_tgts := $(patsubst %,$(BUILDDIR)/modules/%/module.so,$(modules-y))
 all: directories $(module_tgts) $(BUILDDIR)/cbench
 
 
-$(BUILDDIR)/cbench: $(core_src) $(core_hdr) libs/klib/libklib.a
+$(BUILDDIR)/cbench: $(core_src) $(core_hdr) libs/klib/libklib.a include/config.h
 	$(CC) $(CFLAGS) -o $@ $(core_src) libs/klib/libklib.a -ldl -lpthread -lrt
 
 libs/klib/libklib.a:
 	cd libs/klib/ && $(MAKE) $(MFLAGS)
+
+include/config.h: .config
+	./scripts/gen_config.sh .config include/config.h
+
+ifeq ($(wildcard .config),)
+.config: menuconfig
+endif
+
+menuconfig: libs/kconfig-frontends/inst/bin/kconfig-mconf modules/Kconfig
+	./libs/kconfig-frontends/inst/bin/kconfig-mconf Kconfig
+
+libs/kconfig-frontends/inst/bin/kconfig-mconf:
+	cd libs/kconfig-frontends/ && ./configure --prefix=`pwd`/inst && $(MAKE) $(MFLAGS) && $(MAKE) $(MFLAGS) install
+
+modules/Kconfig:
+	./scripts/gen_modules_kconfig.sh modules modules/Kconfig
 
 directories:
 	mkdir -p $(patsubst %,$(OBJDIR)/modules/%,$(modules-y))
@@ -63,3 +79,6 @@ directories:
 clean:
 	rm -rf build
 	cd libs/klib/ && $(MAKE) $(MFLAGS) clean
+	cd libs/kconfig-frontends/ && $(MAKE) $(MFLAGS) clean
+	rm -rf libs/kconfig-frontends/inst/
+	rm -f include/config.h
