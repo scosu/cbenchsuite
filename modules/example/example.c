@@ -138,7 +138,8 @@ static struct plugin_id example_plugs[] = {
 
 
 static struct plugin_link plug_grp_1[] = {
-	{ .name = "example.bench" },
+	{ .name = "example.bench", },
+	{ .name = "sysctl.drop_caches", .options = "run_pre=1", },
 	{ }
 };
 
@@ -211,7 +212,6 @@ struct module_id example_mod = {
 	.exit = example_exit,
 	.plugin_init = example_plug_init,
 	.plugin_free = example_plug_free,
-	.option_parser = example_parser,
 };
 MODULE_REGISTER(example_mod)
 
