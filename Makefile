@@ -16,6 +16,7 @@ include $(BUILD_CONFIG)
 
 core_src := $(shell find src/ -type f -name '*.c')
 core_hdr := $(shell find include/ -type f -name '*.h')
+libs := libs/sha256-gpl/sha256.o libs/klib/libklib.a
 
 #
 # Static module variables
@@ -50,8 +51,8 @@ module_tgts := $(patsubst %,$(BUILDDIR)/modules/%/module.so,$(modules-y))
 all: directories $(module_tgts) $(BUILDDIR)/cbench
 
 
-$(BUILDDIR)/cbench: $(core_src) $(core_hdr) libs/klib/libklib.a include/config.h
-	$(CC) $(CFLAGS) -o $@ $(core_src) libs/klib/libklib.a -ldl -lpthread -lrt
+$(BUILDDIR)/cbench: $(core_src) $(core_hdr) ${libs} include/config.h
+	$(CC) $(CFLAGS) -o $@ $(core_src) ${libs} -ldl -lpthread -lrt
 
 libs/klib/libklib.a:
 	cd libs/klib/ && $(MAKE) $(MFLAGS)
@@ -68,6 +69,9 @@ menuconfig: libs/kconfig-frontends/inst/bin/kconfig-mconf modules/Kconfig
 
 libs/kconfig-frontends/inst/bin/kconfig-mconf:
 	cd libs/kconfig-frontends/ && ./configure --prefix=`pwd`/inst && $(MAKE) $(MFLAGS) && $(MAKE) $(MFLAGS) install
+
+libs/sha256-gpl/sha256.o: libs/sha256-gpl/sha256.c libs/sha256-gpl/sha256.h
+	$(CC) $(CFLAGS) -c -o libs/sha256-gpl/sha256.o libs/sha256-gpl/sha256.c
 
 modules/Kconfig:
 	./scripts/gen_modules_kconfig.sh modules modules/Kconfig
