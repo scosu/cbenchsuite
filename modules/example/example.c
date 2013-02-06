@@ -73,7 +73,7 @@ static int plug_exit_post(struct plugin *plug)
 static int plug_check_stderr(struct plugin *plug)
 {
 	printf("%s\n", __func__);
-	return 0;
+	return 1;
 }
 static int plug_uninstall(struct plugin *plug)
 {
@@ -97,10 +97,12 @@ static struct version example_bench_ver[] = {
 	{
 		.version = "1.2",
 		.comp_versions = example_bench_comp_ver,
+		.nr_independent_values = 1,
 	}, {
 		.version = "1.1",
 		.comp_versions = example_bench_comp_ver,
 		.data = NULL,
+		.nr_independent_values = 1,
 	}, {
 
 	}

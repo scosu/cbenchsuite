@@ -12,6 +12,8 @@
 
 #include <data.h>
 #include <environment.h>
+#include <module.h>
+#include <version.h>
 
 struct plugin_exec;
 
@@ -136,9 +138,11 @@ static void *plugins_thread_execute(void *data)
 		plugin_exec_barrier(exec);
 		if (exec->exec_env->state == EXEC_UNDECIDED && id->check_stderr) {
 			ret = id->check_stderr(plug);
+			printk("undecided ret %d\n", ret);
 			if (!ret)
 				exec->exec_env->state = EXEC_STDERR_NOT_REACHED;
 		}
+		plugin_exec_barrier(exec);
 		plugin_exec_barrier(exec);
 	} while (exec->exec_env->state != EXEC_STOP);
 	return NULL;
@@ -413,6 +417,9 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 	struct run_settings *settings = exec_env.settings;
 	struct timespec time_now;
 	u64 time_diff;
+	unsigned int min_time;
+	unsigned int max_time;
+	int max_ind_values = 1;
 
 	i = 0;
 	list_for_each_entry(plg, plugins, plugin_grp) ++i;
@@ -440,11 +447,21 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 	 */
 
 	i = 0;
+	printk(KERN_INFO "Running plugins:");
 	list_for_each_entry(plg, plugins, plugin_grp) {
+		printk(KERN_CNT " %s.%s", plg->mod->name, plg->id->name);
 		execs[i].plug = plg;
 		execs[i].exec_env = &exec_env;
 		plg->exec_data = &exec_env;
+		if (plg->version->nr_independent_values > max_ind_values)
+			max_ind_values = plg->version->nr_independent_values;
 	}
+	printk(KERN_CNT "\n");
+	min_time = exec_env.env->settings.runtime_min * max_ind_values;
+	max_time = exec_env.env->settings.runtime_max * max_ind_values;
+	printk(KERN_INFO "\tRuntime without warmup: %02uh%02u - %02uh%02u\n",
+			min_time / 3600, min_time / 60,
+			max_time / 3600, max_time / 60);
 
 	plugins_install(&exec_env);
 
@@ -527,18 +544,23 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 
 		++exec_env.run;
 		if (exec_env.state != EXEC_WARMUP) {
+			exec_env.state = EXEC_UNDECIDED;
 			clock_gettime(CLOCK_MONOTONIC_RAW, &time_now);
 			time_diff = time_now.tv_sec - exec_env.time_started.tv_sec;
-			exec_env.state = EXEC_UNDECIDED;
-			if (settings->runs_min > exec_env.run
-					|| settings->runtime_min > time_diff) {
+			if (time_diff < min_time) {
 				exec_env.state = EXEC_FORCE_CONTINUE;
-			} else if (settings->runs_max <= exec_env.run
-					|| settings->runtime_max <= time_diff) {
+			} else if (time_diff > max_time) {
+				exec_env.state = EXEC_STOP;
+			} else if (settings->runs_min > exec_env.run) {
+				exec_env.state = EXEC_FORCE_CONTINUE;
+			} else if (settings->runs_max <= exec_env.run) {
 				exec_env.state = EXEC_STOP;
 			}
 		}
 		plugin_execenv_barrier(&exec_env);
+		plugin_execenv_barrier(&exec_env);
+		if (exec_env.state == EXEC_UNDECIDED) // No plugin needs to continue running
+			exec_env.state = EXEC_STOP;
 		plugin_execenv_barrier(&exec_env);
 	}
 

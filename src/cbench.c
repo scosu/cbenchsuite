@@ -1,4 +1,5 @@
 
+#include <stdlib.h>
 
 #include <klib/printk.h>
 
@@ -15,14 +16,17 @@ int main(void)
 	const char *vers[] = {NULL};
 	struct benchsuite *suite;
 	struct environment env = {
-		.work_dir = "/tmp/cbench/",
+		.work_dir = CONFIG_WORK_PATH,
 		.bin_dir = "/home/scosu/projects/cbench/build/modules/",
 		.settings = {
-			.warmup_runs = 1,
-			.runs_min = 5,
-			.runs_max = 10,
+			.warmup_runs = CONFIG_WARMUP_RUNS,
+			.runs_min = CONFIG_MIN_RUNS,
+			.runs_max = CONFIG_MAX_RUNS,
+			.runtime_min = CONFIG_MIN_RUNTIME,
+			.runtime_max = CONFIG_MAX_RUNTIME,
 		},
 	};
+	env.settings.percent_stderr = atof(CONFIG_STDERR_PERCENT);
 	printk_set_log_level(CONFIG_PRINT_LOG_LEVEL);
 
 	mod_mgr_init(&mm, env.bin_dir);
