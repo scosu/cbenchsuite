@@ -3,6 +3,7 @@
 
 #include <klib/list.h>
 
+struct data;
 struct environment;
 struct module;
 struct plugin_id;
@@ -20,9 +21,12 @@ struct plugin {
 	void *plugin_data;
 	void *version_data;
 	void *options;
+	void *exec_data;
 
 	struct list_head plugins;
 	struct list_head plugin_grp;
+
+	struct list_head run_data;
 };
 
 struct plugin_id {
@@ -46,6 +50,14 @@ struct plugin_id {
 
 	void (*stop)(struct plugin *plug);
 
+	void (*free_data)(struct plugin *plug, struct data *data);
+	/*
+	 * Return value of != 0 will cause another call to this function with
+	 * a larger buffer
+	 */
+	int (*data_to_string)(struct plugin *plug, struct data *data, char *buf,
+			unsigned int buf_len);
+
 	int (*monitor)(struct plugin *plug);
 	int (*check_stderr)(struct plugin *plug);
 };
@@ -54,6 +66,8 @@ static inline void plugin_set_options(struct plugin *plug, void *options)
 {
 	plug->options = options;
 }
+
+void plugin_add_data(struct plugin *plug, void *data);
 
 int plugins_execute(struct environment *env, struct list_head *plugins);
 

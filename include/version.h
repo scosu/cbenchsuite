@@ -11,6 +11,7 @@ struct version {
 	char *version;
 	struct comp_version *comp_versions;
 	void *data;
+	char **data_field_names;
 };
 
 int version_compare(const char *rule, const char *ver, int rule_compare);

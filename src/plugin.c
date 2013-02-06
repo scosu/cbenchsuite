@@ -10,6 +10,7 @@
 #include <klib/list.h>
 #include <klib/printk.h>
 
+#include <data.h>
 #include <environment.h>
 
 struct plugin_exec;
@@ -177,14 +178,71 @@ void *plugins_thread_uninstall(void *data)
 	return NULL;
 }
 
-static void plugin_exec_drop_data(struct plugin_exec *exec)
+void plugin_add_data(struct plugin *plug, void *data)
 {
-	printk(KERN_DEBUG "Drop data\n");
+	struct data *data_struct = malloc(sizeof(*data_struct));
+	struct plugin_exec_env *exec_env = (struct plugin_exec_env *)
+						plug->exec_data;
+	if (!data_struct) {
+		printk(KERN_ERR "Out of memory, dropping data\n");
+		exec_env->error_shutdown = 1;
+		return;
+	}
+
+	data_struct->data = data;
+	data_struct->run = exec_env->run;
+	INIT_LIST_HEAD(&data_struct->run_data);
+	list_add_tail(&data_struct->run_data, &plug->run_data);
 }
 
-static void plugin_exec_persist(struct plugin_exec *exec)
+void plugin_free_data(struct plugin *plug, struct data *data)
 {
+	if (data->data) {
+		if (plug->id->free_data) {
+			plug->id->free_data(plug, data);
+		} else {
+			free(data->data);
+		}
+	}
+	list_del(&data->run_data);
+	free(data);
+}
+
+static void plugin_exec_drop_data(struct plugin_exec *exec)
+{
+	struct plugin *plug = exec->plug;
+	struct data *data, *ndata;
+	printk(KERN_DEBUG "Drop data\n");
+	list_for_each_entry_safe(data, ndata, &plug->run_data, run_data) {
+		plugin_free_data(plug, data);
+	}
+}
+
+static void plugin_exec_persist(struct plugin_exec *exec, int persist_types)
+{
+	struct plugin *plug = exec->plug;
+	struct data *data, *ndata;
 	printk(KERN_DEBUG "Persist data\n");
+	list_for_each_entry_safe(data, ndata, &plug->run_data, run_data) {
+		int persist = 0;
+		if (DATA_TYPE_MONITOR & persist_types & data->type) {
+			persist = 1;
+			printk(KERN_DEBUG "Would persist monitor data\n");
+		} else if (DATA_TYPE_RESULT & persist_types & data->type) {
+			persist = 1;
+			printk(KERN_DEBUG "Would persist result data\n");
+		}
+		if (!persist)
+			continue;
+		if (!plug->id->data_to_string) {
+			printk(KERN_ERR "Have data for plugin %s, but there is no"
+					"function 'data_to_string' present, dropping.\n",
+					plug->id->name);
+		} else {
+			// TODO: persist stuff here
+		}
+		plugin_free_data(plug, data);
+	}
 }
 
 static void plugins_exec_controller(struct plugin_exec_env *exec_env,
@@ -200,7 +258,7 @@ static void plugins_exec_controller(struct plugin_exec_env *exec_env,
 			if (exec_env->state == EXEC_WARMUP)
 				plugin_exec_drop_data(&execs[j]);
 			else
-				plugin_exec_persist(&execs[j]);
+				plugin_exec_persist(&execs[j], DATA_TYPE_MONITOR);
 		}
 		plugin_execenv_barrier(exec_env);
 	}
@@ -385,6 +443,7 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 	list_for_each_entry(plg, plugins, plugin_grp) {
 		execs[i].plug = plg;
 		execs[i].exec_env = &exec_env;
+		plg->exec_data = &exec_env;
 	}
 
 	plugins_install(&exec_env);
@@ -453,7 +512,7 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 			if (exec_env.state == EXEC_WARMUP)
 				plugin_exec_drop_data(&execs[i]);
 			else
-				plugin_exec_persist(&execs[i]);
+				plugin_exec_persist(&execs[i], DATA_TYPE_MONITOR);
 		}
 		plugin_execenv_barrier(&exec_env);
 		/*
@@ -491,6 +550,10 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 		}
 	}
 
+	for (i = 0; i != nr_plugins; ++i) {
+		plugin_exec_persist(&execs[i], DATA_TYPE_MONITOR | DATA_TYPE_RESULT);
+	}
+
 
 	/*
 	 * UNINSTALL
@@ -505,4 +568,3 @@ failed_barrier_init:
 	pthread_barrier_destroy(&exec_env.barrier);
 	return exec_env.error_shutdown;
 }
-
