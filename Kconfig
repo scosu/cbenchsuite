@@ -1,5 +1,48 @@
 mainmenu "cbench module configuration"
 
+menu "Storage adapters"
+config STORAGE_CSV
+	bool "CSV"
+	default y
+
+config STORAGE_SQLITE
+	bool "Sqlite"
+	default n
+
+endmenu
+
+
+menu "Build settings"
+
+choice
+	prompt "Build type"
+	default BUILD_FINAL
+config BUILD_DEBUG
+	bool "Debug build"
+config BUILD_FINAL
+	bool "Final build"
+endchoice
+
+config CFLAGS
+	string "Additional CFLAGS"
+	default ""
+	help
+	  Additional CFLAGS used to compile. They are added to default flags for
+	  Debug or Final builds.
+
+endmenu
+
+menu "Environment settings"
+config WORK_PATH
+	string "Work directory"
+	default "/tmp/cbench/"
+	help
+	  Work directory where benchmarks will put temporary files for execution
+	  or benchmarking. This can be performance critical, so it should be
+	  located on a disk or ramfs you want to measure.
+endmenu
+
+menu "Execution settings"
 config PRINT_LOG_LEVEL
 	int "Default log level"
 	range 0 7
@@ -7,6 +50,46 @@ config PRINT_LOG_LEVEL
 	help
 	  Default log level used in the cbenchsuite core. 0 is non at all, 7 is
 	  debug level.
+comment "Repeat options"
+config STDERR_PERCENT
+	string "Standard error percentage"
+	default "2.0"
+	help
+	  Beside all minimum/maximum limitations, this is the deciding factor
+	  when to stop execution of a benchmark. The execution is repeated until
+	  the standard error of a result value is smaller than this percentage of
+	  the mean result value.
+
+	  Higher value means worse quality of the results and less time to get them.
+	  Lower value means higher result quality and slower execution.
+config MIN_RUNTIME
+	int "Minimum runtime per independent value (s)"
+	range 0 10000000
+	default 300
+	help
+	  CBenchsuite will repeat a benchmark at least until a runtime of
+	  #independent values * minimum runtime is reached.
+config MAX_RUNTIME
+	int "Maximum runtime per independent value (s)"
+	range 0 10000000
+	default 300
+	help
+	  CBenchsuite will repeat a benchmark at maximum until a runtime of
+	  #independent values * maximum runtime is reached.
+config MIN_RUNS
+	int "Minimum number of executions per benchmark"
+	range 2 10000000
+	default 3
+	help
+	  You should only use this to make a rough limitation of runs.
+config MAX_RUNS
+	int "Maximum number of executions per benchmark"
+	range 0 10000000
+	default 1000
+	help
+	  You should only use this to make a rough limitation of runs. 0 is disable.
+
+endmenu
 
 menu "Modules"
 source "modules/Kconfig"

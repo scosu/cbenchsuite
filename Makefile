@@ -2,8 +2,6 @@
 .PHONY: all directories clean libs menuconfig modules/Kconfig
 .DEFAULT_GOAL := all
 
-CC := gcc
-CFLAGS := -Wall -Iinclude -Ilibs/klib/include -std=gnu99 -D_BSD_SOURCE -g
 
 
 BUILDDIR := build
@@ -13,10 +11,22 @@ OBJDIR := $(BUILDDIR)/objs
 BUILD_CONFIG := .config
 include $(BUILD_CONFIG)
 
+ifeq ($(CONFIG_BUILD_DEBUG),y)
+CFLAGS_TYPE := -Wall -g
+else
+CFLAGS_TYPE := -O2
+endif
+
+CC := gcc
+CFLAGS := $(CFLAGS_TYPE) $(patsubst "%",%,$(CONFIG_CFLAGS)) -Iinclude -Ilibs/klib/include -std=gnu99 -D_BSD_SOURCE
+
+
 
 core_src := $(shell find src/ -type f -name '*.c')
 core_hdr := $(shell find include/ -type f -name '*.h')
 libs := libs/sha256-gpl/sha256.o libs/klib/libklib.a
+
+generate_config_h := ./scripts/gen_config.sh .config include/config.h
 
 #
 # Static module variables
@@ -51,14 +61,14 @@ module_tgts := $(patsubst %,$(BUILDDIR)/modules/%/module.so,$(modules-y))
 all: directories $(module_tgts) $(BUILDDIR)/cbench
 
 
-$(BUILDDIR)/cbench: $(core_src) $(core_hdr) ${libs} include/config.h
-	$(CC) $(CFLAGS) -o $@ $(core_src) ${libs} -ldl -lpthread -lrt
+$(BUILDDIR)/cbench: $(core_src) $(core_hdr) $(libs) include/config.h
+	$(CC) $(CFLAGS) -o $@ $(core_src) $(libs) -ldl -lpthread -lrt
 
 libs/klib/libklib.a:
 	cd libs/klib/ && $(MAKE) $(MFLAGS)
 
 include/config.h: .config
-	./scripts/gen_config.sh .config include/config.h
+	$(generate_config_h)
 
 ifeq ($(wildcard .config),)
 .config: menuconfig
@@ -66,6 +76,11 @@ endif
 
 menuconfig: libs/kconfig-frontends/inst/bin/kconfig-mconf modules/Kconfig
 	./libs/kconfig-frontends/inst/bin/kconfig-mconf Kconfig
+	$(generate_config_h)
+
+oldconfig: libs/kconfig-frontends/inst/bin/kconfig-mconf modules/Kconfig
+	./libs/kconfig-frontends/inst/bin/kconfig-conf --oldconfig Kconfig
+	$(generate_config_h)
 
 libs/kconfig-frontends/inst/bin/kconfig-mconf:
 	cd libs/kconfig-frontends/ && ./configure --prefix=`pwd`/inst && $(MAKE) $(MFLAGS) && $(MAKE) $(MFLAGS) install
@@ -86,4 +101,4 @@ clean:
 	cd libs/kconfig-frontends/ && $(MAKE) $(MFLAGS) clean
 	rm -rf libs/kconfig-frontends/inst/
 	rm -f include/config.h
-	rm -f ${libs}
+	rm -f $(libs)
