@@ -4,3 +4,7 @@
 build/
 tags
 modules/Kconfig
+*.o
+*.log
+.libs
+include/config.h
