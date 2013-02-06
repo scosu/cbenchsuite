@@ -255,15 +255,18 @@ void mod_mgr_module_put_plugin(struct mod_mgr *mm, struct module *mod,
 
 void mod_mgr_plugin_free(struct mod_mgr *mm, struct plugin *plg)
 {
+	if (plg->options)
+		free(plg->options);
 	mod_mgr_module_put_plugin(mm, plg->mod, plg);
 }
 
 struct plugin *mod_mgr_plugin_create(struct mod_mgr *mm, const char *fid,
-		const char **ver_restrictions)
+		const char *options, const char **ver_restrictions)
 {
 	const char *plug_start;
 	struct module *mod = mod_mgr_find_module(mm, fid);
 	struct plugin *plug;
+	int ret;
 
 	plug_start = strchr(fid, '.');
 	if (!plug_start) {
@@ -275,6 +278,15 @@ struct plugin *mod_mgr_plugin_create(struct mod_mgr *mm, const char *fid,
 	plug = mod_mgr_module_get_plugin(mm, mod, plug_start, ver_restrictions);
 	if (!plug)
 		return NULL;
+
+	if (plug->id->option_parser && options) {
+		ret = plug->id->option_parser(plug, options);
+		if (ret) {
+			printk(KERN_ERR "Option parsing error\n");
+			mod_mgr_module_put_plugin(mm, mod, plug);
+			return NULL;
+		}
+	}
 	return plug;
 }
 

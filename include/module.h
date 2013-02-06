@@ -31,8 +31,6 @@ struct module_id {
 
 	int (*plugin_init)(struct plugin *plug);
 	int (*plugin_free)(struct plugin *plug);
-
-	int (*option_parser)(struct plugin *plug, const char *opts);
 };
 
 

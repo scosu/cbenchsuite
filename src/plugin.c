@@ -455,6 +455,8 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 		plg->exec_data = &exec_env;
 		if (plg->version->nr_independent_values > max_ind_values)
 			max_ind_values = plg->version->nr_independent_values;
+
+		++i;
 	}
 	printk(KERN_CNT "\n");
 	min_time = exec_env.env->settings.runtime_min * max_ind_values;

@@ -24,7 +24,7 @@ int benchsuite_execute(struct mod_mgr *mm, struct environment *env,
 		for (j = 0; grp[j].name != NULL; ++j) {
 			plg = mod_mgr_plugin_create(mm,
 					grp[j].name,
-	//				grp[j].options,
+					grp[j].options,
 					grp[j].version_rules);
 			if (!plg) {
 				printk(KERN_ERR "Didn't find plugin %s\n",

@@ -12,7 +12,7 @@ int mod_mgr_init(struct mod_mgr *mm, const char *mod_dir);
 void mod_mgr_unload_unused(struct mod_mgr *mm);
 
 struct plugin *mod_mgr_plugin_create(struct mod_mgr *mm, const char *fid,
-		const char **ver_restrictions);
+		const char *options, const char **ver_restrictions);
 
 void mod_mgr_plugin_free(struct mod_mgr *mm, struct plugin *plug);
 

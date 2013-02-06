@@ -6,6 +6,7 @@
 
 BUILDDIR := build
 OBJDIR := $(BUILDDIR)/objs
+OBJMODDIR := $(BUILDDIR)/mod-objs
 
 
 BUILD_CONFIG := .config
@@ -23,6 +24,7 @@ CFLAGS := $(CFLAGS_TYPE) $(patsubst "%",%,$(CONFIG_CFLAGS)) -Iinclude -Ilibs/kli
 
 
 core_src := $(shell find src/ -type f -name '*.c')
+core_obj := $(patsubst src/%.c,$(OBJDIR)/%.o,$(core_src))
 core_hdr := $(shell find include/ -type f -name '*.h')
 libs := libs/sha256-gpl/sha256.o libs/klib/libklib.a
 
@@ -33,8 +35,8 @@ generate_config_h := ./scripts/gen_config.sh .config include/config.h
 #
 
 MOBJDIR := $(OBJDIR)/modules
-MODULE_BUILD_DEPS := $(core_src) $(core_hdr) include/config.h
-MODULE_BUILD_SOURCES :=
+MODULE_BUILD_SOURCES := $(OBJMODDIR)/options.o
+MODULE_BUILD_DEPS := $(core_src) $(core_hdr) include/config.h $(MODULE_BUILD_SOURCES)
 MODULE_CFLAGS := -shared -fPIC -I.
 
 module_dirs := $(wildcard modules/*)
@@ -45,7 +47,7 @@ module_makefiles := $(patsubst %,%/CBench.mk,$(module_dirs))
 # Dynamic per module makefile variables, evaluated for every module
 #
 
-TOP = $(dir $(lastword $(MAKEFILE_LIST)))
+TOP = modules/
 BDIR = $(MOBJDIR)/$(MODULE_NAME)
 MODULE_TARGET = $(BUILDDIR)/modules/$(MODULE_NAME)/module.so
 MODULE_NAME_UPPER = $(shell echo $(MODULE_NAME) | tr a-z A-Z)
@@ -60,8 +62,13 @@ module_tgts := $(patsubst %,$(BUILDDIR)/modules/%/module.so,$(modules-y))
 
 all: directories $(module_tgts) $(BUILDDIR)/cbench
 
+$(OBJMODDIR)/%.o: src/%.c $(core_hdr)
+	$(CC) $(CFLAGS) -fPIC -c -o $@ $<
 
-$(BUILDDIR)/cbench: $(core_src) $(core_hdr) $(libs) include/config.h
+$(OBJDIR)/%.o: src/%.c $(core_hdr)
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+$(BUILDDIR)/cbench: $(core_obj) $(core_hdr) $(libs) include/config.h
 	$(CC) $(CFLAGS) -o $@ $(core_src) $(libs) -ldl -lpthread -lrt
 
 libs/klib/libklib.a:
@@ -92,7 +99,7 @@ modules/Kconfig:
 	./scripts/gen_modules_kconfig.sh modules modules/Kconfig
 
 directories:
-	mkdir -p $(patsubst %,$(OBJDIR)/modules/%,$(modules-y))
+	mkdir -p $(OBJDIR) $(OBJMODDIR)
 	mkdir -p $(patsubst %,$(BUILDDIR)/modules/%,$(modules-y))
 
 clean:

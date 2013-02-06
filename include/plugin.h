@@ -60,11 +60,17 @@ struct plugin_id {
 
 	int (*monitor)(struct plugin *plug);
 	int (*check_stderr)(struct plugin *plug);
+
+	int (*option_parser)(struct plugin *plug, const char *opts);
 };
 
 static inline void plugin_set_options(struct plugin *plug, void *options)
 {
 	plug->options = options;
+}
+static inline void *plugin_get_options(struct plugin *plug)
+{
+	return plug->options;
 }
 
 void plugin_add_data(struct plugin *plug, void *data);
