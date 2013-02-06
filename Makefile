@@ -86,3 +86,4 @@ clean:
 	cd libs/kconfig-frontends/ && $(MAKE) $(MFLAGS) clean
 	rm -rf libs/kconfig-frontends/inst/
 	rm -f include/config.h
+	rm -f ${libs}
