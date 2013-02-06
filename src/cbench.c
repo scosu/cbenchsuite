@@ -4,6 +4,7 @@
 
 #include <core/module_manager.h>
 
+#include <config.h>
 #include <benchsuite.h>
 #include <environment.h>
 #include <plugin.h>
@@ -22,7 +23,7 @@ int main(void)
 			.runs_max = 10,
 		},
 	};
-	printk_set_log_level(7);
+	printk_set_log_level(CONFIG_PRINT_LOG_LEVEL);
 
 	mod_mgr_init(&mm, env.bin_dir);
 

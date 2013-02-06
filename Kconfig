@@ -1,5 +1,12 @@
 mainmenu "cbench module configuration"
 
+config PRINT_LOG_LEVEL
+	int "Default log level"
+	range 0 7
+	default 6
+	help
+	  Default log level used in the cbenchsuite core. 0 is non at all, 7 is
+	  debug level.
 
 menu "Modules"
 source "modules/Kconfig"
