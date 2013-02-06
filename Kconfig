@@ -1,0 +1,6 @@
+mainmenu "cbench module configuration"
+
+
+menu "Modules"
+source "modules/Kconfig"
+endmenu
