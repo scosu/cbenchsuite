@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <options.h>
+#include <cbench/option.h>
 
 static struct requirement plugin_drop_caches_requirements[] = {
 	{

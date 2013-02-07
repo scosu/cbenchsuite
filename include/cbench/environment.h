@@ -1,5 +1,5 @@
-#ifndef _ENVIRONMENT_H_
-#define _ENVIRONMENT_H_
+#ifndef _CBENCH_ENVIRONMENT_H_
+#define _CBENCH_ENVIRONMENT_H_
 
 struct run_settings {
 	int warmup_runs;
@@ -16,4 +16,4 @@ struct environment {
 	struct run_settings settings;
 };
 
-#endif  /* _ENVIRONMENT_H_ */
+#endif  /* _CBENCH_ENVIRONMENT_H_ */

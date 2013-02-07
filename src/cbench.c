@@ -3,12 +3,12 @@
 
 #include <klib/printk.h>
 
-#include <core/module_manager.h>
+#include <cbench/core/module_manager.h>
 
-#include <config.h>
-#include <benchsuite.h>
-#include <environment.h>
-#include <plugin.h>
+#include <cbench/config.h>
+#include <cbench/benchsuite.h>
+#include <cbench/environment.h>
+#include <cbench/plugin.h>
 
 int main(void)
 {

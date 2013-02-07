@@ -7,4 +7,4 @@ modules/Kconfig
 *.o
 *.log
 .libs
-include/config.h
+include/cbench/config.h

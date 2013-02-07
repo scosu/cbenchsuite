@@ -2,10 +2,10 @@
 #include <stdio.h>
 #include <sys/stat.h>
 
-#include <module.h>
-#include <plugin.h>
-#include <requirement.h>
-#include <version.h>
+#include <cbench/module.h>
+#include <cbench/plugin.h>
+#include <cbench/requirement.h>
+#include <cbench/version.h>
 
 #include <modules/sysctl/options.h>
 

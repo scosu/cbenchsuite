@@ -1,4 +1,4 @@
-#include <options.h>
+#include <cbench/option.h>
 
 #include <stdlib.h>
 #include <string.h>

@@ -1,5 +1,5 @@
 
-#include <plugin.h>
+#include <cbench/plugin.h>
 
 #include <pthread.h>
 #include <stdio.h>
@@ -10,12 +10,12 @@
 #include <klib/list.h>
 #include <klib/printk.h>
 
-#include <cbench_utils.h>
-#include <config.h>
-#include <data.h>
-#include <environment.h>
-#include <module.h>
-#include <version.h>
+#include <cbench/util.h>
+#include <cbench/config.h>
+#include <cbench/data.h>
+#include <cbench/environment.h>
+#include <cbench/module.h>
+#include <cbench/version.h>
 
 struct plugin_exec;
 

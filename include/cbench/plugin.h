@@ -1,5 +1,5 @@
-#ifndef _PLUGIN_H_
-#define _PLUGIN_H_
+#ifndef _CBENCH_PLUGIN_H_
+#define _CBENCH_PLUGIN_H_
 
 #include <klib/list.h>
 
@@ -80,4 +80,4 @@ int plugins_execute(struct environment *env, struct list_head *plugins);
 #define plugin_parse_options(plug, opt_str) \
 	(plug)->mod->id->option_parser(plug, opt_str);
 
-#endif  /* _PLUGIN_H_ */
+#endif  /* _CBENCH_PLUGIN_H_ */

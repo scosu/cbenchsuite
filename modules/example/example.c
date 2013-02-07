@@ -2,11 +2,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include <benchsuite.h>
-#include <module.h>
-#include <options.h>
-#include <plugin.h>
-#include <version.h>
+#include <cbench/benchsuite.h>
+#include <cbench/module.h>
+#include <cbench/option.h>
+#include <cbench/plugin.h>
+#include <cbench/version.h>
 
 #include <modules/example/options.h>
 

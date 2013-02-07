@@ -1,5 +1,5 @@
-#ifndef _OPTIONS_H_
-#define _OPTIONS_H_
+#ifndef _CBENCH_OPTION_H_
+#define _CBENCH_OPTION_H_
 
 #include <string.h>
 
@@ -38,4 +38,4 @@ int option_parse_bool(struct option_iterator *iter);
 	} while (0)
 
 
-#endif  /* _OPTIONS_H_ */
+#endif  /* _CBENCH_OPTION_H_ */

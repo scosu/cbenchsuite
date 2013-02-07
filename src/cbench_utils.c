@@ -1,4 +1,4 @@
-#include <cbench_utils.h>
+#include <cbench/util.h>
 
 #include <sched.h>
 #include <sys/resource.h>

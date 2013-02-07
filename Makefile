@@ -28,7 +28,7 @@ core_obj := $(patsubst src/%.c,$(OBJDIR)/%.o,$(core_src))
 core_hdr := $(shell find include/ -type f -name '*.h')
 libs := libs/sha256-gpl/sha256.o libs/klib/libklib.a
 
-generate_config_h := ./scripts/gen_config.sh .config include/config.h
+generate_config_h := ./scripts/gen_config.sh .config include/cbench/config.h
 
 #
 # Static module variables
@@ -68,7 +68,7 @@ $(OBJMODDIR)/%.o: src/%.c $(core_hdr)
 $(OBJDIR)/%.o: src/%.c $(core_hdr)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-$(BUILDDIR)/cbench: $(core_obj) $(core_hdr) $(libs) include/config.h
+$(BUILDDIR)/cbench: $(core_obj) $(core_hdr) $(libs) include/cbench/config.h
 	$(CC) $(CFLAGS) -o $@ $(core_src) $(libs) -ldl -lpthread -lrt
 
 libs/klib/libklib.a:
@@ -107,5 +107,5 @@ clean:
 	cd libs/klib/ && $(MAKE) $(MFLAGS) clean
 	cd libs/kconfig-frontends/ && $(MAKE) $(MFLAGS) clean
 	rm -rf libs/kconfig-frontends/inst/
-	rm -f include/config.h
+	rm -f include/cbench/config.h
 	rm -f $(libs)

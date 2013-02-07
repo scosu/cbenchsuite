@@ -1,7 +1,7 @@
-#ifndef _BENCHSUITE_H_
-#define _BENCHSUITE_H_
+#ifndef _CBENCH_BENCHSUITE_H_
+#define _CBENCH_BENCHSUITE_H_
 
-#include <version.h>
+#include <cbench/version.h>
 
 struct environment;
 struct mod_mgr;
@@ -28,4 +28,4 @@ int benchsuite_execute(struct mod_mgr *mm, struct environment *env,
 		struct benchsuite *suite);
 
 
-#endif  /* _BENCHSUITE_H_ */
+#endif  /* _CBENCH_BENCHSUITE_H_ */

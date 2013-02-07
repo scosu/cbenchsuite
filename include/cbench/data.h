@@ -1,5 +1,5 @@
-#ifndef _DATA_H_
-#define _DATA_H_
+#ifndef _CBENCH_DATA_H_
+#define _CBENCH_DATA_H_
 
 enum data_type {
 	DATA_TYPE_MONITOR = 0x1,
@@ -13,4 +13,4 @@ struct data {
 	struct list_head run_data;
 };
 
-#endif  /* _DATA_H_ */
+#endif  /* _CBENCH_DATA_H_ */

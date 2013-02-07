@@ -1,5 +1,5 @@
 
-#include <core/module_manager.h>
+#include <cbench/core/module_manager.h>
 
 #include <dirent.h>
 #include <dlfcn.h>
@@ -13,10 +13,10 @@
 #include <klib/list.h>
 #include <klib/printk.h>
 
-#include <benchsuite.h>
-#include <module.h>
-#include <plugin.h>
-#include <version.h>
+#include <cbench/benchsuite.h>
+#include <cbench/module.h>
+#include <cbench/plugin.h>
+#include <cbench/version.h>
 
 
 static const char *module_so_name = "module.so";

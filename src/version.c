@@ -1,5 +1,5 @@
 
-#include <version.h>
+#include <cbench/version.h>
 
 #include <stdlib.h>
 #include <string.h>

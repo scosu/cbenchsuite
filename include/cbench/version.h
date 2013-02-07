@@ -1,5 +1,5 @@
-#ifndef _VERSION_H_
-#define _VERSION_H_
+#ifndef _CBENCH_VERSION_H_
+#define _CBENCH_VERSION_H_
 
 struct requirement;
 
@@ -23,4 +23,4 @@ struct version {
 int version_compare(const char *rule, const char *ver, int rule_compare);
 int version_matching(const struct version *ver, const char **rules);
 
-#endif  /* _VERSION_H_ */
+#endif  /* _CBENCH_VERSION_H_ */

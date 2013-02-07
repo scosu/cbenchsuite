@@ -1,5 +1,5 @@
-#ifndef _REQUIREMENT_H_
-#define _REQUIREMENT_H_
+#ifndef _CBENCH_REQUIREMENT_H_
+#define _CBENCH_REQUIREMENT_H_
 
 struct requirement {
 	const char *name;
@@ -7,4 +7,4 @@ struct requirement {
 	int found;
 };
 
-#endif  /* _REQUIREMENT_H_ */
+#endif  /* _CBENCH_REQUIREMENT_H_ */

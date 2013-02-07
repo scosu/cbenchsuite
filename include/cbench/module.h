@@ -1,5 +1,5 @@
-#ifndef _MODULE_H_
-#define _MODULE_H_
+#ifndef _CBENCH_MODULE_H_
+#define _CBENCH_MODULE_H_
 
 #include <klib/list.h>
 
@@ -48,4 +48,4 @@ static inline void module_set_user_data(struct module *mod, void *data)
 }
 
 
-#endif  /* _MODULE_H_ */
+#endif  /* _CBENCH_MODULE_H_ */

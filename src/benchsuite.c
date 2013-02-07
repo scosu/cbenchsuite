@@ -1,11 +1,11 @@
 
-#include <benchsuite.h>
+#include <cbench/benchsuite.h>
 
 #include <klib/list.h>
 #include <klib/printk.h>
 
-#include <core/module_manager.h>
-#include <plugin.h>
+#include <cbench/core/module_manager.h>
+#include <cbench/plugin.h>
 
 int benchsuite_execute(struct mod_mgr *mm, struct environment *env,
 		struct benchsuite *suite)
