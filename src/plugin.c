@@ -10,6 +10,8 @@
 #include <klib/list.h>
 #include <klib/printk.h>
 
+#include <cbench_utils.h>
+#include <config.h>
 #include <data.h>
 #include <environment.h>
 #include <module.h>
@@ -92,6 +94,11 @@ static inline void plugin_exec_function(int (*func)(struct plugin *plug),
 		return;
 	if (exec->local_error)
 		return;
+	ret = thread_set_priority(CONFIG_EXECUTION_PRIO);
+	if (ret)
+		printk(KERN_WARNING "Execution thread failed to set priority %d."
+				" Operating with unchanged priority.\n",
+				CONFIG_EXECUTION_PRIO);
 
 	ret = func(exec->plug);
 	if (ret) {
@@ -372,6 +379,11 @@ void *plugin_thread_monitor(void *data)
 		.tv_sec = 1,
 		.tv_nsec = 0,
 	};
+	ret = thread_set_priority(CONFIG_MONITOR_PRIO);
+	if (ret)
+		printk(KERN_WARNING "Monitor thread failed to set priority %d."
+				" Operating with unchanged priority.\n",
+				CONFIG_MONITOR_PRIO);
 	while (!mon->stop) {
 		ret = 0;
 		clock_gettime(CLOCK_MONOTONIC_RAW, &now);
@@ -421,6 +433,12 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 	unsigned int min_time;
 	unsigned int max_time;
 	int max_ind_values = 1;
+
+	ret = thread_set_priority(CONFIG_CONTROLLER_PRIO);
+	if (ret)
+		printk(KERN_WARNING "Controller thread failed to set priority %d."
+				" Operating with unchanged priority.\n",
+				CONFIG_CONTROLLER_PRIO);
 
 	i = 0;
 	list_for_each_entry(plg, plugins, plugin_grp) ++i;

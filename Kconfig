@@ -43,6 +43,30 @@ config WORK_PATH
 endmenu
 
 menu "Execution settings"
+config CONTROLLER_PRIO
+	int "Controller priority"
+	range -20 19
+	default -20
+	help
+	  Scheduling priority of controller thread. Negative values require cbench
+	  to be executed as root. If no root is available, cbench will still
+	  execute correctly, but without this priority change.
+config EXECUTION_PRIO
+	int "Execution priority"
+	range -20 19
+	default 0
+	help
+	  Scheduling priority of execution threads. Negative values require cbench
+	  to be executed as root. If no root is available, cbench will still
+	  execute correctly, but without this priority change.
+config MONITOR_PRIO
+	int "Monitor priority"
+	range -20 19
+	default -15
+	help
+	  Scheduling priority of monitor thread. Negative values require cbench
+	  to be executed as root. If no root is available, cbench will still
+	  execute correctly, but without this priority change.
 config PRINT_LOG_LEVEL
 	int "Default log level"
 	range 0 7
