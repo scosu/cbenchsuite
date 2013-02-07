@@ -120,6 +120,7 @@ static void *plugins_thread_execute(void *data)
 	exec->local_error = 0;
 
 	do {
+		printk(KERN_DEBUG "thread plugin %s\n", id->name);
 		plugin_exec_barrier(exec);
 		plugin_exec_function(id->init_pre, exec, 1, 0);
 		plugin_exec_function(id->init, exec, 2, 0);
@@ -545,7 +546,11 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 
 
 		++exec_env.run;
-		if (exec_env.state != EXEC_WARMUP) {
+		if (exec_env.error_shutdown) {
+			printk(KERN_ERR "Some plugin failed to run, aborting"
+					" plugin group execution\n");
+			exec_env.state = EXEC_STOP;
+		} else if (exec_env.state != EXEC_WARMUP) {
 			exec_env.state = EXEC_UNDECIDED;
 			clock_gettime(CLOCK_MONOTONIC_RAW, &time_now);
 			time_diff = time_now.tv_sec - exec_env.time_started.tv_sec;

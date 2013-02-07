@@ -21,7 +21,7 @@ int option_iterator_next(struct option_iterator *iter, const char *str)
 
 int option_key_cmp(struct option_iterator *iter, const char *key)
 {
-	if (strlen(key) != iter->v_end - iter->v_start)
+	if (strlen(key) != iter->k_end - iter->k_start)
 		return 1;
 	return strncmp(iter->k_start, key, iter->k_end - iter->k_start);
 }

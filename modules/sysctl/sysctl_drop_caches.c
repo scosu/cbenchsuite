@@ -24,12 +24,15 @@ static struct version plugin_drop_caches_versions[] = {
 static int drop_caches()
 {
 	FILE *fd;
+	int ret = 0;
 
 	fd = fopen(vm_drop_caches, "w");
 	if (fd == NULL)
 		return 1;
-	fwrite("3\n", 1, 2, fd);
+	ret = fwrite("3\n", 1, 2, fd);
 	fclose(fd);
+	if (ret != 2)
+		return 1;
 	return 0;
 }
 
@@ -71,6 +74,7 @@ static int plugin_drop_caches_parser(struct plugin *plug, const char *opts)
 
 	opt_data->active_functions = flags;
 	plugin_set_options(plug, opt_data);
+	printf("flags: %d\n", flags);
 
 	return 0;
 }
@@ -78,6 +82,7 @@ static int plugin_drop_caches_parser(struct plugin *plug, const char *opts)
 #define DROP_CACHES_FUNC(opt, name) 					\
 	static int drop_caches_##name(struct plugin *plug) 		\
 	{ 								\
+		printf("%s\n", __func__); 				\
 		struct options_sysctl_drop_caches *opts = plugin_get_options(plug);\
 		if (opts->active_functions & OPTS_SYSCTL_DROP_CACHES_##opt)\
 			return drop_caches(); 				\
