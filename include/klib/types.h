@@ -1,5 +1,5 @@
-#ifndef _LINUX_TYPES_H
-#define _LINUX_TYPES_H
+#ifndef _KLIB_TYPES_H
+#define _KLIB_TYPES_H
 
 #include <stdint.h>
 
@@ -67,4 +67,4 @@ struct hlist_node {
 	struct hlist_node *next, **pprev;
 };
 
-#endif /* _LINUX_TYPES_H */
+#endif /* _KLIB_TYPES_H */
