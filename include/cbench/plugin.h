@@ -1,6 +1,8 @@
 #ifndef _CBENCH_PLUGIN_H_
 #define _CBENCH_PLUGIN_H_
 
+#include <stddef.h>
+
 #include <klib/list.h>
 
 struct data;
@@ -51,12 +53,11 @@ struct plugin_id {
 	void (*stop)(struct plugin *plug);
 
 	void (*free_data)(struct plugin *plug, struct data *data);
-	/*
-	 * Return value of != 0 will cause another call to this function with
-	 * a larger buffer
-	 */
-	int (*data_to_string)(struct plugin *plug, struct data *data, char *buf,
-			unsigned int buf_len);
+
+	int (*data_to_comma_str)(struct plugin *plug, struct data *data, char **buf,
+			size_t *buf_len);
+	int (*data_to_comma_hdr)(struct plugin *plug, struct data *data, char **buf,
+			size_t *buf_len);
 
 	int (*monitor)(struct plugin *plug);
 	int (*check_stderr)(struct plugin *plug);
@@ -71,6 +72,21 @@ static inline void plugin_set_options(struct plugin *plug, void *options)
 static inline void *plugin_get_options(struct plugin *plug)
 {
 	return plug->options;
+}
+
+static inline int plugin_data_comma_str(struct plugin *plug, struct data *data,
+					char **buf, size_t *buf_len)
+{
+	if (!plug->id->data_to_comma_str)
+		return -1;
+	return plug->id->data_to_comma_str(plug, data, buf, buf_len);
+}
+static inline int plugin_data_comma_hdr(struct plugin *plug, struct data *data,
+					char **buf, size_t *buf_len)
+{
+	if (!plug->id->data_to_comma_hdr)
+		return -1;
+	return plug->id->data_to_comma_hdr(plug, data, buf, buf_len);
 }
 
 void plugin_add_data(struct plugin *plug, void *data);

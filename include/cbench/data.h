@@ -1,6 +1,8 @@
 #ifndef _CBENCH_DATA_H_
 #define _CBENCH_DATA_H_
 
+#include <klib/list.h>
+
 enum data_type {
 	DATA_TYPE_MONITOR = 0x1,
 	DATA_TYPE_RESULT = 0x2,
