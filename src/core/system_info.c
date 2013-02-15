@@ -17,6 +17,8 @@ static void system_cpu_calc_ids(struct system *sys)
 	sha256_context ctx;
 	int i;
 
+	sha256_starts(&ctx);
+
 	for (i = 0; i != sys->hw.nr_cpus; ++i) {
 		struct system_cpu *cpu = &sys->hw.cpus[i];
 
@@ -404,6 +406,11 @@ int system_info_init(struct system *sys)
 	sys->machine = sys->raw.uname.machine;
 	sys->kernel_release = sys->raw.uname.release;
 
+	sys->hw.mem.mem_total = sys->raw.sysinfo.totalram * sys->raw.sysinfo.mem_unit;
+	sys->hw.mem.mem_totalhigh = sys->raw.sysinfo.totalhigh * sys->raw.sysinfo.mem_unit;
+	sys->hw.mem.swap_total = sys->raw.sysinfo.totalswap * sys->raw.sysinfo.mem_unit;
+	sys->hw.mem.mem_unit = sys->raw.sysinfo.mem_unit;
+
 	ret = system_cpus_init(sys);
 	if (ret)
 		goto error_libpthread_acq;
@@ -451,10 +458,10 @@ int system_info_comma_str(struct system *sys, char **buf, size_t *buf_len)
 	if (ret)
 		return ret;
 	sprintf(*buf,
-			"%s,%s,"
+			"\"%s\",\"%s\","
 			"%d,%d,%d,"
 			"%d,%lu,%lu,"
-			"%lu,%lu,%s",
+			"%lu,%lu,\"%s\"",
 			sys->machine, sys->kernel_release,
 			sys->hw.nr_cpus, sys->hw.nr_cpus_on, sys->hw.nr_cores_on,
 			sys->hw.nr_physical_procs_on, sys->hw.mem.mem_total, sys->hw.mem.mem_totalhigh,
@@ -500,10 +507,10 @@ int system_cpu_comma_str(struct system_cpu *cpu, char **buf, size_t *buf_len)
 			"%d,%d,%d,"
 			"%f,%f,%d,"
 			"%d,%d,%d,"
-			"%d,%d,%s,"
-			"%s,%s,%s,"
-			"%s,%s,%s,"
-			"%s,%d,%d,"
+			"%d,%d,\"%s\","
+			"\"%s\",\"%s\",\"%s\","
+			"\"%s\",\"%s\",\"%s\","
+			"\"%s\",%d,%d,"
 			"%d",
 			cpu->processor, cpu->online, cpu->core_id,
 			cpu->physical_id, cpu->apicid, cpu->apicid_initial,

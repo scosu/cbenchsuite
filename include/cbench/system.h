@@ -97,7 +97,7 @@ struct system {
 int system_info_init(struct system *sys);
 void system_info_free(struct system *sys);
 
-int system_info_hdr(struct system *sys, char **buf, size_t *buf_len);
+int system_info_comma_hdr(struct system *sys, char **buf, size_t *buf_len);
 int system_info_comma_str(struct system *sys, char **buf, size_t *buf_len);
 int system_cpu_comma_str(struct system_cpu *cpu, char **buf, size_t *buf_len);
 int system_cpu_comma_hdr(struct system_cpu *cpu, char **buf, size_t *buf_len);
