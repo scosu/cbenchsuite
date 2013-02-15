@@ -19,24 +19,28 @@ CFLAGS_TYPE := -O2
 endif
 
 CC := gcc
-CFLAGS := $(CFLAGS_TYPE) $(patsubst "%",%,$(CONFIG_CFLAGS)) -Iinclude -Ilibs/klib/include -std=gnu99 -D_BSD_SOURCE
+CFLAGS := $(CFLAGS_TYPE) $(patsubst "%",%,$(CONFIG_CFLAGS)) -Iinclude -Ilibs/klib/include -Igen/include -Ilibs -std=gnu99 -D_BSD_SOURCE
 
 
 
-core_src := $(shell find src/ -type f -name '*.c')
-core_obj := $(patsubst src/%.c,$(OBJDIR)/%.o,$(core_src))
 core_hdr := $(shell find include/ -type f -name '*.h')
 libs := libs/sha256-gpl/sha256.o libs/klib/libklib.a
 
-generate_config_h := ./scripts/gen_config.sh .config include/cbench/config.h
+generate_config_h := ./scripts/gen_config.sh .config gen/include/cbench/config.h
+
+include src/Makefile
+
+objs-core := $(patsubst %,$(OBJDIR)/%,$(objs-core))
+objs-storage := $(patsubst %,$(OBJDIR)/%,$(objs-storage))
+objs := $(objs-core) $(objs-storage)
 
 #
 # Static module variables
 #
 
 MOBJDIR := $(OBJDIR)/modules
-MODULE_BUILD_SOURCES := $(OBJMODDIR)/options.o
-MODULE_BUILD_DEPS := $(core_src) $(core_hdr) include/config.h $(MODULE_BUILD_SOURCES)
+MODULE_BUILD_SOURCES := $(OBJMODDIR)/core/options.o $(OBJMODDIR)/core/util.o
+MODULE_BUILD_DEPS := $(core_hdr) gen/include/cbench/config.h $(MODULE_BUILD_SOURCES)
 MODULE_CFLAGS := -shared -fPIC -I.
 
 module_dirs := $(wildcard modules/*)
@@ -68,13 +72,16 @@ $(OBJMODDIR)/%.o: src/%.c $(core_hdr)
 $(OBJDIR)/%.o: src/%.c $(core_hdr)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-$(BUILDDIR)/cbench: $(core_obj) $(core_hdr) $(libs) include/cbench/config.h
-	$(CC) $(CFLAGS) -o $@ $(core_src) $(libs) -ldl -lpthread -lrt
+$(BUILDDIR)/cbench: $(objs) $(core_hdr) $(libs) gen/include/cbench/config.h
+	echo $(objs-core)
+	echo $(objs-storage)
+	echo $(objs)
+	$(CC) $(CFLAGS) -o $@ $(objs) $(libs) -ldl -lpthread -lrt
 
 libs/klib/libklib.a:
 	cd libs/klib/ && $(MAKE) $(MFLAGS)
 
-include/config.h: .config
+gen/include/cbench/config.h: .config
 	$(generate_config_h)
 
 ifeq ($(wildcard .config),)
@@ -99,13 +106,14 @@ modules/Kconfig:
 	./scripts/gen_modules_kconfig.sh modules modules/Kconfig
 
 directories:
-	mkdir -p $(OBJDIR) $(OBJMODDIR)
+	mkdir -p $(OBJDIR)/core $(OBJDIR)/storage $(OBJMODDIR)/core
 	mkdir -p $(patsubst %,$(BUILDDIR)/modules/%,$(modules-y))
+	mkdir -p gen/include/cbench/
 
 clean:
 	rm -rf build
 	cd libs/klib/ && $(MAKE) $(MFLAGS) clean
 	cd libs/kconfig-frontends/ && $(MAKE) $(MFLAGS) clean
 	rm -rf libs/kconfig-frontends/inst/
-	rm -f include/cbench/config.h
+	rm -rf gen
 	rm -f $(libs)
