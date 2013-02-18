@@ -64,6 +64,7 @@ struct system_cpu {
 	char *address_sizes_str;
 	char *power_management;
 	char *flags;
+	char sha256[65];
 };
 
 struct system_memory {
@@ -97,9 +98,9 @@ struct system {
 int system_info_init(struct system *sys);
 void system_info_free(struct system *sys);
 
-int system_info_comma_hdr(struct system *sys, char **buf, size_t *buf_len);
-int system_info_comma_str(struct system *sys, char **buf, size_t *buf_len);
-int system_cpu_comma_str(struct system_cpu *cpu, char **buf, size_t *buf_len);
-int system_cpu_comma_hdr(struct system_cpu *cpu, char **buf, size_t *buf_len);
+const struct value *system_info_hdr(struct system *sys);
+struct data *system_info_data(struct system *sys);
+const struct value *system_cpu_hdr(struct system_cpu *cpu);
+struct data *system_cpu_data(struct system_cpu *cpu);
 
 #endif  /* _CBENCH_SYSTEM_H_ */

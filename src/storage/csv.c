@@ -69,6 +69,8 @@ static int csv_add_sysinfo(void *storage, struct system *sys)
 	int ret;
 	struct csv_data *data = (struct csv_data *) storage;
 	char *path_buf;
+	struct data *sys_dat;
+	const struct value *vals;
 
 	path_buf = malloc(strlen(data->path) + 256);
 	if (!path_buf)
@@ -89,22 +91,36 @@ static int csv_add_sysinfo(void *storage, struct system *sys)
 		goto error;
 	}
 
-	ret = system_info_comma_hdr(sys, &buf, &buf_len);
+	vals = system_info_hdr(sys);
+	if (!vals) {
+		printk(KERN_ERR "Failed getting system info header\n");
+		goto error;
+	}
+
+	ret = values_to_csv(vals, &buf, &buf_len);
 	if (ret) {
-		printk(KERN_ERR "System info header failed\n");
+		printk(KERN_ERR "Failed translating values to csv\n");
 		goto error;
 	}
 	fwrite(buf, 1, strlen(buf), f);
 	fwrite("\n", 1, 1, f);
 
-	ret = system_info_comma_str(sys, &buf, &buf_len);
+	sys_dat = system_info_data(sys);
+	if (!sys_dat) {
+		printk(KERN_ERR "Failed to get system info data\n");
+		goto error;
+	}
+
+	ret = data_to_csv(sys_dat, &buf, &buf_len);
+	data_put(sys_dat);
 	if (ret) {
-		printk(KERN_ERR "System info content failed\n");
+		printk(KERN_ERR "Failed translating system data to csv\n");
 		goto error;
 	}
 	fwrite(buf, 1, strlen(buf), f);
 	fwrite("\n", 1, 1, f);
 	fclose(f);
+
 
 	sprintf(path_buf, "%s/system/cpus/%s", data->path, sys->hw.cpus_sha256);
 
@@ -120,22 +136,35 @@ static int csv_add_sysinfo(void *storage, struct system *sys)
 			goto error;
 		}
 
-		ret = system_cpu_comma_hdr(sys->hw.cpus, &buf, &buf_len);
+		vals = system_cpu_hdr(sys->hw.cpus);
+		if (!vals) {
+			printk(KERN_ERR "Failed to get cpu header\n");
+			goto error;
+		}
+
+		ret = values_to_csv(vals, &buf, &buf_len);
 		if (ret) {
-			printk(KERN_ERR "Failed getting cpu header\n");
+			printk(KERN_ERR "Failed translating cpu header\n");
 			goto error;
 		}
 		fwrite(buf, 1, strlen(buf), f);
 		fwrite("\n", 1, 1, f);
 
 		for (i = 0; i != sys->hw.nr_cpus; ++i) {
-			ret = system_cpu_comma_str(&sys->hw.cpus[i], &buf,
-							&buf_len);
-			if (ret) {
+			sys_dat = system_cpu_data(&sys->hw.cpus[i]);
+			if (!sys_dat) {
 				printk(KERN_ERR "Failed getting sysinfo for cpu %d\n",
 						i);
 				goto error;
 			}
+
+			ret = data_to_csv(sys_dat, &buf, &buf_len);
+			data_put(sys_dat);
+			if (ret) {
+				printk(KERN_ERR "Failed translating cpu sysinfo\n");
+				goto error;
+			}
+
 			fwrite(buf, 1, strlen(buf), f);
 			fwrite("\n", 1, 1, f);
 		}

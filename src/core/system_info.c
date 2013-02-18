@@ -28,18 +28,22 @@
 
 #include <klib/printk.h>
 
+#include <cbench/data.h>
 #include <cbench/sha256.h>
 #include <cbench/util.h>
 
 static void system_cpu_calc_ids(struct system *sys)
 {
 	sha256_context ctx;
+	sha256_context ctx_all;
 	int i;
 
-	sha256_starts(&ctx);
+	sha256_starts(&ctx_all);
 
 	for (i = 0; i != sys->hw.nr_cpus; ++i) {
 		struct system_cpu *cpu = &sys->hw.cpus[i];
+
+		sha256_starts(&ctx);
 
 		sha256_add(&ctx, &cpu->online);
 		sha256_add(&ctx, &cpu->processor);
@@ -75,9 +79,13 @@ static void system_cpu_calc_ids(struct system *sys)
 			sha256_add(&ctx, &cpu->max_freq);
 			sha256_add_str(&ctx, cpu->avail_freq);
 		}
+
+		sha256_finish_str(&ctx, cpu->sha256);
+
+		sha256_add_str(&ctx_all, cpu->sha256);
 	}
 
-	sha256_finish_str(&ctx, sys->hw.cpus_sha256);
+	sha256_finish_str(&ctx_all, sys->hw.cpus_sha256);
 }
 
 static void system_calc_ids(struct system *sys)
@@ -453,95 +461,130 @@ void system_info_free(struct system *sys)
 	free(sys->sw.libc);
 }
 
-int system_info_comma_hdr(struct system *sys, char **buf, size_t *buf_len)
+#define system_info_fields 11
+const struct value *system_info_hdr(struct system *sys)
 {
-	int ret;
-
-	ret = mem_grow((void**)buf, buf_len, 1024);
-	if (ret)
-		return -1;
-
-	strcpy(*buf,
-		"machine,kernel,"
-		"nr_cpus,nr_cpus_on,nr_cores_on,"
-		"physical_procs_on,mem_total,mem_totalhigh,"
-		"mem_unit,swap_total,cpus_id");
-	return 0;
+	static const struct value hdr[system_info_fields + 1] = {
+		{ .v_str = "machine" },
+		{ .v_str = "kernel" },
+		{ .v_str = "nr_cpus" },
+		{ .v_str = "nr_cpus_on" },
+		{ .v_str = "nr_cores_on" },
+		{ .v_str = "physical_cores_on" },
+		{ .v_str = "mem_total" },
+		{ .v_str = "mem_totalhigh" },
+		{ .v_str = "mem_unit" },
+		{ .v_str = "swap_total" },
+		{ .v_str = "cpus_id" },
+		{ .type = VALUE_SENTINEL }
+	};
+	return hdr;
 }
 
-int system_info_comma_str(struct system *sys, char **buf, size_t *buf_len)
+struct data *system_info_data(struct system *sys)
 {
-	int ret;
+	struct data *d = data_alloc(DATA_TYPE_OTHER, system_info_fields);
 
-	ret = mem_grow((void**)buf, buf_len, 1024);
-	if (ret)
-		return ret;
-	sprintf(*buf,
-			"\"%s\",\"%s\","
-			"%d,%d,%d,"
-			"%d,%lu,%lu,"
-			"%lu,%lu,\"%s\"",
-			sys->machine, sys->kernel_release,
-			sys->hw.nr_cpus, sys->hw.nr_cpus_on, sys->hw.nr_cores_on,
-			sys->hw.nr_physical_procs_on, sys->hw.mem.mem_total, sys->hw.mem.mem_totalhigh,
-			sys->hw.mem.mem_unit, sys->hw.mem.swap_total, sys->hw.cpus_sha256);
-	return 0;
+	if (!d)
+		return NULL;
+
+	data_add_str(d, sys->machine);
+	data_add_str(d, sys->kernel_release);
+	data_add_int32(d, sys->hw.nr_cpus);
+	data_add_int32(d, sys->hw.nr_cpus_on);
+	data_add_int32(d, sys->hw.nr_cores_on);
+	data_add_int32(d, sys->hw.nr_physical_procs_on);
+	data_add_int64(d, sys->hw.mem.mem_total);
+	data_add_int64(d, sys->hw.mem.mem_totalhigh);
+	data_add_int64(d, sys->hw.mem.mem_unit);
+	data_add_int64(d, sys->hw.mem.swap_total);
+	data_add_str(d, sys->hw.cpus_sha256);
+
+	return d;
 }
 
-int system_cpu_comma_hdr(struct system_cpu *cpu, char **buf, size_t *buf_len)
+#define system_cpu_fields 32
+const struct value *system_cpu_hdr(struct system_cpu *cpu)
 {
-	int ret;
+	static const struct value hdr[system_cpu_fields + 1] = {
+		{ .v_str = "processor" },
+		{ .v_str = "online" },
+		{ .v_str = "core_id" },
+		{ .v_str = "physical_id" },
+		{ .v_str = "apicid" },
+		{ .v_str = "apicid_initial" },
+		{ .v_str = "cores" },
+		{ .v_str = "siblings" },
+		{ .v_str = "cpuid_level" },
+		{ .v_str = "cache_size" },
+		{ .v_str = "clflush_size" },
+		{ .v_str = "cache_alignment" },
+		{ .v_str = "mhz" },
+		{ .v_str = "bogomips" },
+		{ .v_str = "family" },
+		{ .v_str = "model" },
+		{ .v_str = "stepping" },
+		{ .v_str = "fpu" },
+		{ .v_str = "fpu_exception" },
+		{ .v_str = "wp" },
+		{ .v_str = "vendor_id" },
+		{ .v_str = "model_name" },
+		{ .v_str = "microcode" },
+		{ .v_str = "address_sizes" },
+		{ .v_str = "power_management" },
+		{ .v_str = "flags" },
+		{ .v_str = "governor" },
+		{ .v_str = "avail_freq" },
+		{ .v_str = "min_freq" },
+		{ .v_str = "max_freq" },
+		{ .v_str = "cur_freq" },
+		{ .v_str = "sha256" },
+		{ .type = VALUE_SENTINEL }
+	};
 
-	ret = mem_grow((void**)buf, buf_len, 1024);
-	if (ret)
-		return -1;
-
-	strcpy(*buf,
-			"processor,online,core_id,"
-			"physical_id,apicid,apicid_initial,"
-			"cores,siblings,cpuid_level,"
-			"cache_size,clflush_size,cache_alignment,"
-			"mhz,bogomips,family,"
-			"model,stepping,fpu,"
-			"fpu_exception,wp,vendor_id,"
-			"model_name,microcode,address_sizes,"
-			"power_management,flags,governor,"
-			"avail_freq,min_freq,max_freq,"
-			"cur_freq");
-	return 0;
+	return hdr;
 }
 
-int system_cpu_comma_str(struct system_cpu *cpu, char **buf, size_t *buf_len)
+struct data *system_cpu_data(struct system_cpu *cpu)
 {
-	int ret;
+	struct data *d = data_alloc(DATA_TYPE_OTHER, system_cpu_fields);
 
-	ret = mem_grow((void**)buf, buf_len, 1024);
-	if (ret)
-		return -1;
+	if (!d)
+		return NULL;
 
-	sprintf(*buf,
-			"%d,%d,%d,"
-			"%d,%d,%d,"
-			"%d,%d,%d,"
-			"%d,%d,%d,"
-			"%f,%f,%d,"
-			"%d,%d,%d,"
-			"%d,%d,\"%s\","
-			"\"%s\",\"%s\",\"%s\","
-			"\"%s\",\"%s\",\"%s\","
-			"\"%s\",%d,%d,"
-			"%d",
-			cpu->processor, cpu->online, cpu->core_id,
-			cpu->physical_id, cpu->apicid, cpu->apicid_initial,
-			cpu->cores, cpu->siblings, cpu->cpuid_level,
-			cpu->cache_size, cpu->clflush_size, cpu->cache_alignment,
-			cpu->mhz, cpu->bogomips, cpu->family,
-			cpu->model, cpu->stepping, cpu->fpu,
-			cpu->fpu_exception, cpu->wp, cpu->vendor_id,
-			cpu->model_name, cpu->microcode, cpu->address_sizes_str,
-			cpu->power_management, cpu->flags, (cpu->cpufreq ? cpu->governor : "none"),
-			(cpu->cpufreq ? cpu->avail_freq : ""), cpu->min_freq, cpu->max_freq,
-			cpu->cur_freq);
-	return 0;
+	data_add_int32(d, cpu->processor);
+	data_add_int32(d, cpu->online);
+	data_add_int32(d, cpu->core_id);
+	data_add_int32(d, cpu->physical_id);
+	data_add_int32(d, cpu->apicid);
+	data_add_int32(d, cpu->apicid_initial);
+	data_add_int32(d, cpu->cores);
+	data_add_int32(d, cpu->siblings);
+	data_add_int32(d, cpu->cpuid_level);
+	data_add_int32(d, cpu->cache_size);
+	data_add_int32(d, cpu->clflush_size);
+	data_add_int32(d, cpu->cache_alignment);
+	data_add_double(d, cpu->mhz);
+	data_add_double(d, cpu->bogomips);
+	data_add_int32(d, cpu->family);
+	data_add_int32(d, cpu->model);
+	data_add_int32(d, cpu->stepping);
+	data_add_int32(d, cpu->fpu);
+	data_add_int32(d, cpu->fpu_exception);
+	data_add_int32(d, cpu->wp);
+	data_add_str(d, cpu->vendor_id);
+	data_add_str(d, cpu->model_name);
+	data_add_str(d, cpu->microcode);
+	data_add_str(d, cpu->address_sizes_str);
+	data_add_str(d, cpu->power_management);
+	data_add_str(d, cpu->flags);
+	data_add_str(d, (cpu->cpufreq ? cpu->governor : "none"));
+	data_add_str(d, (cpu->cpufreq ? cpu->avail_freq : ""));
+	data_add_int64(d, cpu->min_freq);
+	data_add_int64(d, cpu->max_freq);
+	data_add_int64(d, cpu->cur_freq);
+	data_add_str(d, cpu->sha256);
+
+	return d;
 }
 

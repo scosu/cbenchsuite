@@ -52,12 +52,7 @@ struct plugin_id {
 
 	void (*stop)(struct plugin *plug);
 
-	void (*free_data)(struct plugin *plug, struct data *data);
-
-	int (*data_to_comma_str)(struct plugin *plug, struct data *data, char **buf,
-			size_t *buf_len);
-	int (*data_to_comma_hdr)(struct plugin *plug, struct data *data, char **buf,
-			size_t *buf_len);
+	struct value* (*data_hdr)(struct plugin *plug, struct data *data);
 
 	int (*monitor)(struct plugin *plug);
 	int (*check_stderr)(struct plugin *plug);
@@ -74,22 +69,14 @@ static inline void *plugin_get_options(struct plugin *plug)
 	return plug->options;
 }
 
-static inline int plugin_data_comma_str(struct plugin *plug, struct data *data,
-					char **buf, size_t *buf_len)
+static inline struct value *plugin_data_hdr(struct plugin *plug, struct data *data)
 {
-	if (!plug->id->data_to_comma_str)
-		return -1;
-	return plug->id->data_to_comma_str(plug, data, buf, buf_len);
-}
-static inline int plugin_data_comma_hdr(struct plugin *plug, struct data *data,
-					char **buf, size_t *buf_len)
-{
-	if (!plug->id->data_to_comma_hdr)
-		return -1;
-	return plug->id->data_to_comma_hdr(plug, data, buf, buf_len);
+	if (!plug->id->data_hdr)
+		return NULL;
+	return plug->id->data_hdr(plug, data);
 }
 
-void plugin_add_data(struct plugin *plug, void *data);
+void plugin_add_data(struct plugin *plug, struct data *data);
 
 int plugins_execute(struct environment *env, struct list_head *plugins);
 

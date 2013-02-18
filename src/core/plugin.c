@@ -208,34 +208,17 @@ void *plugins_thread_uninstall(void *data)
 	return NULL;
 }
 
-void plugin_add_data(struct plugin *plug, void *data)
-{
-	struct data *data_struct = malloc(sizeof(*data_struct));
-	struct plugin_exec_env *exec_env = (struct plugin_exec_env *)
-						plug->exec_data;
-	if (!data_struct) {
-		printk(KERN_ERR "Out of memory, dropping data\n");
-		exec_env->error_shutdown = 1;
-		return;
-	}
-
-	data_struct->data = data;
-	data_struct->run = exec_env->run;
-	INIT_LIST_HEAD(&data_struct->run_data);
-	list_add_tail(&data_struct->run_data, &plug->run_data);
-}
-
 void plugin_free_data(struct plugin *plug, struct data *data)
 {
-	if (data->data) {
-		if (plug->id->free_data) {
-			plug->id->free_data(plug, data);
-		} else {
-			free(data->data);
-		}
-	}
-	list_del(&data->run_data);
-	free(data);
+	data_put(data);
+}
+
+inline void plugin_add_data(struct plugin *plug, struct data *data)
+{
+	struct plugin_exec_env *exec_env = (struct plugin_exec_env *)
+						plug->exec_data;
+	data->run = exec_env->run;
+	list_add_tail(&data->run_data, &plug->run_data);
 }
 
 static void plugin_exec_drop_data(struct plugin_exec *exec)
@@ -264,13 +247,7 @@ static void plugin_exec_persist(struct plugin_exec *exec, int persist_types)
 		}
 		if (!persist)
 			continue;
-		if (!plug->id->data_to_string) {
-			printk(KERN_ERR "Have data for plugin %s, but there is no"
-					"function 'data_to_string' present, dropping.\n",
-					plug->id->name);
-		} else {
-			// TODO: persist stuff here
-		}
+		// TODO: persist stuff here
 		plugin_free_data(plug, data);
 	}
 }
