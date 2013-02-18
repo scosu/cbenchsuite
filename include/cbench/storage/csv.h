@@ -3,6 +3,6 @@
 
 struct storage;
 
-extern struct storage storage_csv;
+extern const struct storage_ops storage_csv;
 
 #endif  /* _CBENCH_STORAGE_CSV_H_ */

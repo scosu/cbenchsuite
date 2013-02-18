@@ -1,7 +1,7 @@
 #ifndef _CBENCH_ENVIRONMENT_H_
 #define _CBENCH_ENVIRONMENT_H_
 
-struct storage;
+#include <cbench/storage.h>
 
 struct run_settings {
 	int warmup_runs;
@@ -16,8 +16,7 @@ struct environment {
 	const char *work_dir;
 	const char *bin_dir;
 	struct run_settings settings;
-	struct storage *storage;
-	void *storage_data;
+	struct storage storage;
 };
 
 #endif  /* _CBENCH_ENVIRONMENT_H_ */

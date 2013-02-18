@@ -183,6 +183,12 @@ error:
 	return -1;
 }
 
+static int csv_plugin_combo_init(void *storage, struct list_head *plugins,
+		const char *plugins_sha256)
+{
+	return 0;
+}
+
 static int csv_add_data(void *storage, struct plugin *plug, struct data *data)
 {
 	return 0;
@@ -193,8 +199,9 @@ static void csv_exit(void *storage)
 	free(storage);
 }
 
-struct storage storage_csv = {
+const struct storage_ops storage_csv = {
 	.init = csv_init,
+	.init_plugin_grp = csv_plugin_combo_init,
 	.add_sysinfo = csv_add_sysinfo,
 	.add_data = csv_add_data,
 	.exit = csv_exit,

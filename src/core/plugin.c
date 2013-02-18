@@ -34,6 +34,7 @@
 #include <cbench/environment.h>
 #include <cbench/module.h>
 #include <cbench/sha256.h>
+#include <cbench/storage.h>
 #include <cbench/version.h>
 
 struct plugin_exec;
@@ -93,6 +94,20 @@ void plugin_calc_sha256(struct plugin *plug)
 	}
 
 	sha256_finish_str(&ctx, plug->sha256);
+}
+
+void plugins_calc_sha256(struct list_head *plugins, char *sha256)
+{
+	sha256_context ctx;
+	struct plugin *plug;
+
+	sha256_starts(&ctx);
+
+	list_for_each_entry(plug, plugins, plugin_grp) {
+		sha256_add_str(&ctx, plug->sha256);
+	}
+
+	sha256_finish_str(&ctx, sha256);
 }
 
 static inline void plugin_execenv_barrier(struct plugin_exec_env *env)
@@ -449,6 +464,10 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 	unsigned int min_time;
 	unsigned int max_time;
 	int max_ind_values = 1;
+	char sha256[65];
+
+	plugins_calc_sha256(plugins, sha256);
+	storage_init_plg_grp(&env->storage, plugins, sha256);
 
 	ret = thread_set_priority(CONFIG_CONTROLLER_PRIO);
 	if (ret)
@@ -624,6 +643,8 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 
 uninstall:
 	plugins_uninstall(&exec_env);
+
+	storage_exit_plg_grp(&env->storage);
 
 	free(execs);
 failed_exec_alloc:
