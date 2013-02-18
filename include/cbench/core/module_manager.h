@@ -1,3 +1,5 @@
+#ifndef _CBENCH_CORE_MODULE_MANAGER_H_
+#define _CBENCH_CORE_MODULE_MANAGER_H_
 
 #include <klib/list.h>
 
@@ -22,3 +24,5 @@ struct benchsuite *mod_mgr_benchsuite_create(struct mod_mgr *mm,
 void mod_mgr_benchsuite_free(struct mod_mgr *mm, struct benchsuite *suite);
 
 void mod_mgr_exit(struct mod_mgr *mm);
+
+#endif  /* _CBENCH_CORE_MODULE_MANAGER_H_ */
