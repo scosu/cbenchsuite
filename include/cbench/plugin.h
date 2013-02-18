@@ -16,6 +16,8 @@ struct plugin {
 	struct module *mod;
 	const struct version *version;
 
+	char sha256[65];
+
 	const char *bin_path;
 	const char *work_dir;
 
@@ -79,6 +81,8 @@ static inline struct value *plugin_data_hdr(struct plugin *plug, struct data *da
 void plugin_add_data(struct plugin *plug, struct data *data);
 
 int plugins_execute(struct environment *env, struct list_head *plugins);
+
+void plugin_calc_sha256(struct plugin *plug);
 
 #define plugin_parse_options(plug, opt_str) \
 	(plug)->mod->id->option_parser(plug, opt_str);

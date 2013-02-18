@@ -305,6 +305,9 @@ struct plugin *mod_mgr_plugin_create(struct mod_mgr *mm, const char *fid,
 			return NULL;
 		}
 	}
+
+	plugin_calc_sha256(plug);
+
 	return plug;
 }
 

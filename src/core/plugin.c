@@ -33,6 +33,7 @@
 #include <cbench/data.h>
 #include <cbench/environment.h>
 #include <cbench/module.h>
+#include <cbench/sha256.h>
 #include <cbench/version.h>
 
 struct plugin_exec;
@@ -73,6 +74,26 @@ struct mon_data {
 	int stop;
 	struct plugin_exec_env *exec_env;
 };
+
+void plugin_calc_sha256(struct plugin *plug)
+{
+	sha256_context ctx;
+	int i;
+	struct comp_version *vers = plug->version->comp_versions;
+
+	sha256_starts(&ctx);
+
+	sha256_add_str(&ctx, plug->id->name);
+	sha256_add_str(&ctx, plug->version->version);
+	sha256_add(&ctx, &plug->version->nr_independent_values);
+
+	for (i = 0; vers[i].name != NULL; ++i) {
+		sha256_add_str(&ctx, vers[i].name);
+		sha256_add_str(&ctx, vers[i].version);
+	}
+
+	sha256_finish_str(&ctx, plug->sha256);
+}
 
 static inline void plugin_execenv_barrier(struct plugin_exec_env *env)
 {
