@@ -57,12 +57,10 @@ struct plugin_id {
 
 	void (*stop)(struct plugin *plug);
 
-	struct value* (*data_hdr)(struct plugin *plug);
+	const struct value* (*data_hdr)(struct plugin *plug);
 
 	int (*monitor)(struct plugin *plug);
 	int (*check_stderr)(struct plugin *plug);
-
-	const struct value* (*option_get_header)(struct plugin *plug);
 };
 
 static inline const struct option *plugin_get_options(struct plugin *plug)
