@@ -1,0 +1,2 @@
+config CPUSCHED
+	bool "CPU scheduler module"
