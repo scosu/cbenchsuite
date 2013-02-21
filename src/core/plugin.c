@@ -461,14 +461,11 @@ void *plugin_thread_monitor(void *data)
 	int i;
 	int ret;
 	struct timespec now;
+	struct timespec last;
 	struct timespec delta;
-	struct timespec started;
-	struct timespec sleeptime = {
-		.tv_sec = 1,
-		.tv_nsec = 0,
-	};
-	struct timespec one_second = {
-		.tv_sec = 1,
+	struct timespec to_sleep;
+	struct timespec two_second = {
+		.tv_sec = 2,
 		.tv_nsec = 0,
 	};
 	ret = thread_set_priority(CONFIG_MONITOR_PRIO);
@@ -476,24 +473,26 @@ void *plugin_thread_monitor(void *data)
 		printk(KERN_NOTICE "Monitor thread failed to set priority %d."
 				" Operating with unchanged priority.\n",
 				CONFIG_MONITOR_PRIO);
+	clock_gettime(CLOCK_MONOTONIC_RAW, &last);
+	last.tv_sec -= 1;
 	while (!mon->stop) {
 		ret = 0;
-		clock_gettime(CLOCK_MONOTONIC_RAW, &now);
-		started = now;
-		timespec_sub(&sleeptime, &one_second);
-		timespec_sub(&started, &sleeptime);
 		for (i = 0; i != nr_plugins; ++i) {
 			if (!execs[i].plug->id->monitor)
 				continue;
 			ret |= execs[i].plug->id->monitor(execs[i].plug);
 		}
-		clock_gettime(CLOCK_MONOTONIC_RAW, &delta);
-		timespec_sub(&delta, &started);
-		if (delta.tv_sec == 0) {
-			delta.tv_nsec = 1000000000 - delta.tv_nsec;
-			nanosleep(&delta, &sleeptime);
-		}
+		clock_gettime(CLOCK_MONOTONIC_RAW, &now);
 
+		delta = now;
+		timespec_sub(&delta, &last);
+		to_sleep = two_second;
+		timespec_sub(&to_sleep, &delta);
+
+		if (to_sleep.tv_sec < two_second.tv_sec) {
+			nanosleep(&to_sleep, NULL);
+		}
+		last = now;
 	}
 	return NULL;
 }
@@ -618,10 +617,11 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 		}
 
 		if (exec_env.state == EXEC_RUN) {
-			printk(KERN_INFO "\tExecution run %d\n", exec_env.run);
+			printk(KERN_INFO "\tExecution run %d uuid:'%s'\n",
+					exec_env.run + 1, uuid);
 			storage_init_run(&env->storage, uuid);
 		} else {
-			printk(KERN_INFO "\tWarmup run %d\n", exec_env.run);
+			printk(KERN_INFO "\tWarmup run %d\n", exec_env.run + 1);
 		}
 		printk(KERN_DEBUG "Loop run %d state %d\n", exec_env.run,
 				exec_env.state);

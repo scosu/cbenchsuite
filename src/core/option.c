@@ -79,10 +79,10 @@ long long option_parse_int_base(struct option_iterator *iter, int base)
 	char buf[128];
 	long long val;
 	int size = iter->v_end - iter->v_start;
-	if (size >= 127)
-		size = 127;
+	if (size >= 126)
+		size = 126;
 	memcpy(buf, iter->v_start, size);
-	buf[size + 1] = '\0';
+	buf[size] = '\0';
 	val = strtoll(buf, NULL, base);
 	return val;
 }
