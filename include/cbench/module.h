@@ -25,7 +25,6 @@ struct module_id {
 	const struct plugin_id *plugins;
 	const struct benchsuite_id *benchsuites;
 
-	int (*prepare)(struct module *mod);
 	int (*init)(struct module *mod);
 	int (*exit)(struct module *mod);
 

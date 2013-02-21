@@ -128,6 +128,9 @@ struct option *option_parse(const struct option *defaults, const char *optstr)
 	}
 	memcpy(opts, defaults, sizeof(*opts) * (nr_items + 1));
 
+	if (!optstr)
+		return opts;
+
 	options_for_each_entry(&itr, optstr) {
 		for (i = 0; i != nr_items; ++i) {
 			if (!option_key_cmp(&itr, opts[i].name)) {

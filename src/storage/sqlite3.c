@@ -423,7 +423,7 @@ static int sqlite3_init_plugin_grp(void *storage, struct list_head *plugins,
 
 	list_for_each_entry(plug, plugins, plugin_grp) {
 		if (plug->id->data_hdr) {
-			struct value *hdr;
+			const struct value *hdr;
 
 			sha256_starts(&ctx);
 			sha256_add_str(&ctx, group_sha);

@@ -183,7 +183,6 @@ static int example_plug_free(struct plugin *plug)
 struct module_id example_mod = {
 	.plugins = example_plugs,
 	.benchsuites = example_suites,
-	.prepare = NULL,
 	.init = example_init,
 	.exit = example_exit,
 	.plugin_init = example_plug_init,

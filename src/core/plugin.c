@@ -306,7 +306,7 @@ void plugin_free_data(struct plugin *plug, struct data *data)
 	data_put(data);
 }
 
-inline void plugin_add_data(struct plugin *plug, struct data *data)
+void plugin_add_data(struct plugin *plug, struct data *data)
 {
 	struct plugin_exec_env *exec_env = (struct plugin_exec_env *)
 						plug->exec_data;

@@ -68,7 +68,7 @@ static inline const struct option *plugin_get_options(struct plugin *plug)
 	return plug->options;
 }
 
-static inline struct value *plugin_data_hdr(struct plugin *plug)
+static inline const struct value *plugin_data_hdr(struct plugin *plug)
 {
 	if (!plug->id->data_hdr)
 		return NULL;

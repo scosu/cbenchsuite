@@ -107,11 +107,13 @@ struct module *module_create(const char *name, const char *mod_dir)
 	if (err)
 		goto failed_load_module;
 
-	err = mod->id->init(mod);
-	if (err) {
-		printk(KERN_ERR "Failed initializing module %s returncode %d\n",
-				mod->name, err);
-		goto failed_init_module;
+	if (mod->id->init) {
+		err = mod->id->init(mod);
+		if (err) {
+			printk(KERN_ERR "Failed initializing module %s returncode %d\n",
+					mod->name, err);
+			goto failed_init_module;
+		}
 	}
 
 	INIT_LIST_HEAD(&mod->modules);
@@ -132,6 +134,10 @@ failed_alloc_name:
 
 void module_free(struct module *mod)
 {
+	module_load(mod);
+	if (mod->id->exit) {
+		mod->id->exit(mod);
+	}
 	module_unload(mod);
 	free(mod->so_path);
 	free(mod->name);
@@ -320,6 +326,13 @@ void mod_mgr_plugin_free(struct mod_mgr *mm, struct plugin *plg)
 {
 	if (plg->options)
 		free(plg->options);
+	if (plg->mod->id->plugin_free) {
+		int ret = plg->mod->id->plugin_free(plg);
+		if (ret) {
+			printk(KERN_ERR "Failed to free plugin in module free function%s\n",
+					plg->id->name);
+		}
+	}
 	mod_mgr_module_put_plugin(mm, plg->mod, plg);
 }
 
@@ -354,6 +367,15 @@ struct plugin *mod_mgr_plugin_create(struct mod_mgr *mm, const char *fid,
 	}
 
 	plugin_calc_sha256(plug);
+
+	if (mod->id->plugin_init) {
+		int ret = mod->id->plugin_init(plug);
+		if (ret) {
+			printk(KERN_ERR "Failed to prepare plugin in module init function%s\n", fid);
+			mod_mgr_module_put_plugin(mm, mod, plug);
+			return NULL;
+		}
+	}
 
 	return plug;
 }
