@@ -82,13 +82,13 @@ struct mon_data {
 void plugin_id_print_version(struct version *v, int verbose)
 {
 	int i;
-	printf("      %s\n", v->version);
+	printf("        %s\n", v->version);
 
 	if (v->requirements) {
-		printf("        Requirements\n");
+		printf("          Requirements\n");
 		for (i = 0; v->requirements[i].name; ++i) {
 			if (!v->requirements[i].found || verbose) {
-				printf("          %s (%s)\n",
+				printf("            %s (%s)\n",
 						v->requirements[i].name,
 						v->requirements[i].found ? "found": "not found");
 			}
@@ -97,13 +97,13 @@ void plugin_id_print_version(struct version *v, int verbose)
 		}
 	}
 	if (verbose)
-		printf("        Independent values: %d\n", v->nr_independent_values);
+		printf("          Independent values: %d\n", v->nr_independent_values);
 	if (v->default_options) {
-		printf("        Options\n");
+		printf("          Options\n");
 		for (i = 0; v->default_options[i].value.type != VALUE_SENTINEL; ++i) {
 			struct option *o = &v->default_options[i];
 
-			printf("          %s (Default: ", o->name);
+			printf("            %s (Default: ", o->name);
 			value_print(&o->value);
 			printf(")\n");
 		}
