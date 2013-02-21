@@ -44,6 +44,14 @@ struct arguments {
 	const char *module_dir;
 	const char *work_dir;
 	const char *custom_sysinfo;
+
+	const char *warmup_runs;
+	const char *min_runs;
+	const char *max_runs;
+	const char *min_runtime;
+	const char *max_runtime;
+	const char *std_err;
+
 	int cmd_list;
 	int cmd_plugins;
 	int cmd_help;
@@ -86,6 +94,14 @@ Options:\n\
 				from others. For example you can use any code\n\
 				revision or simple names for different test\n\
 				conditions.\n\
+	--min-runs N		Minimum number of runs executed.\n\
+	--max-runs N		Maximum number of runs executed.\n\
+	--min-runtime SECONDS	Minimum runtime per independent result value.\n\
+	--max-runtime SECONDS	Maximum runtime per independent result value.\n\
+	--warmup-runs N		Number of warmup runs before the actual\n\
+				measurements.\n\
+	--stderr N		Percent of the standard error that need to be\n\
+				reached within the other runtime bounds. (float)\n\
 ", stdout);
 }
 
@@ -122,6 +138,18 @@ int args_parse(struct arguments *pargs, int argc, char **argv)
 			pargs->cmd_help = 1;
 		} else if (arg_match(arg, "--sysinfo", "-i")) {
 			parse_arg_tgt = &pargs->custom_sysinfo;
+		} else if (!strcmp(arg, "--warmup-runs")) {
+			parse_arg_tgt = &pargs->warmup_runs;
+		} else if (!strcmp(arg, "--min-runs")) {
+			parse_arg_tgt = &pargs->min_runs;
+		} else if (!strcmp(arg, "--max-runs")) {
+			parse_arg_tgt = &pargs->max_runs;
+		} else if (!strcmp(arg, "--min-runtime")) {
+			parse_arg_tgt = &pargs->min_runtime;
+		} else if (!strcmp(arg, "--max-runtime")) {
+			parse_arg_tgt = &pargs->max_runtime;
+		} else if (!strcmp(arg, "--std-err")) {
+			parse_arg_tgt = &pargs->std_err;
 		} else {
 			continue;
 		}
@@ -400,7 +428,17 @@ int cmd_execute(struct arguments *pargs, int argc, char **argv, int as_benchsuit
 			.runtime_max = CONFIG_MAX_RUNTIME,
 		},
 	};
-	env.settings.percent_stderr = atof(CONFIG_STDERR_PERCENT);
+	env.settings.percent_stderr = atof(pargs->std_err);
+	if (pargs->min_runs)
+		env.settings.runs_min = atoi(pargs->min_runs);
+	if (pargs->max_runs)
+		env.settings.runs_max = atoi(pargs->max_runs);
+	if (pargs->min_runtime)
+		env.settings.runtime_min = atoi(pargs->min_runtime);
+	if (pargs->max_runtime)
+		env.settings.runtime_max = atoi(pargs->max_runtime);
+	if (pargs->warmup_runs)
+		env.settings.warmup_runs = atoi(pargs->warmup_runs);
 
 	ret = system_info_init(&sys, pargs->custom_sysinfo);
 	if (ret) {
@@ -487,6 +525,7 @@ int main(int argc, char **argv)
 		.work_dir = CONFIG_WORK_PATH,
 		.module_dir = CONFIG_MODULE_DIR,
 		.custom_sysinfo = "",
+		.std_err = CONFIG_STDERR_PERCENT,
 	};
 	int ret = 0;
 	printk_set_log_level(CONFIG_PRINT_LOG_LEVEL);
