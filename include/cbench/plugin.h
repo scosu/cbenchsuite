@@ -27,6 +27,8 @@ struct plugin {
 	void *options;
 	void *exec_data;
 
+	void *ctx;
+
 	struct list_head plugins;
 	struct list_head plugin_grp;
 
@@ -75,7 +77,17 @@ static inline struct value *plugin_data_hdr(struct plugin *plug)
 	return plug->id->data_hdr(plug);
 }
 
-void plugin_add_data(struct plugin *plug, struct data *data);
+static inline void *plugin_get_data(struct plugin *plug)
+{
+	return plug->ctx;
+}
+
+static inline void plugin_set_data(struct plugin *plug, void *data)
+{
+	plug->ctx = data;
+}
+
+void plugin_add_results(struct plugin *plug, struct data *data);
 
 int plugins_execute(struct environment *env, struct list_head *plugins);
 
