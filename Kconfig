@@ -26,6 +26,11 @@ config CFLAGS
 endmenu
 
 menu "Environment settings"
+config MODULE_DIR
+	string "Module directory"
+	default "build/modules"
+	help
+	  Default module directory path
 config WORK_PATH
 	string "Work directory"
 	default "/tmp/cbench/"

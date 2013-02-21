@@ -18,6 +18,7 @@
  */
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #include <klib/printk.h>
@@ -44,8 +45,43 @@ struct arguments {
 	const char *work_dir;
 	int cmd_list;
 	int cmd_plugins;
+	int cmd_help;
 	int verbose;
 };
+
+void print_help()
+{
+	fputs(
+"This is cbench, a high accuracy C benchmark suite.\n\
+\n\
+By default, cbench interpretes arguments without '-' at the beginning as\n\
+benchsuite names and executes them.\n\
+\n\
+Commands:\n\
+	--list,-l		List available Modules/Plugins. All other\n\
+				command line arguments are parsed as module\n\
+				identifiers. If non is given, it lists all\n\
+				modules. This command will show more information\n\
+				with the verbose option.\n\
+	--plugins,-p		Parse all arguments as plugin identifiers\n\
+				and execute them. Please see\n\
+				doc/identifier_specifications for more\n\
+				information.\n\
+	--help,-h		Displays this help and exits.\n\
+\n\
+Options:\n\
+	--log-level,-g N 	Log level used, from 1 to 7(debugging)\n\
+	--storage,-s STR	Storage backend to use. Currently available are:\n\
+					sqlite3 and csv\n\
+	--db-path,-db DB	Database directory. Default: /tmp/cbench/\n\
+	--verbose,-v		Verbose output. (more information, but not the\n\
+				same as log-level)\n\
+	--module-dir,-m		Module directory.\n\
+	--work_dir,-w		Working directory. IMPORTANT! Depending on the\n\
+				location of this work directory, the benchmark\n\
+				results could vary. Default: /tmp/cbench/work\n\
+", stdout);
+}
 
 #define arg_match(arg, name, key) (!strcmp(arg, name) || !strcmp(arg, key))
 
@@ -76,6 +112,8 @@ int args_parse(struct arguments *pargs, int argc, char **argv)
 			parse_arg_tgt = &pargs->work_dir;
 		} else if (arg_match(arg, "--plugins", "-p")) {
 			pargs->cmd_plugins = 1;
+		} else if (arg_match(arg, "--help", "-h")) {
+			pargs->cmd_help = 1;
 		} else {
 			continue;
 		}
@@ -439,9 +477,9 @@ int main(int argc, char **argv)
 		.storage = "sqlite3",
 		.db_path = "/tmp/cbench/",
 		.work_dir = CONFIG_WORK_PATH,
-		.module_dir = "/usr/local/lib/cbench/",
+		.module_dir = CONFIG_MODULE_DIR,
 	};
-	int ret;
+	int ret = 0;
 	printk_set_log_level(CONFIG_PRINT_LOG_LEVEL);
 
 	ret = args_parse(&pargs, argc, argv);
@@ -452,7 +490,9 @@ int main(int argc, char **argv)
 	if (pargs.log_level)
 		printk_set_log_level(atoi(pargs.log_level));
 
-	if (pargs.cmd_list) {
+	if (pargs.cmd_help || argc <= 1) {
+		print_help();
+	} else if (pargs.cmd_list) {
 		ret = cmd_list(&pargs, argc, argv);
 	} else if (pargs.cmd_plugins) {
 		ret = cmd_execute(&pargs, argc, argv, 0);
