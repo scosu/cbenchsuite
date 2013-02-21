@@ -10,7 +10,7 @@ struct storage_ops {
 	void *(*init)(const char *path);
 	int (*init_plugin_grp)(void *storage, struct list_head *plugins,
 				const char *sha256);
-	int (*init_run)(void *storage, const char *uuid);
+	int (*init_run)(void *storage, const char *uuid, int nr_run);
 	int (*add_sysinfo)(void *storage, struct system *sys);
 	int (*add_data)(void *storage, struct plugin *plug, struct data *data);
 	int (*exit_run)(void *storage);
@@ -31,11 +31,12 @@ static inline int storage_init_plg_grp(struct storage *storage,
 		return 0;
 	return storage->ops->init_plugin_grp(storage->data, plugins, sha256);
 }
-static inline int storage_init_run(struct storage *storage, const char *uuid)
+static inline int storage_init_run(struct storage *storage, const char *uuid,
+					int nr_run)
 {
 	if (!storage->ops->init_run)
 		return 0;
-	return storage->ops->init_run(storage->data, uuid);
+	return storage->ops->init_run(storage->data, uuid, nr_run);
 }
 static inline int storage_add_sysinfo(struct storage *storage, struct system *sys)
 {

@@ -29,6 +29,7 @@
 
 #include <cbench/data.h>
 #include <cbench/module.h>
+#include <cbench/option.h>
 #include <cbench/plugin.h>
 #include <cbench/sha256.h>
 #include <cbench/system.h>
@@ -43,6 +44,9 @@ struct sqlite3_data {
 	size_t buf1_size;
 	char *buf2;
 	size_t buf2_size;
+	const char *group_sha;
+	const char *sys_sha;
+	const char *run_uuid;
 };
 
 struct values_present {
@@ -97,7 +101,7 @@ static int sqlite3_alter_by_hdr(const char *table, struct sqlite3_data *d,
 		return -1;
 	}
 
-	sprintf(*stmt, "PRAGMA table_info(%s);", table);
+	sprintf(*stmt, "PRAGMA table_info('%s');", table);
 
 	ret = sqlite3_exec(d->db, *stmt, sqlite3_alter_by_hdr_cb, &vp, &errmsg);
 
@@ -115,7 +119,7 @@ static int sqlite3_alter_by_hdr(const char *table, struct sqlite3_data *d,
 		return 0;
 	if (sum_found == 0) {
 
-		ret = values_to_csv(hdr, buf, buf_len, QUOTE_NONE);
+		ret = values_to_csv(hdr, buf, buf_len, QUOTE_SINGLE);
 		if (ret) {
 			goto error_table_info;
 		}
@@ -129,7 +133,7 @@ static int sqlite3_alter_by_hdr(const char *table, struct sqlite3_data *d,
 			goto error_table_info;
 		}
 
-		sprintf(*stmt, "CREATE TABLE %s(%s,%s);", table,
+		sprintf(*stmt, "CREATE TABLE '%s'(%s,%s);", table,
 				additional_hdr, *buf);
 		ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
 		if (ret != SQLITE_OK) {
@@ -139,15 +143,17 @@ static int sqlite3_alter_by_hdr(const char *table, struct sqlite3_data *d,
 			goto error_table_info;
 		}
 	} else {
-		for (i = 0; hdr[i].type != VALUE_SENTINEL; ++i) {
+		for (i = 0; vp.vals[i].type != VALUE_SENTINEL; ++i) {
+			if (vp.present[i])
+				continue;
 			ret = mem_grow((void**)stmt, stmt_size, strlen(hdr[i].v_str)
 					+ strlen(table) + 128);
 			if (ret) {
 				goto error_table_info;
 			}
 
-			sprintf(*stmt, "ALTER TABLE %s ADD COLUMN %s;", table,
-					hdr[i].v_str);
+			sprintf(*stmt, "ALTER TABLE %s ADD COLUMN '%s';", table,
+					vp.vals[i].v_str);
 			ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
 			if (ret != SQLITE_OK) {
 				printk(KERN_ERR "Failed to add column (%s): %s\n",
@@ -200,7 +206,7 @@ static void *sqlite3_init(const char *path)
 		goto error_sqldb;
 	}
 
-	ret = sqlite3_exec(d->db, "CREATE TABLE IF NOT EXISTS plugin_groups(sha UNIQUE PRIMARY KEY,group_sha,plugin_sha,plugin_table);",
+	ret = sqlite3_exec(d->db, "CREATE TABLE IF NOT EXISTS plugin_groups(sha UNIQUE PRIMARY KEY,group_sha,plugin_sha,plugin_table,plugin_opts_sha,plugin_opt_table);",
 				NULL, NULL, &errmsg);
 	if (ret != SQLITE_OK) {
 		printk(KERN_ERR "Failed to create plugin_grp table: %s\n",
@@ -209,7 +215,7 @@ static void *sqlite3_init(const char *path)
 		goto error_sqldb;
 	}
 
-	ret = sqlite3_exec(d->db, "CREATE TABLE IF NOT EXISTS unique_runs(uuid UNIQUE PRIMARY KEY,group_sha,nr_run,system_sha);",
+	ret = sqlite3_exec(d->db, "CREATE TABLE IF NOT EXISTS unique_runs(uuid UNIQUE PRIMARY KEY,group_sha,prev_runs,system_sha);",
 				NULL, NULL, &errmsg);
 	if (ret != SQLITE_OK) {
 		printk(KERN_ERR "Failed to create plugin_grp table: %s\n",
@@ -246,6 +252,8 @@ static int sqlite3_add_sysinfo(void *storage, struct system *sys)
 	int ret;
 	int i;
 
+	d->sys_sha = sys->sha256;
+
 	hdr = system_info_hdr(sys);
 	if (!hdr) {
 		printk(KERN_ERR "Failed to get system header\n");
@@ -257,7 +265,7 @@ static int sqlite3_add_sysinfo(void *storage, struct system *sys)
 		goto error;
 	}
 
-	ret = values_to_csv(hdr, buf1, buf1_len, QUOTE_NONE);
+	ret = values_to_csv(hdr, buf1, buf1_len, QUOTE_SINGLE);
 	if (ret) {
 		printk(KERN_ERR "Failed translating system header to csv\n");
 		goto error;
@@ -305,7 +313,7 @@ static int sqlite3_add_sysinfo(void *storage, struct system *sys)
 		goto error;
 	}
 
-	ret = values_to_csv(hdr, buf1, buf1_len, QUOTE_NONE);
+	ret = values_to_csv(hdr, buf1, buf1_len, QUOTE_SINGLE);
 	if (ret) {
 		printk(KERN_ERR "Failed to translate system cpu header to csv\n");
 		goto error;
@@ -356,7 +364,7 @@ static int sqlite3_add_sysinfo(void *storage, struct system *sys)
 		goto error;
 	}
 
-	ret = values_to_csv(hdr, buf1, buf1_len, QUOTE_NONE);
+	ret = values_to_csv(hdr, buf1, buf1_len, QUOTE_SINGLE);
 	if (ret) {
 		printk(KERN_ERR "Failed to translate system cpu header to csv\n");
 		goto error;
@@ -415,66 +423,228 @@ static int sqlite3_init_plugin_grp(void *storage, struct list_head *plugins,
 	size_t *stmt_size = &d->stmt_size;
 	struct plugin *plug;
 	int ret;
-	char **buf = &d->buf1;
-	size_t *buf_len = &d->buf1_size;
+	char **buf1 = &d->buf1;
+	size_t *buf1_len = &d->buf1_size;
+	char **buf2 = &d->buf2;
+	size_t *buf2_len = &d->buf2_size;
 	sha256_context ctx;
 	char sha[65];
 	char *errmsg;
 
+	d->group_sha = group_sha;
+
 	list_for_each_entry(plug, plugins, plugin_grp) {
-		if (plug->id->data_hdr) {
-			const struct value *hdr;
+		const struct value *hdr;
+		const struct option *opts;
 
-			sha256_starts(&ctx);
-			sha256_add_str(&ctx, group_sha);
-			sha256_add_str(&ctx, plug->sha256);
-			sha256_finish_str(&ctx, sha);
+		if (!plugin_data_hdr(plug)) {
+			continue;
+		}
 
-			hdr = plug->id->data_hdr(plug);
-			if (!hdr) {
-				printk(KERN_ERR "Failed to get headers from plugin %s\n",
-						plug->id->name);
+		sha256_starts(&ctx);
+		opts = plugin_get_options(plug);
+		if (opts) {
+			ret = option_to_hdr_csv(opts, buf1, buf1_len, QUOTE_SINGLE);
+			if (ret) {
+				printk(KERN_ERR "Failed to translate option header to csv\n");
 				return -1;
 			}
 
-			ret = mem_grow((void**)buf, buf_len, strlen(plug->mod->name)
+			ret = mem_grow((void**)stmt, stmt_size,
+					strlen(plug->mod->name)
 					+ strlen(plug->id->name)
-					+ strlen(plug->version->version) + 128);
-			if (ret) {
+					+ strlen(plug->version->version)
+					+ strlen(*buf1)
+					+ 128);
+			if (ret)
 				return -1;
-			}
 
-			sprintf(*buf, "plugin_%s__%s__%s", plug->mod->name,
+			sprintf(*stmt, "CREATE TABLE IF NOT EXISTS 'plugin_opts_%s__%s__%s'(sha UNIQUE PRIMARY KEY,%s);",
+					plug->mod->name,
 					plug->id->name,
-					plug->version->version);
-			ret = sqlite3_alter_by_hdr(*buf, d, hdr, "run_uuid");
-			if (ret) {
-				printk(KERN_ERR "Failed to update plugin table %s\n",
-						buf);
-				goto error;
-			}
-
-			ret = mem_grow((void**)stmt, stmt_size, strlen(*buf)
-					+ strlen(group_sha) + strlen(sha)
-					+ strlen(plug->sha256) + 128);
-			if (ret) {
-				goto error;
-			}
-
-			sprintf(*stmt, "INSERT INTO OR IGNORE plugin_groups(sha,group_sha,plugin_sha,plugin_table) VALUES('%s','%s','%s','%s');",
-					sha, group_sha, plug->sha256, *buf);
+					plug->version->version,
+					*buf1);
 			ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
 			if (ret != SQLITE_OK) {
-				printk(KERN_ERR "Failed to insert into plugin_groups (%s): %s\n",
+				printk(KERN_ERR "Failed creating option table (%s): %s",
 						*stmt, errmsg);
 				sqlite3_free(errmsg);
+				return -1;
 			}
+
+			ret = option_to_data_csv(opts, buf2, buf2_len, QUOTE_SINGLE);
+			if (ret) {
+				printk(KERN_ERR "Failed to translate option data to csv\n");
+				return -1;
+			}
+
+			ret = mem_grow((void**)stmt, stmt_size,
+					strlen(plug->mod->name)
+					+ strlen(plug->id->name)
+					+ strlen(plug->version->version)
+					+ strlen(*buf1)
+					+ strlen(*buf2)
+					+ strlen(plug->opt_sha256)
+					+ 128);
+			if (ret)
+				return -1;
+			sprintf(*stmt, "INSERT OR IGNORE INTO \"plugin_opts_%s__%s__%s\"(sha,%s) VALUES('%s',%s);",
+					plug->mod->name,
+					plug->id->name,
+					plug->version->version,
+					*buf1,
+					plug->opt_sha256,
+					*buf2);
+			ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
+			if (ret != SQLITE_OK) {
+				printk(KERN_ERR "Failed inserting plugin options (%s): %s\n",
+						*stmt, errmsg);
+				sqlite3_free(errmsg);
+				return -1;
+			}
+			sha256_add_str(&ctx, plug->opt_sha256);
+		}
+
+		sha256_add_str(&ctx, group_sha);
+		sha256_add_str(&ctx, plug->sha256);
+		sha256_add_str(&ctx, plug->opt_sha256);
+		sha256_finish_str(&ctx, sha);
+
+		hdr = plugin_data_hdr(plug);
+		if (!hdr) {
+			printk(KERN_ERR "Failed to get headers from plugin %s\n",
+					plug->id->name);
+			return -1;
+		}
+
+		ret = mem_grow((void**)buf1, buf1_len, strlen(plug->mod->name)
+				+ strlen(plug->id->name)
+				+ strlen(plug->version->version) + 128);
+		if (ret) {
+			return -1;
+		}
+
+		sprintf(*buf1, "plugin_%s__%s__%s", plug->mod->name,
+				plug->id->name,
+				plug->version->version);
+		ret = sqlite3_alter_by_hdr(*buf1, d, hdr, "run_uuid");
+		if (ret) {
+			printk(KERN_ERR "Failed to update plugin table %s\n",
+					buf1);
+			goto error;
+		}
+
+		ret = mem_grow((void**)stmt, stmt_size, strlen(*buf1)
+				+ strlen(group_sha) + strlen(sha)
+				+ strlen(plug->sha256)
+				+ strlen(plug->opt_sha256)
+				+ strlen(plug->mod->name)
+				+ strlen(plug->id->name)
+				+ strlen(plug->version->version) + 128);
+		if (ret) {
+			goto error;
+		}
+
+		sprintf(*stmt, "INSERT OR IGNORE INTO plugin_groups(sha,group_sha,plugin_sha,plugin_table,plugin_opts_sha,plugin_opt_table) VALUES('%s','%s','%s','%s','%s','plugin_opts_%s__%s__%s');",
+				sha, group_sha, plug->sha256, *buf1,
+				plug->opt_sha256, plug->mod->name,
+				plug->id->name, plug->version->version);
+		ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
+		if (ret != SQLITE_OK) {
+			printk(KERN_ERR "Failed to insert into plugin_groups (%s): %s\n",
+					*stmt, errmsg);
+			sqlite3_free(errmsg);
 		}
 	}
 
 	return 0;
 error:
 	return -1;
+}
+
+static int sqlite3_init_run(void *storage, const char *uuid, int nr_run)
+{
+	struct sqlite3_data *d = storage;
+	char **stmt = &d->stmt;
+	size_t *stmt_size = &d->stmt_size;
+	int ret;
+	char *errmsg;
+
+	d->run_uuid = uuid;
+
+	ret = mem_grow((void**)stmt, stmt_size, strlen(uuid) + strlen(d->group_sha)
+				+ strlen(d->sys_sha) + 128);
+	if (ret)
+		return -1;
+	sprintf(*stmt, "INSERT INTO unique_runs(uuid,group_sha,prev_runs,system_sha) VALUES('%s','%s',%d,'%s');",
+			uuid, d->group_sha, nr_run, d->sys_sha);
+
+	ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
+	if (ret != SQLITE_OK) {
+		printk(KERN_ERR "Failed to add unique run (%s): %s\n", *stmt,
+				errmsg);
+		sqlite3_free(errmsg);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int sqlite3_add_data(void *storage, struct plugin *plug,
+		struct data *data)
+{
+	struct sqlite3_data *d = storage;
+	char **stmt = &d->stmt;
+	size_t *stmt_size = &d->stmt_size;
+	char **buf1 = &d->buf1;
+	size_t *buf1_size = &d->buf1_size;
+	char **buf2 = &d->buf2;
+	size_t *buf2_size = &d->buf2_size;
+	char *errmsg;
+	int ret;
+	const struct value *hdr;
+
+
+	hdr = plugin_data_hdr(plug);
+	if (!hdr) {
+		printk(KERN_ERR "Failed retrieving plugin %s data header\n",
+				plug->id->name);
+		return -1;
+	}
+
+	ret = values_to_csv(hdr, buf1, buf1_size, QUOTE_SINGLE);
+	if (ret) {
+		printk(KERN_ERR "Failed to translate plugin %s header to csv\n",
+				plug->id->name);
+		return -1;
+	}
+
+	ret = data_to_csv(data, buf2, buf2_size, QUOTE_SINGLE);
+	if (ret) {
+		printk(KERN_ERR "Failed to translate plugin %s data to csv\n",
+				plug->id->name);
+		return -1;
+	}
+
+	ret = mem_grow((void**)stmt, stmt_size, strlen(*buf1) + strlen(*buf2)
+			+ strlen(plug->mod->name) + strlen(plug->id->name)
+			+ strlen(plug->version->version) + strlen(d->run_uuid)
+			+ 128);
+	if (ret) {
+		return -1;
+	}
+
+	sprintf(*stmt, "INSERT INTO 'plugin_%s__%s__%s'(%s,run_uuid) VALUES(%s,'%s');",
+			plug->mod->name, plug->id->name,
+			plug->version->version, *buf1, *buf2, d->run_uuid);
+	ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
+	if (ret) {
+		printk(KERN_ERR "Failed to insert plugin %s result into table (%s): %s\n",
+				plug->id->name, *stmt, errmsg);
+		sqlite3_free(errmsg);
+		return -1;
+	}
+	return 0;
 }
 
 static void sqlite3_exit(void *storage)
@@ -496,9 +666,7 @@ const struct storage_ops storage_sqlite3 = {
 	.init = sqlite3_init,
 	.init_plugin_grp = sqlite3_init_plugin_grp,
 	.add_sysinfo = sqlite3_add_sysinfo,
-/*	.init_run = ,
-	.add_data = ,
-	.exit_run = ,
-	.exit_plugin_grp = ,*/
+	.init_run = sqlite3_init_run,
+	.add_data = sqlite3_add_data,
 	.exit = sqlite3_exit,
 };

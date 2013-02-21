@@ -130,6 +130,7 @@ void plugin_id_print(const struct plugin_id *plug, int verbose)
 void plugin_calc_sha256(struct plugin *plug)
 {
 	sha256_context ctx;
+	sha256_context opt_ctx;
 	int i;
 	struct comp_version *vers = plug->version->comp_versions;
 
@@ -146,7 +147,9 @@ void plugin_calc_sha256(struct plugin *plug)
 		}
 	}
 
-	option_sha256_add(&ctx, plug->options);
+	sha256_starts(&opt_ctx);
+	option_sha256_add(&opt_ctx, plug->options);
+	sha256_finish_str(&opt_ctx, plug->opt_sha256);
 
 	sha256_finish_str(&ctx, plug->sha256);
 }
@@ -320,6 +323,11 @@ static void plugin_exec_drop_data(struct plugin_exec *exec)
 	struct data *data, *ndata;
 	printk(KERN_DEBUG "Drop data\n");
 	list_for_each_entry_safe(data, ndata, &plug->run_data, run_data) {
+		list_del(&data->run_data);
+		plugin_free_data(plug, data);
+	}
+	list_for_each_entry_safe(data, ndata, &plug->check_err_data, run_data) {
+		list_del(&data->run_data);
 		plugin_free_data(plug, data);
 	}
 }
@@ -331,6 +339,8 @@ static void plugin_exec_persist(struct plugin_exec *exec, int persist_types)
 	printk(KERN_DEBUG "Persist data\n");
 	list_for_each_entry_safe(data, ndata, &plug->run_data, run_data) {
 		int persist = 0;
+		int ret;
+		printk(KERN_DEBUG "looping\n");
 		if (exec->exec_env->error_shutdown)
 			goto error;
 
@@ -343,9 +353,19 @@ static void plugin_exec_persist(struct plugin_exec *exec, int persist_types)
 		}
 		if (!persist)
 			continue;
-		// TODO: persist stuff here
+
+		ret = storage_add_data(&exec->exec_env->env->storage, plug, data);
+		if (ret) {
+			printk(KERN_ERR "Failed persisting data\n");
+			exec->exec_env->error_shutdown = 1;
+		}
 error:
-		plugin_free_data(plug, data);
+		list_del(&data->run_data);
+		if (DATA_TYPE_RESULT & persist_types & data->type) {
+			list_add_tail(&data->run_data, &plug->check_err_data);
+		} else {
+			plugin_free_data(plug, data);
+		}
 	}
 }
 
@@ -362,7 +382,7 @@ static void plugins_exec_controller(struct plugin_exec_env *exec_env,
 			if (exec_env->state == EXEC_WARMUP)
 				plugin_exec_drop_data(&execs[j]);
 			else
-				plugin_exec_persist(&execs[j], DATA_TYPE_MONITOR);
+				plugin_exec_persist(&execs[j], DATA_TYPE_MONITOR | DATA_TYPE_RESULT);
 		}
 		plugin_execenv_barrier(exec_env);
 	}
@@ -619,7 +639,8 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 		if (exec_env.state == EXEC_RUN) {
 			printk(KERN_INFO "\tExecution run %d uuid:'%s'\n",
 					exec_env.run + 1, uuid);
-			storage_init_run(&env->storage, uuid);
+			storage_init_run(&env->storage, uuid,
+					exec_env.run + settings->warmup_runs);
 		} else {
 			printk(KERN_INFO "\tWarmup run %d\n", exec_env.run + 1);
 		}
@@ -659,7 +680,7 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 			if (exec_env.state == EXEC_WARMUP)
 				plugin_exec_drop_data(&execs[i]);
 			else
-				plugin_exec_persist(&execs[i], DATA_TYPE_MONITOR);
+				plugin_exec_persist(&execs[i], DATA_TYPE_MONITOR | DATA_TYPE_RESULT);
 		}
 		plugin_execenv_barrier(&exec_env);
 		/*
@@ -719,7 +740,7 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 	}
 
 	for (i = 0; i != nr_plugins; ++i) {
-		plugin_exec_persist(&execs[i], DATA_TYPE_MONITOR | DATA_TYPE_RESULT);
+		plugin_exec_drop_data(&execs[i]);
 	}
 
 

@@ -47,5 +47,10 @@ static inline void option_sha256_add(sha256_context *ctx, struct option *opts)
 
 struct option *option_parse(const struct option *defaults, const char *optstr);
 
+int option_to_data_csv(const struct option *opts, char **buf, size_t *buf_size,
+		enum value_quote_type quotes);
+
+int option_to_hdr_csv(const struct option *opts, char **buf, size_t *buf_size,
+		enum value_quote_type quotes);
 
 #endif  /* _CBENCH_OPTION_H_ */

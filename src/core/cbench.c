@@ -43,6 +43,7 @@ struct arguments {
 	const char *db_path;
 	const char *module_dir;
 	const char *work_dir;
+	const char *custom_sysinfo;
 	int cmd_list;
 	int cmd_plugins;
 	int cmd_help;
@@ -76,10 +77,15 @@ Options:\n\
 	--db-path,-db DB	Database directory. Default: /tmp/cbench/\n\
 	--verbose,-v		Verbose output. (more information, but not the\n\
 				same as log-level)\n\
-	--module-dir,-m		Module directory.\n\
-	--work_dir,-w		Working directory. IMPORTANT! Depending on the\n\
+	--module-dir,-m PATH	Module directory.\n\
+	--work_dir,-w PATH	Working directory. IMPORTANT! Depending on the\n\
 				location of this work directory, the benchmark\n\
 				results could vary. Default: /tmp/cbench/work\n\
+	--sysinfo,-i INFO	Additional system information. This will\n\
+				seperate the results of the executed benchmarks\n\
+				from others. For example you can use any code\n\
+				revision or simple names for different test\n\
+				conditions.\n\
 ", stdout);
 }
 
@@ -114,6 +120,8 @@ int args_parse(struct arguments *pargs, int argc, char **argv)
 			pargs->cmd_plugins = 1;
 		} else if (arg_match(arg, "--help", "-h")) {
 			pargs->cmd_help = 1;
+		} else if (arg_match(arg, "--sysinfo", "-i")) {
+			parse_arg_tgt = &pargs->custom_sysinfo;
 		} else {
 			continue;
 		}
@@ -394,7 +402,7 @@ int cmd_execute(struct arguments *pargs, int argc, char **argv, int as_benchsuit
 	};
 	env.settings.percent_stderr = atof(CONFIG_STDERR_PERCENT);
 
-	ret = system_info_init(&sys);
+	ret = system_info_init(&sys, pargs->custom_sysinfo);
 	if (ret) {
 		printk(KERN_ERR "Failed acquiring system information\n");
 		return -1;
@@ -478,6 +486,7 @@ int main(int argc, char **argv)
 		.db_path = "/tmp/cbench/",
 		.work_dir = CONFIG_WORK_PATH,
 		.module_dir = CONFIG_MODULE_DIR,
+		.custom_sysinfo = "",
 	};
 	int ret = 0;
 	printk_set_log_level(CONFIG_PRINT_LOG_LEVEL);

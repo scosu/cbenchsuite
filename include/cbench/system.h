@@ -93,10 +93,11 @@ struct system {
 
 	const char *machine;
 	const char *kernel_release;
+	const char *custom_info;
 	char sha256[65];
 };
 
-int system_info_init(struct system *sys);
+int system_info_init(struct system *sys, const char *custom_info);
 void system_info_free(struct system *sys);
 
 const struct value *system_info_hdr(struct system *sys);

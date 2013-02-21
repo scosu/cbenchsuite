@@ -25,26 +25,6 @@
 
 #include <cbench/util.h>
 
-size_t value_as_str_len(const struct value *v)
-{
-	switch (v->type) {
-	case VALUE_INT32:
-		return 16;
-	case VALUE_INT64:
-		return 32;
-	case VALUE_FLOAT:
-		return 32;
-	case VALUE_DOUBLE:
-		return 64;
-	case VALUE_STRING:
-		if (!v->v_str)
-			return 0;
-		return strlen(v->v_str);
-	default:
-		return 0;
-	}
-}
-
 size_t values_as_str_len(const struct value *v)
 {
 	int i;
@@ -76,7 +56,7 @@ int values_to_csv(const struct value *values, char **buf, size_t *buf_len,
 
 	for (i = 0; i != nr_items; ++i) {
 		if (i != 0) {
-			strcat(ptr, ",");
+			*ptr = ',';
 			++ptr;
 		}
 

@@ -107,6 +107,8 @@ static void system_calc_ids(struct system *sys)
 
 	sha256_add_str(&ctx, sys->machine);
 	sha256_add_str(&ctx, sys->kernel_release);
+	if (sys->custom_info)
+		sha256_add_str(&ctx, sys->custom_info);
 
 	sha256_finish_str(&ctx, sys->sha256);
 }
@@ -389,7 +391,7 @@ error_alloc:
 }
 
 
-int system_info_init(struct system *sys)
+int system_info_init(struct system *sys, const char *custom_info)
 {
 	size_t s = 0;
 	int ret;
@@ -436,6 +438,7 @@ int system_info_init(struct system *sys)
 
 	sys->machine = sys->raw.uname.machine;
 	sys->kernel_release = sys->raw.uname.release;
+	sys->custom_info = custom_info;
 
 	sys->hw.mem.mem_total = sys->raw.sysinfo.totalram * sys->raw.sysinfo.mem_unit;
 	sys->hw.mem.mem_totalhigh = sys->raw.sysinfo.totalhigh * sys->raw.sysinfo.mem_unit;
@@ -465,10 +468,11 @@ void system_info_free(struct system *sys)
 	free(sys->sw.libc);
 }
 
-#define system_info_fields 10
+#define system_info_fields 11
 const struct value *system_info_hdr(struct system *sys)
 {
 	static const struct value hdr[system_info_fields + 1] = {
+		{ .v_str = "custom_info" },
 		{ .v_str = "machine" },
 		{ .v_str = "kernel" },
 		{ .v_str = "nr_cpus" },
@@ -491,6 +495,7 @@ struct data *system_info_data(struct system *sys)
 	if (!d)
 		return NULL;
 
+	data_add_str(d, sys->custom_info);
 	data_add_str(d, sys->machine);
 	data_add_str(d, sys->kernel_release);
 	data_add_int32(d, sys->hw.nr_cpus);

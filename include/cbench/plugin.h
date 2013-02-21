@@ -5,6 +5,8 @@
 
 #include <klib/list.h>
 
+#include <cbench/data.h>
+
 struct data;
 struct environment;
 struct module;
@@ -17,6 +19,7 @@ struct plugin {
 	const struct version *version;
 
 	char sha256[65];
+	char opt_sha256[65];
 
 	const char *bin_path;
 	const char *work_dir;
@@ -33,6 +36,7 @@ struct plugin {
 	struct list_head plugin_grp;
 
 	struct list_head run_data;
+	struct list_head check_err_data;
 };
 
 struct plugin_id {
@@ -85,7 +89,11 @@ static inline void plugin_set_data(struct plugin *plug, void *data)
 	plug->ctx = data;
 }
 
-void plugin_add_results(struct plugin *plug, struct data *data);
+static inline void plugin_add_results(struct plugin *plug, struct data *data)
+{
+	INIT_LIST_HEAD(&data->run_data);
+	list_add_tail(&data->run_data, &plug->run_data);
+}
 
 int plugins_execute(struct environment *env, struct list_head *plugins);
 

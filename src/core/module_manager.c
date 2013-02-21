@@ -306,6 +306,7 @@ found_matching_plugin:
 	INIT_LIST_HEAD(&plug->plugins);
 	INIT_LIST_HEAD(&plug->plugin_grp);
 	INIT_LIST_HEAD(&plug->run_data);
+	INIT_LIST_HEAD(&plug->check_err_data);
 
 	list_add_tail(&plug->plugins, &mod->plugins);
 

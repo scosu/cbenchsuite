@@ -124,8 +124,6 @@ static inline void data_add_str(struct data *d, const char *value)
 	data_set_str(d, d->cur_ind++, value);
 }
 
-size_t value_as_str_len(const struct value *v);
-
 size_t values_as_str_len(const struct value *v);
 
 enum value_quote_type {
@@ -141,6 +139,26 @@ static inline int data_to_csv(const struct data *data, char **buf, size_t *buf_l
 		enum value_quote_type quotes)
 {
 	return values_to_csv(data->data, buf, buf_len, quotes);
+}
+
+static inline size_t value_as_str_len(const struct value *v)
+{
+	switch (v->type) {
+	case VALUE_INT32:
+		return 16;
+	case VALUE_INT64:
+		return 32;
+	case VALUE_FLOAT:
+		return 32;
+	case VALUE_DOUBLE:
+		return 64;
+	case VALUE_STRING:
+		if (!v->v_str)
+			return 0;
+		return strlen(v->v_str) + 10;
+	default:
+		return 0;
+	}
 }
 
 void value_print(const struct value *v);

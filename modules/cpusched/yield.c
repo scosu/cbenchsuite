@@ -119,6 +119,8 @@ static int yield_bench_parse_results(struct plugin *plug)
 	result = data_alloc(DATA_TYPE_RESULT, 1);
 
 	data_add_int64(result, loops);
+
+	plugin_add_results(plug, result);
 	return 0;
 }
 

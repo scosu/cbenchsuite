@@ -19,9 +19,13 @@
 
 #include <cbench/option.h>
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <cbench/data.h>
+#include <cbench/util.h>
 
 struct option_iterator {
 	const char *k_start;
@@ -160,4 +164,100 @@ found:
 		continue;
 	}
 	return opts;
+}
+
+int option_to_hdr_csv(const struct option *opts, char **buf, size_t *buf_size,
+		enum value_quote_type quotes)
+{
+	size_t est_size = 0;
+	int i;
+	int ret;
+	char *ptr;
+
+	for (i = 0; opts[i].value.type != VALUE_SENTINEL; ++i) {
+		est_size += strlen(opts[i].name) + 10;
+	}
+
+	ret = mem_grow((void**)buf, buf_size, est_size);
+	if (ret)
+		return -1;
+
+	ptr = *buf;
+	for (i = 0; opts[i].value.type != VALUE_SENTINEL; ++i) {
+		if (i != 0) {
+			*ptr = ',';
+			++ptr;
+		}
+
+		switch(quotes) {
+		case QUOTE_SINGLE:
+			ptr += sprintf(ptr, "'%s'", opts[i].name);
+			break;
+		case QUOTE_DOUBLE:
+			ptr += sprintf(ptr, "\"%s\"", opts[i].name);
+			break;
+		case QUOTE_NONE:
+			ptr += sprintf(ptr, "%s", opts[i].name);
+			break;
+		}
+	}
+	return 0;
+}
+
+int option_to_data_csv(const struct option *opts, char **buf, size_t *buf_size,
+		enum value_quote_type quotes)
+{
+	size_t est_size = 0;
+	int i;
+	int ret;
+	char *ptr;
+
+	for (i = 0; opts[i].value.type != VALUE_SENTINEL; ++i) {
+		est_size += value_as_str_len(&opts[i].value);
+	}
+
+	ret = mem_grow((void**)buf, buf_size, est_size);
+	if (ret)
+		return -1;
+
+	ptr = *buf;
+	*ptr = '\0';
+	for (i = 0; opts[i].value.type != VALUE_SENTINEL; ++i) {
+		if (i != 0) {
+			*ptr = ',';
+			++ptr;
+		}
+		switch (opts[i].value.type) {
+		case VALUE_INT32:
+			ptr += sprintf(ptr, "%" PRId32, opts[i].value.v_int32);
+			break;
+		case VALUE_INT64:
+			ptr += sprintf(ptr, "%" PRId64, opts[i].value.v_int64);
+			break;
+		case VALUE_FLOAT:
+			ptr += sprintf(ptr, "%f", opts[i].value.v_flt);
+			break;
+		case VALUE_DOUBLE:
+			ptr += sprintf(ptr, "%f", opts[i].value.v_dbl);
+			break;
+		case VALUE_STRING:
+			if (!opts[i].value.v_str)
+				break;
+			switch(quotes) {
+			case QUOTE_SINGLE:
+				ptr += sprintf(ptr, "'%s'", opts[i].value.v_str);
+				break;
+			case QUOTE_DOUBLE:
+				ptr += sprintf(ptr, "\"%s\"", opts[i].value.v_str);
+				break;
+			case QUOTE_NONE:
+				ptr += sprintf(ptr, "%s", opts[i].value.v_str);
+				break;
+			}
+			break;
+		default:
+			break;
+		}
+	}
+	return 0;
 }
