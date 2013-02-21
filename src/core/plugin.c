@@ -200,12 +200,12 @@ static inline void plugin_exec_function(int (*func)(struct plugin *plug),
 {
 	int ret;
 	if (func == NULL)
-		return;
+		goto barrier_only;
 	if (exec->local_error)
-		goto local_error;
+		goto barrier_only;
 	ret = thread_set_priority(CONFIG_EXECUTION_PRIO);
 	if (ret)
-		printk(KERN_WARNING "Execution thread failed to set priority %d."
+		printk(KERN_NOTICE "Execution thread failed to set priority %d."
 				" Operating with unchanged priority.\n",
 				CONFIG_EXECUTION_PRIO);
 
@@ -216,7 +216,7 @@ static inline void plugin_exec_function(int (*func)(struct plugin *plug),
 		printk(KERN_ERR "Failed executing function %d\n", nr_func);
 	}
 
-local_error:
+barrier_only:
 	if (notify_bg_procs)
 		plugin_exec_stop_bg(exec);
 
@@ -473,7 +473,7 @@ void *plugin_thread_monitor(void *data)
 	};
 	ret = thread_set_priority(CONFIG_MONITOR_PRIO);
 	if (ret)
-		printk(KERN_WARNING "Monitor thread failed to set priority %d."
+		printk(KERN_NOTICE "Monitor thread failed to set priority %d."
 				" Operating with unchanged priority.\n",
 				CONFIG_MONITOR_PRIO);
 	while (!mon->stop) {
@@ -532,7 +532,7 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 
 	ret = thread_set_priority(CONFIG_CONTROLLER_PRIO);
 	if (ret)
-		printk(KERN_WARNING "Controller thread failed to set priority %d."
+		printk(KERN_NOTICE "Controller thread failed to set priority %d."
 				" Operating with unchanged priority.\n",
 				CONFIG_CONTROLLER_PRIO);
 
@@ -576,10 +576,11 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 	printk(KERN_CNT "\n");
 	min_time = exec_env.env->settings.runtime_min * max_ind_values;
 	max_time = exec_env.env->settings.runtime_max * max_ind_values;
-	printk(KERN_INFO "\tRuntime without warmup: %02uh%02u - %02uh%02u\n",
+	printk(KERN_INFO "\tRuntime without warmup between %02uh%02u and %02uh%02u\n",
 			min_time / 3600, min_time / 60,
 			max_time / 3600, max_time / 60);
 
+	printk(KERN_INFO "\tInstalling plugins\n");
 	plugins_install(&exec_env);
 
 	if (exec_env.error_shutdown) {
@@ -617,7 +618,10 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 		}
 
 		if (exec_env.state == EXEC_RUN) {
+			printk(KERN_INFO "\tExecution run %d\n", exec_env.run);
 			storage_init_run(&env->storage, uuid);
+		} else {
+			printk(KERN_INFO "\tWarmup run %d\n", exec_env.run);
 		}
 		printk(KERN_DEBUG "Loop run %d state %d\n", exec_env.run,
 				exec_env.state);
@@ -681,19 +685,28 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 			clock_gettime(CLOCK_MONOTONIC_RAW, &time_now);
 			time_diff = time_now.tv_sec - exec_env.time_started.tv_sec;
 			if (time_diff < min_time) {
+				printk(KERN_INFO "\t\tMinimum runtime not reached, continuing\n");
 				exec_env.state = EXEC_FORCE_CONTINUE;
 			} else if (time_diff > max_time) {
+				printk(KERN_INFO "\t\tMaximum runtime reached, stopping\n");
 				exec_env.state = EXEC_STOP;
 			} else if (settings->runs_min > exec_env.run) {
+				printk(KERN_INFO "\t\tMinimum number of runs (%d) not reached, continuing\n",
+						settings->runs_min);
 				exec_env.state = EXEC_FORCE_CONTINUE;
 			} else if (settings->runs_max <= exec_env.run) {
+				printk(KERN_INFO "\t\tMaximum number of runs not reached, stopping\n");
 				exec_env.state = EXEC_STOP;
 			}
 		}
 		plugin_execenv_barrier(&exec_env);
 		plugin_execenv_barrier(&exec_env);
-		if (exec_env.state == EXEC_UNDECIDED) // No plugin needs to continue running
+		if (exec_env.state == EXEC_UNDECIDED) { // No plugin needs to continue running
 			exec_env.state = EXEC_STOP;
+			printk(KERN_INFO "\t\tNecessary standard error reached, stopping\n");
+		} else if (exec_env.state == EXEC_STDERR_NOT_REACHED) {
+			printk(KERN_INFO "\t\tNecessary standard error not reached, continuing\n");
+		}
 		plugin_execenv_barrier(&exec_env);
 	}
 
@@ -715,6 +728,7 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 	 */
 
 uninstall:
+	printk(KERN_INFO "\tUninstalling plugins\n");
 	plugins_uninstall(&exec_env);
 
 	storage_exit_plg_grp(&env->storage);
