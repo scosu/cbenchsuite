@@ -32,6 +32,8 @@
 
 struct csv_data {
 	const char *path;
+	const char *plg_grp_sha256;
+	char *path_buf;
 };
 
 static void *csv_init(const char *path)
@@ -47,8 +49,8 @@ static void *csv_init(const char *path)
 			"%s/system "
 			"%s/system/cpus ", path, path);
 	ret = system(buf);
+	free(buf);
 	if (ret) {
-		free(buf);
 		return NULL;
 	}
 
@@ -58,6 +60,11 @@ static void *csv_init(const char *path)
 
 	data->path = path;
 
+	data->path_buf = malloc(strlen(data->path) + 256);
+	if (!data->path_buf) {
+		free(data);
+		return NULL;
+	}
 	return data;
 }
 
@@ -68,13 +75,9 @@ static int csv_add_sysinfo(void *storage, struct system *sys)
 	size_t buf_len;
 	int ret;
 	struct csv_data *data = (struct csv_data *) storage;
-	char *path_buf;
+	char *path_buf = data->path_buf;
 	struct data *sys_dat;
 	const struct value *vals;
-
-	path_buf = malloc(strlen(data->path) + 256);
-	if (!path_buf)
-		return -1;
 
 	sprintf(path_buf, "%s/system/%s", data->path, sys->sha256);
 
@@ -171,13 +174,10 @@ static int csv_add_sysinfo(void *storage, struct system *sys)
 		fclose(f);
 	}
 
-	free(path_buf);
-
 	return 0;
 error:
 	if (f)
 		fclose(f);
-	free(path_buf);
 	if (buf)
 		free(buf);
 	return -1;
@@ -186,6 +186,30 @@ error:
 static int csv_plugin_combo_init(void *storage, struct list_head *plugins,
 		const char *plugins_sha256)
 {
+	struct csv_data *data = (struct csv_data *) storage;
+	char *path_buf = data->path_buf;
+	const char grp_hdr[] = "plugin\n";
+	struct plugin *plg;
+	FILE *f;
+
+	sprintf(path_buf, "%s/plugin_groups/%s/group.csv", data->path, plugins_sha256);
+
+	f = fopen(path_buf, "r");
+	if (!f) {
+		f = fopen(path_buf, "w");
+		if (!f) {
+			printk(KERN_ERR "Failed opening %s\n", path_buf);
+			return -1;
+		}
+		fwrite(grp_hdr, 1, strlen(grp_hdr), f);
+
+		list_for_each_entry(plg, plugins, plugin_grp) {
+			fwrite(plg->sha256, 1, strlen(plg->sha256), f);
+			fwrite("\n", 1, 1, f);
+		}
+		fclose(f);
+	}
+
 	return 0;
 }
 
@@ -196,6 +220,8 @@ static int csv_add_data(void *storage, struct plugin *plug, struct data *data)
 
 static void csv_exit(void *storage)
 {
+	struct csv_data *data = (struct csv_data *) storage;
+	free(data->path_buf);
 	free(storage);
 }
 

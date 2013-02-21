@@ -25,4 +25,6 @@ void mod_mgr_benchsuite_free(struct mod_mgr *mm, struct benchsuite *suite);
 
 void mod_mgr_exit(struct mod_mgr *mm);
 
+int mod_mgr_list_module(struct mod_mgr *mm, const char *fid, int verbose);
+
 #endif  /* _CBENCH_CORE_MODULE_MANAGER_H_ */

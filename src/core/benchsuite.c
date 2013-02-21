@@ -19,6 +19,8 @@
 
 #include <cbench/benchsuite.h>
 
+#include <stdio.h>
+
 #include <klib/list.h>
 #include <klib/printk.h>
 
@@ -66,4 +68,13 @@ error_populating_group:
 			break;
 	}
 	return ret;
+}
+
+void benchsuite_id_print(const struct benchsuite_id *suite, int verbose)
+{
+	printf("      %s (Version %s)\n", suite->name,
+			suite->version.version ? suite->version.version : "none");
+	if (verbose && suite->description) {
+		printf("        %s\n", suite->description);
+	}
 }

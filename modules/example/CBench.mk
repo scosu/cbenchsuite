@@ -6,7 +6,7 @@ MODULE_NAME := example
 modules-$(CONFIG_$(MODULE_NAME_UPPER)) += $(MODULE_NAME)
 
 $(MODULE_TARGET): $(MODULE_BUILD_DEPS) $(TOP)/$(MODULE_NAME)/$(MODULE_NAME).c
-	$(CC) $(CFLAGS) $(MODULE_CFLAGS) -o $@ $(TOP)/$(MODULE_NAME)/$(MODULE_NAME).c $(MODULE_BUILD_SOURCES)
+	$(CC) $(MODULE_CFLAGS) $(MODULE_LDFLAGS) -o $@ $(TOP)/$(MODULE_NAME)/$(MODULE_NAME).c $(MODULE_BUILD_SOURCES)
 
 
 # If you need to change something in this makefile, please be sure to install

@@ -1,0 +1,8 @@
+
+config STORAGE_CSV
+	bool "CSV"
+	default n
+
+config STORAGE_SQLITE3
+	bool "Sqlite3"
+	default y

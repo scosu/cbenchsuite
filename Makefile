@@ -20,6 +20,11 @@ endif
 
 CC := gcc
 CFLAGS := $(CFLAGS_TYPE) $(patsubst "%",%,$(CONFIG_CFLAGS)) -Iinclude -Ilibs/klib/include -Igen/include -Ilibs -std=gnu99 -D_BSD_SOURCE
+LDFLAGS :=
+MODULE_CFLAGS := $(CFLAGS) -shared -fPIC -I.
+MODULE_LDFLAGS :=
+CORE_CFLAGS := $(CFLAGS)
+CORE_LDFLAGS := $(LDFLAGS) -luuid -ldl -lpthread -lrt
 
 
 
@@ -39,9 +44,8 @@ objs := $(objs-core) $(objs-storage)
 #
 
 MOBJDIR := $(OBJDIR)/modules
-MODULE_BUILD_SOURCES := $(OBJMODDIR)/core/options.o $(OBJMODDIR)/core/util.o
+MODULE_BUILD_SOURCES := $(OBJMODDIR)/core/option.o $(OBJMODDIR)/core/util.o
 MODULE_BUILD_DEPS := $(core_hdr) gen/include/cbench/config.h $(MODULE_BUILD_SOURCES)
-MODULE_CFLAGS := -shared -fPIC -I.
 
 module_dirs := $(wildcard modules/*)
 module_makefiles := $(patsubst %,%/CBench.mk,$(module_dirs))
@@ -70,13 +74,10 @@ $(OBJMODDIR)/%.o: src/%.c $(core_hdr)
 	$(CC) $(CFLAGS) -fPIC -c -o $@ $<
 
 $(OBJDIR)/%.o: src/%.c $(core_hdr)
-	$(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) $(CORE_CFLAGS) -c -o $@ $<
 
 $(BUILDDIR)/cbench: $(objs) $(core_hdr) $(libs) gen/include/cbench/config.h
-	echo $(objs-core)
-	echo $(objs-storage)
-	echo $(objs)
-	$(CC) $(CFLAGS) -o $@ $(objs) $(libs) -ldl -lpthread -lrt
+	$(CC) $(CORE_CFLAGS) -o $@ $(objs) $(libs) $(CORE_LDFLAGS)
 
 libs/klib/libklib.a:
 	cd libs/klib/ && $(MAKE) $(MFLAGS)

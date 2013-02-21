@@ -35,6 +35,7 @@ struct plugin {
 
 struct plugin_id {
 	char *name;
+	char *description;
 	struct version *versions;
 
 	void *data;
@@ -54,28 +55,24 @@ struct plugin_id {
 
 	void (*stop)(struct plugin *plug);
 
-	struct value* (*data_hdr)(struct plugin *plug, struct data *data);
+	struct value* (*data_hdr)(struct plugin *plug);
 
 	int (*monitor)(struct plugin *plug);
 	int (*check_stderr)(struct plugin *plug);
 
-	int (*option_parser)(struct plugin *plug, const char *opts);
+	const struct value* (*option_get_header)(struct plugin *plug);
 };
 
-static inline void plugin_set_options(struct plugin *plug, void *options)
-{
-	plug->options = options;
-}
-static inline void *plugin_get_options(struct plugin *plug)
+static inline const struct option *plugin_get_options(struct plugin *plug)
 {
 	return plug->options;
 }
 
-static inline struct value *plugin_data_hdr(struct plugin *plug, struct data *data)
+static inline struct value *plugin_data_hdr(struct plugin *plug)
 {
 	if (!plug->id->data_hdr)
 		return NULL;
-	return plug->id->data_hdr(plug, data);
+	return plug->id->data_hdr(plug);
 }
 
 void plugin_add_data(struct plugin *plug, struct data *data);
@@ -84,7 +81,9 @@ int plugins_execute(struct environment *env, struct list_head *plugins);
 
 void plugin_calc_sha256(struct plugin *plug);
 
-#define plugin_parse_options(plug, opt_str) \
-	(plug)->mod->id->option_parser(plug, opt_str);
+void plugin_id_print(const struct plugin_id *plug, int verbose);
+
+int plugin_version_check_requirements(const struct plugin_id *plug,
+		const struct version *ver);
 
 #endif  /* _CBENCH_PLUGIN_H_ */

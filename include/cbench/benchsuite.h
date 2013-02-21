@@ -15,6 +15,7 @@ struct plugin_link {
 
 struct benchsuite_id {
 	const char *name;
+	const char *description;
 	struct version version;
 	struct plugin_link **plugin_grps;
 };
@@ -27,5 +28,6 @@ struct benchsuite {
 int benchsuite_execute(struct mod_mgr *mm, struct environment *env,
 		struct benchsuite *suite);
 
+void benchsuite_id_print(const struct benchsuite_id *suite, int verbose);
 
 #endif  /* _CBENCH_BENCHSUITE_H_ */

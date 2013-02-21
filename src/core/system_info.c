@@ -34,8 +34,9 @@
 
 static void system_cpu_calc_ids(struct system *sys)
 {
-	sha256_context ctx;
 	sha256_context ctx_all;
+	sha256_context ctx;
+	sha256_context type;
 	int i;
 
 	sha256_starts(&ctx_all);
@@ -44,6 +45,7 @@ static void system_cpu_calc_ids(struct system *sys)
 		struct system_cpu *cpu = &sys->hw.cpus[i];
 
 		sha256_starts(&ctx);
+		sha256_starts(&type);
 
 		sha256_add(&ctx, &cpu->online);
 		sha256_add(&ctx, &cpu->processor);
@@ -51,24 +53,24 @@ static void system_cpu_calc_ids(struct system *sys)
 		sha256_add(&ctx, &cpu->physical_id);
 		sha256_add(&ctx, &cpu->apicid);
 		sha256_add(&ctx, &cpu->apicid_initial);
-		sha256_add(&ctx, &cpu->cores);
-		sha256_add(&ctx, &cpu->siblings);
+		sha256_add(&type, &cpu->cores);
+		sha256_add(&type, &cpu->siblings);
 		sha256_add(&ctx, &cpu->cpuid_level);
-		sha256_add(&ctx, &cpu->cache_size);
-		sha256_add(&ctx, &cpu->clflush_size);
-		sha256_add(&ctx, &cpu->cache_alignment);
-		sha256_add(&ctx, &cpu->family);
-		sha256_add(&ctx, &cpu->model);
-		sha256_add(&ctx, &cpu->stepping);
-		sha256_add(&ctx, &cpu->fpu);
-		sha256_add(&ctx, &cpu->fpu_exception);
-		sha256_add(&ctx, &cpu->wp);
-		sha256_add_str(&ctx, cpu->vendor_id);
-		sha256_add_str(&ctx, cpu->model_name);
-		sha256_add_str(&ctx, cpu->microcode);
-		sha256_add_str(&ctx, cpu->address_sizes_str);
-		sha256_add_str(&ctx, cpu->power_management);
-		sha256_add_str(&ctx, cpu->flags);
+		sha256_add(&type, &cpu->cache_size);
+		sha256_add(&type, &cpu->clflush_size);
+		sha256_add(&type, &cpu->cache_alignment);
+		sha256_add(&type, &cpu->family);
+		sha256_add(&type, &cpu->model);
+		sha256_add(&type, &cpu->stepping);
+		sha256_add(&type, &cpu->fpu);
+		sha256_add(&type, &cpu->fpu_exception);
+		sha256_add(&type, &cpu->wp);
+		sha256_add_str(&type, cpu->vendor_id);
+		sha256_add_str(&type, cpu->model_name);
+		sha256_add_str(&type, cpu->microcode);
+		sha256_add_str(&type, cpu->address_sizes_str);
+		sha256_add_str(&type, cpu->power_management);
+		sha256_add_str(&type, cpu->flags);
 
 		sha256_add(&ctx, &cpu->cpufreq);
 		if (cpu->cpufreq) {
@@ -80,6 +82,8 @@ static void system_cpu_calc_ids(struct system *sys)
 			sha256_add_str(&ctx, cpu->avail_freq);
 		}
 
+		sha256_finish_str(&type, cpu->type_sha256);
+		sha256_add_str(&ctx, cpu->type_sha256);
 		sha256_finish_str(&ctx, cpu->sha256);
 
 		sha256_add_str(&ctx_all, cpu->sha256);
@@ -461,7 +465,7 @@ void system_info_free(struct system *sys)
 	free(sys->sw.libc);
 }
 
-#define system_info_fields 11
+#define system_info_fields 10
 const struct value *system_info_hdr(struct system *sys)
 {
 	static const struct value hdr[system_info_fields + 1] = {
@@ -475,7 +479,6 @@ const struct value *system_info_hdr(struct system *sys)
 		{ .v_str = "mem_totalhigh" },
 		{ .v_str = "mem_unit" },
 		{ .v_str = "swap_total" },
-		{ .v_str = "cpus_id" },
 		{ .type = VALUE_SENTINEL }
 	};
 	return hdr;
@@ -498,12 +501,11 @@ struct data *system_info_data(struct system *sys)
 	data_add_int64(d, sys->hw.mem.mem_totalhigh);
 	data_add_int64(d, sys->hw.mem.mem_unit);
 	data_add_int64(d, sys->hw.mem.swap_total);
-	data_add_str(d, sys->hw.cpus_sha256);
 
 	return d;
 }
 
-#define system_cpu_fields 32
+#define system_cpu_fields 14
 const struct value *system_cpu_hdr(struct system_cpu *cpu)
 {
 	static const struct value hdr[system_cpu_fields + 1] = {
@@ -513,33 +515,15 @@ const struct value *system_cpu_hdr(struct system_cpu *cpu)
 		{ .v_str = "physical_id" },
 		{ .v_str = "apicid" },
 		{ .v_str = "apicid_initial" },
-		{ .v_str = "cores" },
-		{ .v_str = "siblings" },
 		{ .v_str = "cpuid_level" },
-		{ .v_str = "cache_size" },
-		{ .v_str = "clflush_size" },
-		{ .v_str = "cache_alignment" },
 		{ .v_str = "mhz" },
 		{ .v_str = "bogomips" },
-		{ .v_str = "family" },
-		{ .v_str = "model" },
-		{ .v_str = "stepping" },
-		{ .v_str = "fpu" },
-		{ .v_str = "fpu_exception" },
-		{ .v_str = "wp" },
-		{ .v_str = "vendor_id" },
-		{ .v_str = "model_name" },
-		{ .v_str = "microcode" },
-		{ .v_str = "address_sizes" },
-		{ .v_str = "power_management" },
-		{ .v_str = "flags" },
 		{ .v_str = "governor" },
 		{ .v_str = "avail_freq" },
 		{ .v_str = "min_freq" },
 		{ .v_str = "max_freq" },
 		{ .v_str = "cur_freq" },
-		{ .v_str = "sha256" },
-		{ .type = VALUE_SENTINEL }
+		{ .type = VALUE_SENTINEL },
 	};
 
 	return hdr;
@@ -558,14 +542,57 @@ struct data *system_cpu_data(struct system_cpu *cpu)
 	data_add_int32(d, cpu->physical_id);
 	data_add_int32(d, cpu->apicid);
 	data_add_int32(d, cpu->apicid_initial);
+	data_add_int32(d, cpu->cpuid_level);
+	data_add_double(d, cpu->mhz);
+	data_add_double(d, cpu->bogomips);
+	data_add_str(d, (cpu->cpufreq ? cpu->governor : "none"));
+	data_add_str(d, (cpu->cpufreq ? cpu->avail_freq : ""));
+	data_add_int64(d, cpu->min_freq);
+	data_add_int64(d, cpu->max_freq);
+	data_add_int64(d, cpu->cur_freq);
+
+	return d;
+}
+
+#define system_cpu_type_fields 17
+const struct value *system_cpu_type_hdr(struct system_cpu *cpu)
+{
+	static const struct value hdr[system_cpu_type_fields + 1] = {
+		{ .v_str = "cores" },
+		{ .v_str = "siblings" },
+		{ .v_str = "cache_size" },
+		{ .v_str = "clflush_size" },
+		{ .v_str = "cache_alignment" },
+		{ .v_str = "family" },
+		{ .v_str = "model" },
+		{ .v_str = "stepping" },
+		{ .v_str = "fpu" },
+		{ .v_str = "fpu_exception" },
+		{ .v_str = "wp" },
+		{ .v_str = "vendor_id" },
+		{ .v_str = "model_name" },
+		{ .v_str = "microcode" },
+		{ .v_str = "address_sizes" },
+		{ .v_str = "power_management" },
+		{ .v_str = "flags" },
+		{ .type = VALUE_SENTINEL }
+	};
+
+	return hdr;
+}
+
+struct data *system_cpu_type_data(struct system_cpu *cpu)
+{
+	struct data *d = data_alloc(DATA_TYPE_OTHER, system_cpu_type_fields);
+
+	if (!d)
+		return NULL;
+
 	data_add_int32(d, cpu->cores);
 	data_add_int32(d, cpu->siblings);
-	data_add_int32(d, cpu->cpuid_level);
 	data_add_int32(d, cpu->cache_size);
 	data_add_int32(d, cpu->clflush_size);
 	data_add_int32(d, cpu->cache_alignment);
-	data_add_double(d, cpu->mhz);
-	data_add_double(d, cpu->bogomips);
 	data_add_int32(d, cpu->family);
 	data_add_int32(d, cpu->model);
 	data_add_int32(d, cpu->stepping);
@@ -578,12 +605,6 @@ struct data *system_cpu_data(struct system_cpu *cpu)
 	data_add_str(d, cpu->address_sizes_str);
 	data_add_str(d, cpu->power_management);
 	data_add_str(d, cpu->flags);
-	data_add_str(d, (cpu->cpufreq ? cpu->governor : "none"));
-	data_add_str(d, (cpu->cpufreq ? cpu->avail_freq : ""));
-	data_add_int64(d, cpu->min_freq);
-	data_add_int64(d, cpu->max_freq);
-	data_add_int64(d, cpu->cur_freq);
-	data_add_str(d, cpu->sha256);
 
 	return d;
 }

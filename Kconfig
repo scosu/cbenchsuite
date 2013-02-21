@@ -1,14 +1,7 @@
 mainmenu "cbench module configuration"
 
 menu "Storage adapters"
-config STORAGE_CSV
-	bool "CSV"
-	default y
-
-config STORAGE_SQLITE
-	bool "Sqlite"
-	default n
-
+source src/storage/Kconfig
 endmenu
 
 

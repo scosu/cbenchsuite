@@ -55,7 +55,8 @@ size_t values_as_str_len(const struct value *v)
 	return ret;
 }
 
-int values_to_csv(const struct value *values, char **buf, size_t *buf_len)
+int values_to_csv(const struct value *values, char **buf, size_t *buf_len,
+		enum value_quote_type quotes)
 {
 	size_t est_size = values_as_str_len(values);
 	int i;
@@ -95,11 +96,81 @@ int values_to_csv(const struct value *values, char **buf, size_t *buf_len)
 		case VALUE_STRING:
 			if (!values[i].v_str)
 				break;
-			ptr += sprintf(ptr, "\"%s\"", values[i].v_str);
+			switch(quotes) {
+			case QUOTE_SINGLE:
+				ptr += sprintf(ptr, "'%s'", values[i].v_str);
+				break;
+			case QUOTE_DOUBLE:
+				ptr += sprintf(ptr, "\"%s\"", values[i].v_str);
+				break;
+			case QUOTE_NONE:
+				ptr += sprintf(ptr, "%s", values[i].v_str);
+				break;
+			}
 			break;
 		default:
 			break;
 		}
 	}
 	return 0;
+}
+
+int values_nr_items(struct value *val)
+{
+	int i;
+
+	for (i = 0; val[i].type != VALUE_SENTINEL; ++i) ;
+
+	return i;
+}
+
+int data_nr_items(struct data *data)
+{
+	return values_nr_items(data->data);
+}
+
+void value_sha256_add(sha256_context *ctx, struct value *val)
+{
+	switch (val->type) {
+	case VALUE_STRING:
+		sha256_add_str(ctx, val->v_str);
+		break;
+	case VALUE_INT32:
+		sha256_add(ctx, &val->v_int32);
+		break;
+	case VALUE_INT64:
+		sha256_add(ctx, &val->v_int64);
+		break;
+	case VALUE_FLOAT:
+		sha256_add(ctx, &val->v_flt);
+		break;
+	case VALUE_DOUBLE:
+		sha256_add(ctx, &val->v_dbl);
+		break;
+	default:
+		break;
+	}
+}
+
+void value_print(const struct value *v)
+{
+	switch (v->type) {
+	case VALUE_STRING:
+		fputs(v->v_str, stdout);
+		break;
+	case VALUE_INT32:
+		printf("%" PRId32, v->v_int32);
+		break;
+	case VALUE_INT64:
+		printf("%" PRId64, v->v_int64);
+		break;
+	case VALUE_FLOAT:
+		printf("%f", v->v_flt);
+		break;
+	case VALUE_DOUBLE:
+		printf("%f", v->v_dbl);
+		break;
+	default:
+		printf("invalid");
+	}
 }

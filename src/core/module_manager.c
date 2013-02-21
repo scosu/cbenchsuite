@@ -33,6 +33,7 @@
 
 #include <cbench/benchsuite.h>
 #include <cbench/module.h>
+#include <cbench/option.h>
 #include <cbench/plugin.h>
 #include <cbench/version.h>
 
@@ -188,8 +189,8 @@ struct module *mod_mgr_find_module(struct mod_mgr *mm, const char *fid)
 
 	mod_end = strchr(mod_start, '.');
 	if (!mod_end) {
-		printk(KERN_ERR "Full identifier is not valid: %s\n", fid);
-		return NULL;
+		printk(KERN_WARNING "Not valid as full identifier: %s\n", fid);
+		mod_end = mod_start + strlen(mod_start);
 	}
 
 	mod_len = mod_end - mod_start;
@@ -203,6 +204,44 @@ struct module *mod_mgr_find_module(struct mod_mgr *mm, const char *fid)
 		return mod;
 	}
 	return NULL;
+}
+
+void mod_mgr_print_module(struct module *mod, int verbose)
+{
+	int i;
+	printf("Module '%s'\n", mod->name);
+	if (verbose)
+		printf("  shared object '%s'\n", mod->so_path);
+	if (mod->id->plugins) {
+		printf("  Plugins:\n");
+		for (i = 0; mod->id->plugins[i].name; ++i) {
+			plugin_id_print(&mod->id->plugins[i], verbose);
+		}
+	}
+	if (mod->id->benchsuites) {
+		printf("  Benchsuites:\n");
+		for (i = 0; mod->id->benchsuites[i].name; ++i) {
+			benchsuite_id_print(&mod->id->benchsuites[i], verbose);
+		}
+	}
+}
+
+int mod_mgr_list_module(struct mod_mgr *mm, const char *fid, int verbose)
+{
+	struct module *mod;
+	if (!fid) {
+		list_for_each_entry(mod, &mm->modules, modules) {
+			mod_mgr_print_module(mod, verbose);
+		}
+	} else {
+		mod = mod_mgr_find_module(mm, fid);
+		if (!mod) {
+			printk(KERN_ERR "Did not find module %s\n", fid);
+			return -1;
+		}
+		mod_mgr_print_module(mod, verbose);
+	}
+	return 0;
 }
 
 struct plugin *mod_mgr_module_get_plugin(struct mod_mgr *mm,
@@ -227,9 +266,15 @@ struct plugin *mod_mgr_module_get_plugin(struct mod_mgr *mm,
 		for (j = 0; vers[j].version != NULL; ++j) {
 			ret = version_matching(&vers[j], ver_restrictions);
 			if (ret) {
-				selected = &plug_ids[i];
-				selected_version = &vers[j];
-				goto found_matching_plugin;
+				ret = plugin_version_check_requirements(
+						&plug_ids[i], &vers[j]);
+				if (ret) {
+					printk(KERN_WARNING "Missing requirements, trying another version\n");
+				} else {
+					selected = &plug_ids[i];
+					selected_version = &vers[j];
+					goto found_matching_plugin;
+				}
 			}
 		}
 	}
@@ -284,7 +329,11 @@ struct plugin *mod_mgr_plugin_create(struct mod_mgr *mm, const char *fid,
 	const char *plug_start;
 	struct module *mod = mod_mgr_find_module(mm, fid);
 	struct plugin *plug;
-	int ret;
+
+	if (!mod) {
+		printk(KERN_ERR "Failed to get module %s\n", fid);
+		return NULL;
+	}
 
 	plug_start = strchr(fid, '.');
 	if (!plug_start) {
@@ -297,13 +346,11 @@ struct plugin *mod_mgr_plugin_create(struct mod_mgr *mm, const char *fid,
 	if (!plug)
 		return NULL;
 
-	if (plug->id->option_parser && options) {
-		ret = plug->id->option_parser(plug, options);
-		if (ret) {
-			printk(KERN_ERR "Option parsing error\n");
-			mod_mgr_module_put_plugin(mm, mod, plug);
-			return NULL;
-		}
+	plug->options = option_parse(plug->version->default_options, options);
+	if (!plug->options) {
+		printk(KERN_ERR "Option parsing error\n");
+		mod_mgr_module_put_plugin(mm, mod, plug);
+		return NULL;
 	}
 
 	plugin_calc_sha256(plug);
@@ -370,6 +417,11 @@ struct benchsuite *mod_mgr_benchsuite_create(struct mod_mgr *mm,
 	const char *suite_start;
 	struct module *mod = mod_mgr_find_module(mm, fid);
 	struct benchsuite *suite;
+
+	if (!mod) {
+		printk(KERN_ERR "Failed to get module %s\n", fid);
+		return NULL;
+	}
 
 	suite_start = strchr(fid, '.');
 	if (!suite_start) {

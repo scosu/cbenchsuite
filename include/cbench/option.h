@@ -1,41 +1,51 @@
 #ifndef _CBENCH_OPTION_H_
 #define _CBENCH_OPTION_H_
 
-#include <string.h>
+#include <cbench/data.h>
 
-struct option_iterator {
-	const char *k_start;
-	const char *k_end;
-	const char *v_start;
-	const char *v_end;
+struct option {
+	const char *name;
+	struct value value;
 };
 
-int option_iterator_next(struct option_iterator *iter, const char *str);
+static inline const struct option* option_get(const struct option *opts, const char *key)
+{
+	int i;
+	for (i = 0; opts[i].value.type != VALUE_SENTINEL; ++i) {
+		if (!strcmp(opts[i].name, key))
+			return &opts[i];
+	}
+	return &opts[i];
+}
+static inline struct option* option_get_ind(struct option *opts, int ind)
+{
+	return &opts[ind];
+}
 
-#define options_for_each_entry(opt_itr, opt_str) 			\
-	for ((opt_itr)->v_end = (opt_str) - 1; 				\
-		!option_iterator_next(opt_itr, opt_str);)
+static inline int32_t option_get_int32(const struct option *opts, const char *key)
+{
+	return option_get(opts, key)->value.v_int32;
+}
 
-int option_key_cmp(struct option_iterator *iter, const char *key);
+static inline int64_t option_get_int64(const struct option *opts, const char *key)
+{
+	return option_get(opts, key)->value.v_int64;
+}
 
-long long option_parse_int_base(struct option_iterator *iter, long long min,
-		long long max, int base);
+static inline const char *option_get_str(const struct option *opts, const char *key)
+{
+	return option_get(opts, key)->value.v_str;
+}
 
-long long option_parse_int(struct option_iterator *iter, long long min,
-		long long max);
+static inline void option_sha256_add(sha256_context *ctx, struct option *opts)
+{
+	int i;
+	for (i = 0; opts[i].value.type != VALUE_SENTINEL; ++i) {
+		value_sha256_add(ctx, &opts[i].value);
+	}
+}
 
-int option_parse_bool(struct option_iterator *iter);
-
-#define option_value_length(iter) ((iter)->v_end - (iter)->v_start)
-
-#define option_value_copy(iter, buf, max_size) 				\
-	do { 								\
-		int size = (max_size) - 1; 				\
-		if (size > (iter)->v_end - (iter)->v_start) 		\
-			size = (iter)->v_end - (iter)->v_start; 	\
-		memcpy(buf, (iter)->v_start, size); 			\
-		buf[size + 1] = '\0'; 					\
-	} while (0)
+struct option *option_parse(const struct option *defaults, const char *optstr);
 
 
 #endif  /* _CBENCH_OPTION_H_ */

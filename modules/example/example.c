@@ -180,30 +180,6 @@ static int example_plug_free(struct plugin *plug)
 	return 0;
 }
 
-static int example_parser(struct plugin *plug, const char *optstr)
-{
-	struct option_iterator itr;
-	struct example_options *opts = malloc(sizeof(*opts));
-	printf("%s\n", __func__);
-	if (!opts)
-		return 1;
-	*opts = example_options_defaults;
-
-	options_for_each_entry(&itr, optstr) {
-		if (!option_key_cmp(&itr, "str")) {
-			option_value_copy(&itr, opts->sample_str, 128);
-		} else if (!option_key_cmp(&itr, "int")) {
-			opts->sample_int = option_parse_int(&itr, 0, 100);
-		} else if (!option_key_cmp(&itr, "bool")) {
-			opts->sample_bool = option_parse_bool(&itr);
-		}
-	}
-	plugin_set_options(plug, opts);
-	return 0;
-}
-
-
-
 struct module_id example_mod = {
 	.plugins = example_plugs,
 	.benchsuites = example_suites,

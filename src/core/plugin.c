@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <uuid/uuid.h>
 
 #include <klib/list.h>
 #include <klib/printk.h>
@@ -33,6 +34,8 @@
 #include <cbench/data.h>
 #include <cbench/environment.h>
 #include <cbench/module.h>
+#include <cbench/option.h>
+#include <cbench/requirement.h>
 #include <cbench/sha256.h>
 #include <cbench/storage.h>
 #include <cbench/version.h>
@@ -76,6 +79,54 @@ struct mon_data {
 	struct plugin_exec_env *exec_env;
 };
 
+void plugin_id_print_version(struct version *v, int verbose)
+{
+	int i;
+	printf("      %s\n", v->version);
+
+	if (v->requirements) {
+		printf("        Requirements\n");
+		for (i = 0; v->requirements[i].name; ++i) {
+			if (!v->requirements[i].found || verbose) {
+				printf("          %s (%s)\n",
+						v->requirements[i].name,
+						v->requirements[i].found ? "found": "not found");
+			}
+			if (verbose && v->requirements[i].description)
+				printf("            %s\n", v->requirements[i].description);
+		}
+	}
+	if (verbose)
+		printf("        Independent values: %d\n", v->nr_independent_values);
+	if (v->default_options) {
+		printf("        Options\n");
+		for (i = 0; v->default_options[i].value.type != VALUE_SENTINEL; ++i) {
+			struct option *o = &v->default_options[i];
+
+			printf("          %s (Default: ", o->name);
+			value_print(&o->value);
+			printf(")\n");
+		}
+	}
+}
+
+void plugin_id_print(const struct plugin_id *plug, int verbose)
+{
+	int i;
+	printf("    %s\n", plug->name);
+	if (verbose) {
+		if (plug->description)
+			printf("        %s\n", plug->description);
+		printf("      Versions\n");
+		for (i = 0; plug->versions[i].version; ++i) {
+			plugin_id_print_version(&plug->versions[i], verbose);
+		}
+	} else {
+		printf("      Version\n");
+		plugin_id_print_version(&plug->versions[0], verbose);
+	}
+}
+
 void plugin_calc_sha256(struct plugin *plug)
 {
 	sha256_context ctx;
@@ -88,10 +139,14 @@ void plugin_calc_sha256(struct plugin *plug)
 	sha256_add_str(&ctx, plug->version->version);
 	sha256_add(&ctx, &plug->version->nr_independent_values);
 
-	for (i = 0; vers[i].name != NULL; ++i) {
-		sha256_add_str(&ctx, vers[i].name);
-		sha256_add_str(&ctx, vers[i].version);
+	if (vers) {
+		for (i = 0; vers[i].name; ++i) {
+			sha256_add_str(&ctx, vers[i].name);
+			sha256_add_str(&ctx, vers[i].version);
+		}
 	}
+
+	option_sha256_add(&ctx, plug->options);
 
 	sha256_finish_str(&ctx, plug->sha256);
 }
@@ -147,7 +202,7 @@ static inline void plugin_exec_function(int (*func)(struct plugin *plug),
 	if (func == NULL)
 		return;
 	if (exec->local_error)
-		return;
+		goto local_error;
 	ret = thread_set_priority(CONFIG_EXECUTION_PRIO);
 	if (ret)
 		printk(KERN_WARNING "Execution thread failed to set priority %d."
@@ -160,6 +215,8 @@ static inline void plugin_exec_function(int (*func)(struct plugin *plug),
 		exec->local_error = 1;
 		printk(KERN_ERR "Failed executing function %d\n", nr_func);
 	}
+
+local_error:
 	if (notify_bg_procs)
 		plugin_exec_stop_bg(exec);
 
@@ -274,6 +331,9 @@ static void plugin_exec_persist(struct plugin_exec *exec, int persist_types)
 	printk(KERN_DEBUG "Persist data\n");
 	list_for_each_entry_safe(data, ndata, &plug->run_data, run_data) {
 		int persist = 0;
+		if (exec->exec_env->error_shutdown)
+			goto error;
+
 		if (DATA_TYPE_MONITOR & persist_types & data->type) {
 			persist = 1;
 			printk(KERN_DEBUG "Would persist monitor data\n");
@@ -284,6 +344,7 @@ static void plugin_exec_persist(struct plugin_exec *exec, int persist_types)
 		if (!persist)
 			continue;
 		// TODO: persist stuff here
+error:
 		plugin_free_data(plug, data);
 	}
 }
@@ -539,6 +600,11 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 	}
 
 	while (exec_env.state != EXEC_STOP) {
+		char uuid[37];
+		uuid_t uuid_raw;
+		uuid_generate(uuid_raw);
+		uuid_unparse_lower(uuid_raw, uuid);
+
 		if (exec_env.state == EXEC_WARMUP) {
 			if (exec_env.run >= settings->warmup_runs) {
 				exec_env.state = EXEC_RUN;
@@ -548,6 +614,10 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 			}
 		} else {
 			exec_env.state = EXEC_RUN;
+		}
+
+		if (exec_env.state == EXEC_RUN) {
+			storage_init_run(&env->storage, uuid);
 		}
 		printk(KERN_DEBUG "Loop run %d state %d\n", exec_env.run,
 				exec_env.state);
@@ -597,6 +667,9 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 		plugins_exec_controller(&exec_env, exec_funcs_after_run);
 
 
+		if (exec_env.state == EXEC_RUN) {
+			storage_exit_run(&env->storage);
+		}
 
 		++exec_env.run;
 		if (exec_env.error_shutdown) {
@@ -651,4 +724,27 @@ failed_exec_alloc:
 failed_barrier_init:
 	pthread_barrier_destroy(&exec_env.barrier);
 	return exec_env.error_shutdown;
+}
+
+int plugin_version_check_requirements(const struct plugin_id *plug,
+		const struct version *ver)
+{
+	int i;
+	int ret = 0;
+	if (!ver->requirements)
+		return 0;
+
+	for (i = 0; ver->requirements[i].name; ++i) {
+		struct requirement *req = &ver->requirements[i];
+		if (req->found)
+			continue;
+
+		printk(KERN_WARNING "Plugin %s version %s has a missing requirement: %s\n",
+				plug->name, ver->version, req->name);
+		if (req->description)
+			printk(KERN_INFO "  Requirement description: %s\n", req->description);
+		ret = -1;
+	}
+
+	return ret;
 }

@@ -1,13 +1,10 @@
 
 #include <stdio.h>
-#include <sys/stat.h>
 
 #include <cbench/module.h>
 #include <cbench/plugin.h>
 #include <cbench/requirement.h>
 #include <cbench/version.h>
-
-#include <modules/sysctl/options.h>
 
 enum plugins {
 	PLUGIN_DROP_CACHES = 0,
@@ -21,12 +18,11 @@ struct module_id sysctl_module;
 
 static int module_init(struct module *mod)
 {
-	struct stat test;
-	int ret;
-
-	ret = stat(vm_drop_caches, &test);
-	if (!ret)
+	FILE *f = fopen(vm_drop_caches, "w");
+	if (f) {
 		sysctl_module.plugins[PLUGIN_DROP_CACHES].versions[0].requirements[0].found = 1;
+		fclose(f);
+	}
 	return 0;
 }
 
@@ -44,8 +40,6 @@ static struct plugin_id plugins[] = {
 		.exit = drop_caches_exit,
 		.exit_post = drop_caches_exit_post,
 		.versions = plugin_drop_caches_versions,
-		.option_parser = plugin_drop_caches_parser,
-
 	},
 	{ }
 };

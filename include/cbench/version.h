@@ -15,9 +15,9 @@ struct version {
 
 	struct requirement *requirements;
 
-	char **data_field_names;
-
 	int nr_independent_values;
+
+	struct option *default_options;
 };
 
 int version_compare(const char *rule, const char *ver, int rule_compare);

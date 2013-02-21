@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <cbench/sha256.h>
+
 enum value_type {
 	// Make VALUE_STRING as 0 for easier static header decleration
 	VALUE_STRING = 0,
@@ -41,6 +43,8 @@ struct data {
 	struct list_head run_data;
 	unsigned int cur_ind;
 };
+
+#define VALUE_STATIC_SENTINEL { .type = VALUE_SENTINEL, .v_int64 = 0 }
 
 static inline struct data *data_alloc(enum data_type type, int nr_fields)
 {
@@ -124,11 +128,27 @@ size_t value_as_str_len(const struct value *v);
 
 size_t values_as_str_len(const struct value *v);
 
-int values_to_csv(const struct value *values, char **buf, size_t *buf_len);
+enum value_quote_type {
+	QUOTE_SINGLE,
+	QUOTE_DOUBLE,
+	QUOTE_NONE,
+};
 
-static inline int data_to_csv(struct data *data, char **buf, size_t *buf_len)
+int values_to_csv(const struct value *values, char **buf, size_t *buf_len,
+		enum value_quote_type quotes);
+
+static inline int data_to_csv(const struct data *data, char **buf, size_t *buf_len,
+		enum value_quote_type quotes)
 {
-	return values_to_csv(data->data, buf, buf_len);
+	return values_to_csv(data->data, buf, buf_len, quotes);
 }
+
+void value_print(const struct value *v);
+
+int values_nr_items(struct value *val);
+
+int data_nr_items(struct data *data);
+
+void value_sha256_add(sha256_context *ctx, struct value *val);
 
 #endif  /* _CBENCH_DATA_H_ */
