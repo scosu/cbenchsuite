@@ -24,7 +24,7 @@ LDFLAGS :=
 MODULE_CFLAGS := $(CFLAGS) -shared -fPIC -I.
 MODULE_LDFLAGS :=
 CORE_CFLAGS := $(CFLAGS)
-CORE_LDFLAGS := $(LDFLAGS) -luuid -ldl -lpthread -lrt
+CORE_LDFLAGS := $(LDFLAGS) -luuid -ldl -lpthread -lrt -lm
 
 
 

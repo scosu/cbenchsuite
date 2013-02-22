@@ -19,6 +19,7 @@
 
 #include <cbench/plugin.h>
 
+#include <math.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -228,6 +229,90 @@ barrier_only:
 	plugin_exec_barrier(exec);
 }
 
+static int plugin_generic_stderr_check(struct plugin *plug, double std_err_percent)
+{
+	struct data *d;
+	int i = 0;
+	while (1) {
+		int nr_values = 0;
+		double sum = 0;
+		double variance = 0;
+		double mean;
+		double std_err;
+		double std_dev;
+		double std_err_thresh;
+
+		plugin_for_each_result(plug, d) {
+			switch (d->data[i].type) {
+			case VALUE_SENTINEL:
+				goto finished;
+			case VALUE_STRING:
+				goto not_parsable;
+			case VALUE_INT32:
+				sum += d->data[i].v_int32;
+				break;
+			case VALUE_INT64:
+				sum += d->data[i].v_int64;
+				break;
+			case VALUE_FLOAT:
+				sum += d->data[i].v_flt;
+				break;
+			case VALUE_DOUBLE:
+				sum += d->data[i].v_dbl;
+				break;
+			default:
+				break;
+			}
+			++nr_values;
+		}
+
+		if (nr_values <= 1)
+			return 0;
+
+		mean = sum / nr_values;
+
+		plugin_for_each_result(plug, d) {
+			double dev = 0;
+			switch (d->data[i].type) {
+			case VALUE_INT32:
+				dev = d->data[i].v_int32;
+				break;
+			case VALUE_INT64:
+				dev = d->data[i].v_int64;
+				break;
+			case VALUE_FLOAT:
+				dev = d->data[i].v_flt;
+				break;
+			case VALUE_DOUBLE:
+				dev = d->data[i].v_dbl;
+				break;
+			default:
+				break;
+			}
+			dev -= mean;
+			variance += dev * dev;
+		}
+
+		//variance /= nr_values;
+		std_dev = sqrt(variance);
+		std_err = std_dev / sqrt(nr_values);
+		std_err_thresh = mean / 100.0 * std_err_percent;
+
+		printk(KERN_DEBUG "check_stderr: nr_values: %d mean: %f variance: %f std_dev: %f std_err: %f std_err_thresh: %f\n",
+				nr_values, mean, variance, std_dev, std_err,
+				std_err_thresh);
+
+		if (std_err > std_err_thresh)
+			return 0;
+
+not_parsable:
+		++i;
+	}
+
+finished:
+	return 1;
+}
+
 static const int exec_funcs_before_run = 4;
 static const int exec_funcs_after_run = 5;
 
@@ -258,9 +343,13 @@ static void *plugins_thread_execute(void *data)
 		plugin_exec_function(id->exit_post, exec, 10, 0);
 
 		plugin_exec_barrier(exec);
-		if (exec->exec_env->state == EXEC_UNDECIDED && id->check_stderr) {
-			ret = id->check_stderr(plug);
-			printk("undecided ret %d\n", ret);
+		if (exec->exec_env->state == EXEC_UNDECIDED) {
+			if (id->check_stderr) {
+				ret = id->check_stderr(plug);
+			} else {
+				ret = plugin_generic_stderr_check(plug,
+						exec->exec_env->settings->percent_stderr);
+			}
 			if (!ret)
 				exec->exec_env->state = EXEC_STDERR_NOT_REACHED;
 		}

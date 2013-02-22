@@ -152,8 +152,11 @@ int args_parse(struct arguments *pargs, int argc, char **argv)
 			parse_arg_tgt = &pargs->min_runtime;
 		} else if (!strcmp(arg, "--max-runtime")) {
 			parse_arg_tgt = &pargs->max_runtime;
-		} else if (!strcmp(arg, "--std-err")) {
+		} else if (!strcmp(arg, "--stderr")) {
 			parse_arg_tgt = &pargs->std_err;
+		} else if (*arg == '-') {
+			printk(KERN_ERR "Unknown option '%s'\n", arg);
+			return -1;
 		} else {
 			continue;
 		}
