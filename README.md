@@ -1,11 +1,11 @@
 
-cbench - High accuracy C benchmark suite for Linux
+cbenchsuite - High accuracy C benchmark suite for Linux
 =================================================
 
-cbench offers high accuracy performance measurements. It is written in C to
+cbenchsuite offers high accuracy performance measurements. It is written in C to
 minimize the impact of the suite itself on the running benchmarks. Cbench is
 also highly configurable and extendable, offering extensive interfaces for
-additional plugins or storage backends. By default cbench uses sqlite3 as
+additional plugins or storage backends. By default cbenchsuite uses sqlite3 as
 storage backend.
 
 Features
@@ -40,8 +40,8 @@ Write your own module/plugin/benchsuite
 ---------------------------------------
 
 Every plugin or benchsuite has to be within a module. Each module can contain
-an arbitrary number of plugins or benchsuites. Modules can be used in cbench
-without changing any cbench source files. It will be autodetected by cbench
+an arbitrary number of plugins or benchsuites. Modules can be used in cbenchsuite
+without changing any cbenchsuite source files. It will be autodetected by cbenchsuite
 Makefiles.
 
 In order to get your module registered, you need three files:
@@ -61,7 +61,7 @@ Requirements
 Help
 ----
 
-	By default, cbench interpretes arguments without '-' at the beginning as
+	By default, cbenchsuite interpretes arguments without '-' at the beginning as
 	benchsuite names and executes them.
 
 	Commands:
@@ -80,13 +80,13 @@ Help
 		--log-level,-g N 	Log level used, from 1 to 7(debugging)
 		--storage,-s STR	Storage backend to use. Currently available are:
 						sqlite3 and csv
-		--db-path,-db DB	Database directory. Default: /tmp/cbench/
+		--db-path,-db DB	Database directory. Default: /tmp/cbenchsuite/
 		--verbose,-v		Verbose output. (more information, but not the
 					same as log-level)
 		--module-dir,-m PATH	Module directory.
 		--work_dir,-w PATH	Working directory. IMPORTANT! Depending on the
 					location of this work directory, the benchmark
-					results could vary. Default: /tmp/cbench/work
+					results could vary. Default: /tmp/cbenchsuite/work
 		--sysinfo,-i INFO	Additional system information. This will
 					seperate the results of the executed benchmarks
 					from others. For example you can use any code

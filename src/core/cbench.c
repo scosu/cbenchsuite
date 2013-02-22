@@ -61,13 +61,13 @@ struct arguments {
 void print_help()
 {
 	fputs(
-"This is cbench, a high accuracy C benchmark suite.\n\
+"This is cbenchsuite, a high accuracy C benchmark suite.\n\
 \n\
-cbench should be executed as root to be able to set different priorities for\n\
+cbenchsuite should be executed as root to be able to set different priorities for\n\
 important worker threads. Be aware that you should review third-party modules\n\
 before using them as root.\n\
 \n\
-By default, cbench interpretes arguments without '-' at the beginning as\n\
+By default, cbenchsuite interpretes arguments without '-' at the beginning as\n\
 benchsuite names and executes them.\n\
 \n\
 Commands:\n\
@@ -86,13 +86,13 @@ Options:\n\
 	--log-level,-g N 	Log level used, from 1 to 7(debugging)\n\
 	--storage,-s STR	Storage backend to use. Currently available are:\n\
 					sqlite3 and csv\n\
-	--db-path,-db DB	Database directory. Default: /tmp/cbench/\n\
+	--db-path,-db DB	Database directory. Default: /tmp/cbenchsuite/\n\
 	--verbose,-v		Verbose output. (more information, but not the\n\
 				same as log-level)\n\
 	--module-dir,-m PATH	Module directory.\n\
 	--work_dir,-w PATH	Working directory. IMPORTANT! Depending on the\n\
 				location of this work directory, the benchmark\n\
-				results could vary. Default: /tmp/cbench/work\n\
+				results could vary. Default: /tmp/cbenchsuite/work\n\
 	--sysinfo,-i INFO	Additional system information. This will\n\
 				seperate the results of the executed benchmarks\n\
 				from others. For example you can use any code\n\
@@ -464,7 +464,7 @@ int cmd_execute(struct arguments *pargs, int argc, char **argv, int as_benchsuit
 
 
 	if (ret) {
-		printk(KERN_ERR "Failed storage init, %s possibly not compiled into cbench?\n",
+		printk(KERN_ERR "Failed storage init, %s possibly not compiled into cbenchsuite?\n",
 				pargs->storage);
 		goto error_storage_init;
 	}
@@ -528,7 +528,7 @@ int main(int argc, char **argv)
 {
 	struct arguments pargs = {
 		.storage = "sqlite3",
-		.db_path = "/tmp/cbench/",
+		.db_path = "/tmp/cbenchsuite/",
 		.work_dir = CONFIG_WORK_PATH,
 		.module_dir = CONFIG_MODULE_DIR,
 		.custom_sysinfo = "",

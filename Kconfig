@@ -1,4 +1,4 @@
-mainmenu "cbench module configuration"
+mainmenu "cbenchsuite module configuration"
 
 menu "Storage adapters"
 source src/storage/Kconfig
@@ -33,7 +33,7 @@ config MODULE_DIR
 	  Default module directory path
 config WORK_PATH
 	string "Work directory"
-	default "/tmp/cbench/"
+	default "/tmp/cbenchsuite/"
 	help
 	  Work directory where benchmarks will put temporary files for execution
 	  or benchmarking. This can be performance critical, so it should be
@@ -46,24 +46,24 @@ config CONTROLLER_PRIO
 	range -20 19
 	default -20
 	help
-	  Scheduling priority of controller thread. Negative values require cbench
-	  to be executed as root. If no root is available, cbench will still
+	  Scheduling priority of controller thread. Negative values require cbenchsuite
+	  to be executed as root. If no root is available, cbenchsuite will still
 	  execute correctly, but without this priority change.
 config EXECUTION_PRIO
 	int "Execution priority"
 	range -20 19
 	default 0
 	help
-	  Scheduling priority of execution threads. Negative values require cbench
-	  to be executed as root. If no root is available, cbench will still
+	  Scheduling priority of execution threads. Negative values require cbenchsuite
+	  to be executed as root. If no root is available, cbenchsuite will still
 	  execute correctly, but without this priority change.
 config MONITOR_PRIO
 	int "Monitor priority"
 	range -20 19
 	default -15
 	help
-	  Scheduling priority of monitor thread. Negative values require cbench
-	  to be executed as root. If no root is available, cbench will still
+	  Scheduling priority of monitor thread. Negative values require cbenchsuite
+	  to be executed as root. If no root is available, cbenchsuite will still
 	  execute correctly, but without this priority change.
 config PRINT_LOG_LEVEL
 	int "Default log level"
