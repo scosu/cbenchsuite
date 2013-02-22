@@ -63,6 +63,10 @@ void print_help()
 	fputs(
 "This is cbench, a high accuracy C benchmark suite.\n\
 \n\
+cbench should be executed as root to be able to set different priorities for\n\
+important worker threads. Be aware that you should review third-party modules\n\
+before using them as root.\n\
+\n\
 By default, cbench interpretes arguments without '-' at the beginning as\n\
 benchsuite names and executes them.\n\
 \n\

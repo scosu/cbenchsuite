@@ -34,7 +34,7 @@ struct module_id {
 
 
 #define MODULE_REGISTER(mod) \
-	__attribute__((unused)) const struct module_id *__module__ = &(mod);
+	__attribute__((unused)) const struct module_id *__module__ = &(mod)
 
 static inline void *module_get_user_data(struct module *mod)
 {

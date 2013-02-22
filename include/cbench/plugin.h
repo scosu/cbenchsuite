@@ -24,7 +24,6 @@ struct plugin {
 	const char *bin_path;
 	const char *work_dir;
 
-	void *user_data;
 	void *plugin_data;
 	void *version_data;
 	void *options;
