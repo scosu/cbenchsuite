@@ -1,2 +1,25 @@
+
+# Here you can define compile time options of your module. You also should
+# define a config option to disable/enable building your module, for example
+# 'config EXAMPLE'.
+#
+# If you have multiple options, start a submenu, uncomment menuconfig endmenu
+# and remove the config EXAMPLE line.
+
+#menuconfig EXAMPLE
 config EXAMPLE
 	bool "Example module"
+# In case your module contains benchsuites which rely on plugins from other
+# modules, you should add 'select' statements so that the necessary module
+# is forced to be build.
+#	select OTHER_EXAMPLE_MODULE
+	help
+	  This is an example module help
+
+# other config options here.
+
+#endmenu
+
+
+# In general, this is the kconfig language with all possibilities. Look at the
+# kconfig-language document for more information. (libs/kconfig-frontends/doc)
