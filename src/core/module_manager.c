@@ -67,6 +67,16 @@ int module_load(struct module *mod)
 		return -1;
 	}
 	mod->id = *mod_id;
+
+	if (mod->id->init) {
+		int ret = mod->id->init(mod);
+		if (ret) {
+			printk(KERN_ERR "Failed initializing module %s returncode %d\n",
+					mod->name, err);
+			return -1;
+		}
+	}
+
 	return 0;
 }
 
@@ -74,6 +84,10 @@ void module_unload(struct module *mod)
 {
 	if (!mod->so_handle || !list_empty(&mod->plugins))
 		return;
+
+	if (mod->id->exit) {
+		mod->id->exit(mod);
+	}
 
 	mod->id = NULL;
 
@@ -107,15 +121,6 @@ struct module *module_create(const char *name, const char *mod_dir)
 	if (err)
 		goto failed_load_module;
 
-	if (mod->id->init) {
-		err = mod->id->init(mod);
-		if (err) {
-			printk(KERN_ERR "Failed initializing module %s returncode %d\n",
-					mod->name, err);
-			goto failed_init_module;
-		}
-	}
-
 	INIT_LIST_HEAD(&mod->modules);
 	INIT_LIST_HEAD(&mod->plugins);
 
@@ -134,10 +139,6 @@ failed_alloc_name:
 
 void module_free(struct module *mod)
 {
-	module_load(mod);
-	if (mod->id->exit) {
-		mod->id->exit(mod);
-	}
 	module_unload(mod);
 	free(mod->so_path);
 	free(mod->name);
