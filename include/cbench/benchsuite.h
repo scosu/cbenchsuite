@@ -10,7 +10,6 @@ struct plugin_link {
 	const char *name;
 	const char *options;
 	const char **version_rules;
-	int add_instances;
 };
 
 struct benchsuite_id {

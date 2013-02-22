@@ -279,8 +279,6 @@ static const char *example_version_rules[] = {
  *  	See doc/identifier_specification.txt
  *  - version_rules: Version rules for a plugin. If there is no matching plugin
  *  	version, this plugin group will cause an abort.
- *  - add_instances: Additional instances of this plugin. If set, multiple
- *  	instances of this plugin will be executed in parallel.
  */
 static struct plugin_link plug_grp_1[] = {
 	{ .name = "example.bench", },
