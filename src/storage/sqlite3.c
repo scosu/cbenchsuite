@@ -634,7 +634,7 @@ static int sqlite3_add_data(void *storage, struct plugin *plug,
 		return -1;
 	}
 
-	sprintf(*stmt, "INSERT INTO 'plugin_%s__%s__%s'(%s,run_uuid,type_monitor) VALUES(%s,'%s',%s);",
+	sprintf(*stmt, "INSERT INTO 'plugin_%s__%s__%s'(%s,run_uuid,type_monitor) VALUES(%s,'%s',%d);",
 			plug->mod->name, plug->id->name,
 			plug->version->version, *buf1, *buf2, d->run_uuid,
 			(data->type == DATA_TYPE_MONITOR));
