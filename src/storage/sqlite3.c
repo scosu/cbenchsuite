@@ -527,7 +527,7 @@ static int sqlite3_init_plugin_grp(void *storage, struct list_head *plugins,
 		sprintf(*buf1, "plugin_%s__%s__%s", plug->mod->name,
 				plug->id->name,
 				plug->version->version);
-		ret = sqlite3_alter_by_hdr(*buf1, d, hdr, "run_uuid");
+		ret = sqlite3_alter_by_hdr(*buf1, d, hdr, "run_uuid,type_monitor");
 		if (ret) {
 			printk(KERN_ERR "Failed to update plugin table %s\n",
 					buf1);
@@ -634,9 +634,10 @@ static int sqlite3_add_data(void *storage, struct plugin *plug,
 		return -1;
 	}
 
-	sprintf(*stmt, "INSERT INTO 'plugin_%s__%s__%s'(%s,run_uuid) VALUES(%s,'%s');",
+	sprintf(*stmt, "INSERT INTO 'plugin_%s__%s__%s'(%s,run_uuid,type_monitor) VALUES(%s,'%s',%s);",
 			plug->mod->name, plug->id->name,
-			plug->version->version, *buf1, *buf2, d->run_uuid);
+			plug->version->version, *buf1, *buf2, d->run_uuid,
+			(data->type == DATA_TYPE_MONITOR));
 	ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
 	if (ret) {
 		printk(KERN_ERR "Failed to insert plugin %s result into table (%s): %s\n",
