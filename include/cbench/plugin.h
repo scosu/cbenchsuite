@@ -27,9 +27,11 @@ struct plugin {
 	void *plugin_data;
 	void *version_data;
 	void *options;
-	void *exec_data;
 
-	void *ctx;
+	void *user_data;
+
+	/* Do not change this, it's used for execution */
+	void *exec_data;
 
 	struct list_head plugins;
 	struct list_head plugin_grp;
@@ -66,6 +68,31 @@ struct plugin_id {
 	int (*check_stderr)(struct plugin *plug);
 };
 
+static inline const struct version *plugin_get_version(struct plugin *plug)
+{
+	return plug->version;
+}
+static inline void *plugin_get_version_data(struct plugin *plug)
+{
+	return plug->version_data;
+}
+static inline const struct plugin_id *plugin_get_plugin_id(struct plugin *plug)
+{
+	return plug->id;
+}
+static inline void *plugin_get_plugin_data(struct plugin *plug)
+{
+	return plug->plugin_data;
+}
+static inline const char *plugin_get_bin_path(struct plugin *plug)
+{
+	return plug->bin_path;
+}
+static inline const char *plugin_get_work_dir(struct plugin *plug)
+{
+	return plug->work_dir;
+}
+
 static inline const struct option *plugin_get_options(struct plugin *plug)
 {
 	return plug->options;
@@ -80,12 +107,12 @@ static inline const struct value *plugin_data_hdr(struct plugin *plug)
 
 static inline void *plugin_get_data(struct plugin *plug)
 {
-	return plug->ctx;
+	return plug->user_data;
 }
 
 static inline void plugin_set_data(struct plugin *plug, void *data)
 {
-	plug->ctx = data;
+	plug->user_data = data;
 }
 
 static inline void plugin_add_results(struct plugin *plug, struct data *data)
