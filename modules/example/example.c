@@ -92,7 +92,19 @@ static int plug_exit_post(struct plugin *plug)
 }
 static int plug_check_stderr(struct plugin *plug)
 {
-	printf("%s\n", __func__);
+	float sum = 0;
+	struct data *d;
+
+	plugin_for_each_result(plug, d) {
+		sum += data_get_float(d, 0);
+	}
+	printf("%s%f\n", __func__, sum);
+
+	/*
+	 * Do some calculations here...
+	 * and decide if stderr is reached (1) or not (0)
+	 */
+
 	return 1;
 }
 static int plug_uninstall(struct plugin *plug)

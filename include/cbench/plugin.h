@@ -103,4 +103,7 @@ void plugin_id_print(const struct plugin_id *plug, int verbose);
 int plugin_version_check_requirements(const struct plugin_id *plug,
 		const struct version *ver);
 
+#define plugin_for_each_result(plugin, data) \
+	list_for_each_entry(data, &(plugin)->check_err_data, run_data)
+
 #endif  /* _CBENCH_PLUGIN_H_ */

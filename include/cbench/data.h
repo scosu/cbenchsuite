@@ -104,7 +104,6 @@ static inline void data_set_str(struct data *d, int index, const char *value)
 
 static inline void data_add_int32(struct data *d, int32_t value)
 {
-
 	data_set_int32(d, d->cur_ind++, value);
 }
 static inline void data_add_int64(struct data *d, int64_t value)
@@ -122,6 +121,27 @@ static inline void data_add_double(struct data *d, double value)
 static inline void data_add_str(struct data *d, const char *value)
 {
 	data_set_str(d, d->cur_ind++, value);
+}
+
+static inline int32_t data_get_int32(struct data *d, int index)
+{
+	return d->data[index].v_int32;
+}
+static inline int64_t data_get_int64(struct data *d, int index)
+{
+	return d->data[index].v_int64;
+}
+static inline float data_get_float(struct data *d, int index)
+{
+	return d->data[index].v_flt;
+}
+static inline double data_get_double(struct data *d, int index)
+{
+	return d->data[index].v_dbl;
+}
+static inline const char *data_get_str(struct data *d, int index)
+{
+	return d->data[index].v_str;
 }
 
 size_t values_as_str_len(const struct value *v);
