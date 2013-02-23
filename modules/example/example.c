@@ -14,6 +14,8 @@
  * Plugin definition
  *
  * For explanations, see at the end of file.
+ *
+ * For easier initializations, see include/cbench/plugin_id_helper.h
  */
 
 static int plug_install(struct plugin *plug)

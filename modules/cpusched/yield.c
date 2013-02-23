@@ -24,6 +24,7 @@
 
 #include <cbench/option.h>
 #include <cbench/plugin.h>
+#include <cbench/plugin_id_helper.h>
 #include <cbench/version.h>
 
 struct yield_bench_thread_data {
@@ -165,21 +166,9 @@ static const struct value *yield_bench_data_hdr(struct plugin *plug)
 }
 
 static struct option yield_bench_options[] = {
-	{
-		.name = "nr-threads",
-		.value = {
-			.type = VALUE_INT32,
-			.v_int32 = 16,
-		},
-	}, {
-		.name = "seconds",
-		.value = {
-			.type = VALUE_INT32,
-			.v_int32 = 30,
-		},
-	}, {
-		.value = VALUE_STATIC_SENTINEL,
-	}
+	OPTION_INT32("threads", 16),
+	OPTION_INT32("seconds", 30),
+	OPTION_SENTINEL
 };
 
 static struct version yield_bench_versions[] = {

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include <cbench/option.h>
+#include <cbench/plugin_id_helper.h>
 
 static struct requirement plugin_drop_caches_requirements[] = {
 	{
@@ -13,30 +14,10 @@ static struct requirement plugin_drop_caches_requirements[] = {
 	{ }
 };
 
-
-#define DROP_CACHES_OPT_FUNC_RUN(opt_name) 				\
-	{ 								\
-		.name = opt_name, 					\
-		.value = { .type = VALUE_INT32, .v_int32 = 0 }, 	\
-	},
-
 struct option plugin_drop_caches_defaults[] = {
-	DROP_CACHES_OPT_FUNC_RUN("init_pre")
-	DROP_CACHES_OPT_FUNC_RUN("init")
-	DROP_CACHES_OPT_FUNC_RUN("init_post")
-	DROP_CACHES_OPT_FUNC_RUN("run_pre")
-	DROP_CACHES_OPT_FUNC_RUN("run")
-	DROP_CACHES_OPT_FUNC_RUN("run_post")
-	DROP_CACHES_OPT_FUNC_RUN("parse_results")
-	DROP_CACHES_OPT_FUNC_RUN("exit_pre")
-	DROP_CACHES_OPT_FUNC_RUN("exit")
-	DROP_CACHES_OPT_FUNC_RUN("exit_post")
-	{
-		.value = VALUE_STATIC_SENTINEL
-	}
+	OPTIONS_BOOL_EACH_FUNC(0),
+	OPTION_SENTINEL
 };
-
-#undef DROP_CACHES_OPT_FUNC_RUN
 
 static struct version plugin_drop_caches_versions[] = {
 	{
@@ -64,24 +45,11 @@ static int drop_caches()
 	return 0;
 }
 
-#define DROP_CACHES_FUNC(name) 						\
-	static int drop_caches_##name(struct plugin *plug) 		\
-	{ 								\
-		const struct option *opts = plugin_get_options(plug); 	\
-		if (option_get_int32(opts, #name)) 			\
-			return drop_caches(); 				\
-		return 0; 						\
-	}
-
-DROP_CACHES_FUNC(init_pre)
-DROP_CACHES_FUNC(init)
-DROP_CACHES_FUNC(init_post)
-DROP_CACHES_FUNC(run_pre)
-DROP_CACHES_FUNC(run)
-DROP_CACHES_FUNC(run_post)
-DROP_CACHES_FUNC(parse_results)
-DROP_CACHES_FUNC(exit_pre)
-DROP_CACHES_FUNC(exit)
-DROP_CACHES_FUNC(exit_post)
+static int drop_caches_func(struct plugin *plug)
+{
+	if (!plugin_exec_func_opt_set(plug))
+		return 0;
+	return drop_caches();
+}
 
 #undef DROP_CACHES_FUNC

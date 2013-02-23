@@ -207,11 +207,8 @@ static inline void plugin_exec_function(int (*func)(struct plugin *plug),
 		goto barrier_only;
 	if (exec->local_error)
 		goto barrier_only;
-	ret = thread_set_priority(CONFIG_EXECUTION_PRIO);
-	if (ret)
-		printk(KERN_NOTICE "Execution thread failed to set priority %d."
-				" Operating with unchanged priority.\n",
-				CONFIG_EXECUTION_PRIO);
+
+	exec->plug->called_fun = nr_func;
 
 	ret = func(exec->plug);
 	if (ret) {
@@ -225,6 +222,13 @@ barrier_only:
 		plugin_exec_stop_bg(exec);
 
 	plugin_exec_barrier(exec);
+
+	ret = thread_set_priority(CONFIG_EXECUTION_PRIO);
+	if (ret)
+		printk(KERN_NOTICE "Execution thread failed to set priority %d."
+				" Operating with unchanged priority.\n",
+				CONFIG_EXECUTION_PRIO);
+
 	// Between those barriers, the main program persists all gathered data
 	plugin_exec_barrier(exec);
 }
@@ -323,24 +327,30 @@ static void *plugins_thread_execute(void *data)
 	const struct plugin_id *id = exec->plug->id;
 	int ret;
 
+	ret = thread_set_priority(CONFIG_EXECUTION_PRIO);
+	if (ret)
+		printk(KERN_NOTICE "Execution thread failed to set priority %d."
+				" Operating with unchanged priority.\n",
+				CONFIG_EXECUTION_PRIO);
+
 	exec->local_error = 0;
 
 	do {
 		printk(KERN_DEBUG "thread plugin %s\n", id->name);
 		plugin_exec_barrier(exec);
-		plugin_exec_function(id->init_pre, exec, 1, 0);
-		plugin_exec_function(id->init, exec, 2, 0);
-		plugin_exec_function(id->init_post, exec, 3, 0);
-		plugin_exec_function(id->run_pre, exec, 4, 0);
+		plugin_exec_function(id->init_pre, exec, PLUGIN_CALLED_INIT_PRE, 0);
+		plugin_exec_function(id->init, exec, PLUGIN_CALLED_INIT, 0);
+		plugin_exec_function(id->init_post, exec, PLUGIN_CALLED_INIT_POST, 0);
+		plugin_exec_function(id->run_pre, exec, PLUGIN_CALLED_RUN_PRE, 0);
 		plugin_exec_barrier(exec);
 		// Here the monitor thread is started
 		plugin_exec_barrier(exec);
-		plugin_exec_function(id->run, exec, 5, EXEC_FUNC_NOTIFY_BG);
-		plugin_exec_function(id->run_post, exec, 6, 0);
-		plugin_exec_function(id->parse_results, exec, 7, 0);
-		plugin_exec_function(id->exit_pre, exec, 8, 0);
-		plugin_exec_function(id->exit, exec, 9, 0);
-		plugin_exec_function(id->exit_post, exec, 10, 0);
+		plugin_exec_function(id->run, exec, PLUGIN_CALLED_RUN, EXEC_FUNC_NOTIFY_BG);
+		plugin_exec_function(id->run_post, exec, PLUGIN_CALLED_RUN_POST, 0);
+		plugin_exec_function(id->parse_results, exec, PLUGIN_CALLED_PARSE_RESULTS, 0);
+		plugin_exec_function(id->exit_pre, exec, PLUGIN_CALLED_EXIT_PRE, 0);
+		plugin_exec_function(id->exit, exec, PLUGIN_CALLED_EXIT, 0);
+		plugin_exec_function(id->exit_post, exec, PLUGIN_CALLED_EXIT_POST, 0);
 
 		plugin_exec_barrier(exec);
 		if (exec->exec_env->state == EXEC_UNDECIDED) {

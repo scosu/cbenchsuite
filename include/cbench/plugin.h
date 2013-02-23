@@ -13,6 +13,19 @@ struct module;
 struct plugin_id;
 struct version;
 
+enum called_func {
+	PLUGIN_CALLED_INIT_PRE,
+	PLUGIN_CALLED_INIT,
+	PLUGIN_CALLED_INIT_POST,
+	PLUGIN_CALLED_RUN_PRE,
+	PLUGIN_CALLED_RUN,
+	PLUGIN_CALLED_RUN_POST,
+	PLUGIN_CALLED_PARSE_RESULTS,
+	PLUGIN_CALLED_EXIT_PRE,
+	PLUGIN_CALLED_EXIT,
+	PLUGIN_CALLED_EXIT_POST,
+};
+
 struct plugin {
 	const struct plugin_id *id;
 	struct module *mod;
@@ -32,6 +45,8 @@ struct plugin {
 
 	/* Do not change this, it's used for execution */
 	void *exec_data;
+
+	enum called_func called_fun;
 
 	struct list_head plugins;
 	struct list_head plugin_grp;
