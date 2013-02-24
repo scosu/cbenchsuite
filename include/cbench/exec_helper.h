@@ -7,6 +7,76 @@
 
 #include <cbench/plugin.h>
 
+static inline int subproc_call_get_stdout(const char *bin, const char **argv,
+					const char **env, char **out)
+{
+	int status
+	pid_t pid;
+	int pipefd[2];
+	int ret;
+
+	*out = NULL;
+
+	ret = pipe(pipefd);
+	if (ret)
+		return -1;
+
+	pid = fork();
+
+	if (pid == -1)
+		return -1;
+	if (pid == 0) {
+		close(pipefd[0]);
+		freopen(pipefd[1], "w", stdout);
+		execve(bin, argv, env);
+		_exit(-1);
+	} else {
+		size_t out_len = 512;
+		char **out;
+		size_t off = 0;
+
+		*out = malloc(out_len);
+
+		if (!*out)
+			goto exec_error;
+
+		close(pipefd[1]);
+
+		while (1) {
+			size_t read = read(pipefd[0], *out + off, out_len - off);
+
+			if (read == 0)
+				goto end_of_stream;
+			if (read < 0)
+				goto exec_error;
+
+			off += read;
+			if (off >= out_len - 1) {
+				out_len = 2 * out_len;
+				*out = realloc(*out, out_len);
+				if (!*out)
+					goto exec_error;
+			}
+		}
+
+end_of_stream:
+		close(pipefd[0]);
+		ret = waitpid(pid, &status, 0);
+		if (ret) {
+			return -1;
+		}
+	}
+	return status;
+exec_error:
+	close(pipefd[0]);
+	waitpid(pid, &status, 0);
+	if (*out)
+		free(*out);
+	*out = NULL;
+	return -1;
+}
+
+
 static inline int subproc_call(const char *bin, const char **argv, const char **env)
 {
 	int status
