@@ -3,7 +3,7 @@
 # define a config option to disable/enable building your module, for example
 # 'config EXAMPLE'.
 #
-# If you have multiple options, start a submenu, uncomment menuconfig endmenu
+# If you have multiple options, start a submenu, uncomment menuconfig, if and endif
 # and remove the config EXAMPLE line.
 
 #menuconfig EXAMPLE
@@ -16,10 +16,11 @@ config EXAMPLE
 	help
 	  This is an example module help
 
+#if EXAMPLE
+
 # other config options here.
 
-#endmenu
-
+#endif
 
 # In general, this is the kconfig language with all possibilities. Look at the
 # kconfig-language document for more information. (libs/kconfig-frontends/doc)
