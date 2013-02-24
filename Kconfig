@@ -31,13 +31,23 @@ config MODULE_DIR
 	default "build/modules"
 	help
 	  Default module directory path
-config WORK_PATH
+config WORK_DIR
 	string "Work directory"
-	default "/tmp/cbenchsuite/"
+	default "~/.cbenchsuite/workdir/"
 	help
 	  Work directory where benchmarks will put temporary files for execution
 	  or benchmarking. This can be performance critical, so it should be
 	  located on a disk or ramfs you want to measure.
+config DOWNLOAD_DIR
+	string "Download directory"
+	default "~/.cache/cbenchsuite/downloads/"
+	help
+	  Download directory where plugins will download additional stuff to.
+	  This is one central directory containing all downloads so there are
+	  no downloads if not necessary.
+config DB_DIR
+	string "Database directory"
+	default "~/.cbenchsuite/db/"
 endmenu
 
 menu "Execution settings"

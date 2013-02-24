@@ -15,6 +15,7 @@ struct run_settings {
 struct environment {
 	const char *work_dir;
 	const char *bin_dir;
+	const char *download_dir;
 	struct run_settings settings;
 	struct storage storage;
 };

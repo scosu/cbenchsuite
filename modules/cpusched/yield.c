@@ -66,7 +66,7 @@ static int yield_bench_init(struct plugin *plug)
 	int ret;
 	if (!data)
 		return -1;
-	data->nr_threads = option_get_int32(options, "nr-threads");
+	data->nr_threads = option_get_int32(options, "threads");
 	if (data->nr_threads <= 0) {
 		free(data);
 		return -1;

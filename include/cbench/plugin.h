@@ -35,7 +35,8 @@ struct plugin {
 	char opt_sha256[65];
 
 	const char *bin_path;
-	const char *work_dir;
+	char *work_dir;
+	const char *download_dir;
 
 	void *plugin_data;
 	void *version_data;
@@ -106,6 +107,10 @@ static inline const char *plugin_get_bin_path(struct plugin *plug)
 static inline const char *plugin_get_work_dir(struct plugin *plug)
 {
 	return plug->work_dir;
+}
+static inline const char *plugin_get_download_dir(struct plugin *plug)
+{
+	return plug->download_dir;
 }
 
 static inline const struct option *plugin_get_options(struct plugin *plug)

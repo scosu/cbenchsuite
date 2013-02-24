@@ -43,6 +43,7 @@ struct arguments {
 	const char *db_path;
 	const char *module_dir;
 	const char *work_dir;
+	const char *download_dir;
 	const char *custom_sysinfo;
 
 	const char *warmup_runs;
@@ -86,13 +87,16 @@ Options:\n\
 	--log-level,-g N 	Log level used, from 1 to 7(debugging)\n\
 	--storage,-s STR	Storage backend to use. Currently available are:\n\
 					sqlite3 and csv\n\
-	--db-path,-db DB	Database directory. Default: /tmp/cbenchsuite/\n\
+	--db-path,-db DB	Database directory. Default: " CONFIG_DB_DIR "\n\
 	--verbose,-v		Verbose output. (more information, but not the\n\
 				same as log-level)\n\
-	--module-dir,-m PATH	Module directory.\n\
-	--work_dir,-w PATH	Working directory. IMPORTANT! Depending on the\n\
+	--module-dir,-m PATH	Module directory. Default: " CONFIG_MODULE_DIR "\n\
+	--work-dir,-w PATH	Working directory. IMPORTANT! Depending on the\n\
 				location of this work directory, the benchmark\n\
-				results could vary. Default: /tmp/cbenchsuite/work\n\
+				results could vary. Default: " CONFIG_WORK_DIR "\n\
+	--download-dir,-d PATH	Download directory. This is one central download\n\
+				directory for all modules and plugins.\n\
+				Default: " CONFIG_DOWNLOAD_DIR "\n\
 	--sysinfo,-i INFO	Additional system information. This will\n\
 				seperate the results of the executed benchmarks\n\
 				from others. For example you can use any code\n\
@@ -136,6 +140,8 @@ int args_parse(struct arguments *pargs, int argc, char **argv)
 			parse_arg_tgt = &pargs->module_dir;
 		} else if (arg_match(arg, "--work-dir", "-w")) {
 			parse_arg_tgt = &pargs->work_dir;
+		} else if (arg_match(arg, "--download-dir", "-d")) {
+			parse_arg_tgt = &pargs->download_dir;
 		} else if (arg_match(arg, "--plugins", "-p")) {
 			pargs->cmd_plugins = 1;
 		} else if (arg_match(arg, "--help", "-h")) {
@@ -524,13 +530,65 @@ int cmd_list(struct arguments *pargs, int argc, char **argv) {
 	return ret;
 }
 
+static const char *expand_home(const char *rel_path)
+{
+	const char *home = getenv("HOME");
+	char *path;
+
+	if (*rel_path != '~')
+		return rel_path;
+
+	if (!home) {
+		printk(KERN_ERR "HOME environment variable is not set but needed\n");
+		return NULL;
+	}
+
+	path = malloc(strlen(home) + strlen(rel_path));
+
+	if (!path)
+		return NULL;
+
+	sprintf(path, "%s%s", home, rel_path+1);
+
+	return path;
+}
+
+static int expand_pathes(struct arguments *args)
+{
+	args->work_dir = expand_home(args->work_dir);
+	args->download_dir = expand_home(args->download_dir);
+	args->module_dir = expand_home(args->module_dir);
+	args->db_path = expand_home(args->db_path);
+
+	if (!args->work_dir || !args->download_dir || !args->module_dir
+			|| !args->db_path)
+		return -1;
+	return 0;
+}
+
+static int create_dirs(struct arguments *args)
+{
+	char *buf;
+	int ret;
+
+	buf = malloc(strlen(args->download_dir) + 64);
+	if (!buf)
+		return -1;
+
+	sprintf(buf, "mkdir -p %s", args->download_dir);
+	ret = system(buf);
+	free(buf);
+	return ret;
+}
+
 int main(int argc, char **argv)
 {
 	struct arguments pargs = {
 		.storage = "sqlite3",
-		.db_path = "/tmp/cbenchsuite/",
-		.work_dir = CONFIG_WORK_PATH,
+		.db_path = CONFIG_DB_DIR,
+		.work_dir = CONFIG_WORK_DIR,
 		.module_dir = CONFIG_MODULE_DIR,
+		.download_dir = CONFIG_DOWNLOAD_DIR,
 		.custom_sysinfo = "",
 		.std_err = CONFIG_STDERR_PERCENT,
 	};
@@ -538,6 +596,16 @@ int main(int argc, char **argv)
 	printk_set_log_level(CONFIG_PRINT_LOG_LEVEL);
 
 	ret = args_parse(&pargs, argc, argv);
+	if (ret) {
+		return -1;
+	}
+
+	ret = expand_pathes(&pargs);
+	if (ret) {
+		return -1;
+	}
+
+	ret = create_dirs(&pargs);
 	if (ret) {
 		return -1;
 	}

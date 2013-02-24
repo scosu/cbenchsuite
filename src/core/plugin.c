@@ -382,6 +382,8 @@ void *plugins_thread_install(void *data)
 	if (ret) {
 		printk(KERN_ERR "Execution of plugin %s function install failed: %d\n",
 				id->name, ret);
+		exec->exec_env->error_shutdown = 1;
+		exec->local_error = 1;
 	}
 	return NULL;
 }
@@ -392,13 +394,15 @@ void *plugins_thread_uninstall(void *data)
 	const struct plugin_id *id = exec->plug->id;
 	int ret;
 
-	if (!id->uninstall)
+	if (!id->uninstall || !exec->plug->work_dir)
 		return NULL;
 
 	ret = id->uninstall(exec->plug);
 	if (ret) {
 		printk(KERN_ERR "Execution of plugin %s function install failed: %d\n",
 				id->name, ret);
+		exec->exec_env->error_shutdown = 1;
+		exec->local_error = 1;
 	}
 	return NULL;
 }
@@ -514,25 +518,38 @@ static void plugins_install(struct plugin_exec_env *exec_env)
 {
 	int i;
 	int ret;
-	char *tmp_cmd = malloc(strlen(exec_env->env->work_dir) + 128);
-	if (!tmp_cmd) {
-		exec_env->error_shutdown = 1;
-		return;
-	}
 	for (i = 0; i != exec_env->nr_plugins; ++i) {
-		sprintf(tmp_cmd, "mkdir -p %s/%d", exec_env->env->work_dir, i);
-		ret = system(tmp_cmd);
+		struct plugin *plug = exec_env->execs[i].plug;
+		char *buf = malloc(strlen(exec_env->env->work_dir) + 128);
+
+		plug->work_dir = NULL;
+		plug->download_dir = exec_env->env->download_dir;
+		if (!buf) {
+			goto error;
+		}
+		sprintf(buf, "mkdir -p %s/%d", exec_env->env->work_dir, i);
+		ret = system(buf);
 		if (ret) {
 			printk(KERN_ERR "Failed to create dir with command '%s'\n",
-					tmp_cmd);
-			exec_env->error_shutdown = 1;
-			continue;
+					buf);
+			free(buf);
+			goto error;
 		}
+
+		sprintf(buf, "%s/%d", exec_env->env->work_dir, i);
+		plug->work_dir = buf;
 	}
-
 	plugins_exec_parallel(exec_env, plugins_thread_install);
-
-	free(tmp_cmd);
+	return;
+error:
+	while (i--) {
+		struct plugin *plug = exec_env->execs[i].plug;
+		if (plug->work_dir) {
+			free(plug->work_dir);
+			plug->work_dir = NULL;
+		}
+		exec_env->error_shutdown = 1;
+	}
 }
 
 static void plugins_uninstall(struct plugin_exec_env *exec_env)
@@ -548,6 +565,12 @@ static void plugins_uninstall(struct plugin_exec_env *exec_env)
 	plugins_exec_parallel(exec_env, plugins_thread_uninstall);
 
 	for (i = 0; i != exec_env->nr_plugins; ++i) {
+		struct plugin *plug = exec_env->execs[i].plug;
+
+		if (plug->work_dir) {
+			free(plug->work_dir);
+		}
+
 		sprintf(tmp_cmd, "rm -Rf %s/%d", exec_env->env->work_dir, i);
 		ret = system(tmp_cmd);
 		if (ret) {

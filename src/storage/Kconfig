@@ -1,6 +1,6 @@
 
 config STORAGE_CSV
-	bool "CSV"
+	bool "CSV (Not finished yet)"
 	default n
 
 config STORAGE_SQLITE3
