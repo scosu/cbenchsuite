@@ -70,13 +70,13 @@ module_tgts := $(patsubst %,$(BUILDDIR)/modules/%/module.so,$(modules-y))
 
 all: directories $(module_tgts) $(BUILDDIR)/cbench
 
-$(OBJMODDIR)/%.o: src/%.c $(core_hdr)
+$(OBJMODDIR)/%.o: src/%.c $(core_hdr) gen/include/cbench/config.h
 	$(CC) $(CFLAGS) -fPIC -c -o $@ $<
 
-$(OBJDIR)/%.o: src/%.c $(core_hdr)
+$(OBJDIR)/%.o: src/%.c $(core_hdr) gen/include/cbench/config.h
 	$(CC) $(CORE_CFLAGS) -c -o $@ $<
 
-$(BUILDDIR)/cbench: $(objs) $(core_hdr) $(libs) gen/include/cbench/config.h
+$(BUILDDIR)/cbench: $(objs) $(core_hdr) $(libs)
 	$(CC) $(CORE_CFLAGS) -o $@ $(objs) $(libs) $(CORE_LDFLAGS)
 
 libs/klib/libklib.a:
