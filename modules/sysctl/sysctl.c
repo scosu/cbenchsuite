@@ -1,5 +1,5 @@
 
-#include <stdio.h>
+#include <unistd.h>
 
 #include <cbench/module.h>
 #include <cbench/plugin.h>
@@ -18,17 +18,14 @@ struct module_id sysctl_module;
 
 static int module_init(struct module *mod)
 {
-	FILE *f = fopen(vm_drop_caches, "w");
-	if (f) {
+	if (!access(vm_drop_caches, F_OK | W_OK))
 		sysctl_module.plugins[PLUGIN_DROP_CACHES].versions[0].requirements[0].found = 1;
-		fclose(f);
-	}
 	return 0;
 }
 
 static struct plugin_id plugins[] = {
 	{
-		.name = "drop_caches",
+		.name = "drop-caches",
 		PLUGIN_ALL_FUNCS(drop_caches_func),
 		.versions = plugin_drop_caches_versions,
 	},
