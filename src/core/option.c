@@ -119,11 +119,11 @@ struct header *option_parse(const struct header *defaults, const char *optstr)
 		opts = malloc(sizeof(*opts));
 		if (!opts)
 			return NULL;
-		opts->opt_val.type = VALUE_SENTINEL;
+		opts->name = NULL;
 		return opts;
 	}
 
-	for (i = 0; defaults[i].opt_val.type != VALUE_SENTINEL; ++i) ;
+	for (i = 0; defaults[i].name != NULL; ++i) ;
 	nr_items = i;
 
 	opts = malloc(sizeof(*opts) * (nr_items + 1));
@@ -174,7 +174,7 @@ int option_to_hdr_csv(const struct header *opts, char **buf, size_t *buf_size,
 	int ret;
 	char *ptr;
 
-	for (i = 0; opts[i].opt_val.type != VALUE_SENTINEL; ++i) {
+	for (i = 0; opts[i].name != NULL; ++i) {
 		est_size += strlen(opts[i].name) + 10;
 	}
 
@@ -183,7 +183,7 @@ int option_to_hdr_csv(const struct header *opts, char **buf, size_t *buf_size,
 		return -1;
 
 	ptr = *buf;
-	for (i = 0; opts[i].opt_val.type != VALUE_SENTINEL; ++i) {
+	for (i = 0; opts[i].name != NULL; ++i) {
 		if (i != 0) {
 			*ptr = ',';
 			++ptr;
@@ -212,7 +212,7 @@ int option_to_data_csv(const struct header *opts, char **buf, size_t *buf_size,
 	int ret;
 	char *ptr;
 
-	for (i = 0; opts[i].opt_val.type != VALUE_SENTINEL; ++i) {
+	for (i = 0; opts[i].name != NULL; ++i) {
 		est_size += value_as_str_len(&opts[i].opt_val);
 	}
 
@@ -222,7 +222,7 @@ int option_to_data_csv(const struct header *opts, char **buf, size_t *buf_size,
 
 	ptr = *buf;
 	*ptr = '\0';
-	for (i = 0; opts[i].opt_val.type != VALUE_SENTINEL; ++i) {
+	for (i = 0; opts[i].name != NULL; ++i) {
 		if (i != 0) {
 			*ptr = ',';
 			++ptr;
