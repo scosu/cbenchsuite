@@ -175,7 +175,6 @@ static inline int cbench_rm_rec(struct plugin *plug, const char *path)
 	sprintf(abs_path, "%s/%s", work_dir, path);
 	rm_args[2] = abs_path;
 
-	printf("abs_path:%s\n", abs_path);
 	ret = subproc_call("rm", rm_args);
 	free(abs_path);
 	return ret;
