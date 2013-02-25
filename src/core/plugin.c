@@ -117,7 +117,7 @@ void plugin_id_print_version(struct version *v, int verbose)
 			printf("            %s (Default: ", o->name);
 			value_print(&o->opt_val);
 			if (o->unit)
-				printf(o->unit);
+				printf("%s", o->unit);
 			printf(")\n");
 		}
 	}

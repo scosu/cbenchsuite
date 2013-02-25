@@ -171,6 +171,54 @@ error_table_info:
 	return -1;
 }
 
+static int sqlite3_store_header_metadata(struct sqlite3_data *d,
+		const struct header *hdr, const char *sha_name, const char *sha,
+		const char *table)
+{
+	int ret;
+	char **stmt = &d->stmt;
+	size_t *stmt_len = &d->stmt_size;
+	char *errmsg;
+	int i;
+
+	for (i = 0; hdr[i].name != NULL; ++i) {
+		sha256_context ctx;
+		char sha_meta[65];
+
+		sha256_starts(&ctx);
+
+		sha256_add_str(&ctx, sha);
+		sha256_add_str(&ctx, hdr[i].name);
+		if (hdr[i].description)
+			sha256_add_str(&ctx, hdr[i].description);
+		if (hdr[i].unit)
+			sha256_add_str(&ctx, hdr[i].unit);
+
+		sha256_finish_str(&ctx, sha_meta);
+
+		ret = mem_grow((void **)stmt, stmt_len, strlen(table) + strlen(sha_name)
+				+ strlen(sha_meta) + strlen(sha)
+				+ strlen(hdr[i].name)
+				+ (hdr[i].description ? strlen(hdr[i].description) : 0)
+				+ (hdr[i].unit ? strlen(hdr[i].unit) : 0) + 128);
+		if (ret)
+			return -1;
+
+		sprintf(*stmt, "INSERT OR IGNORE INTO %s(sha,%s,name,description,unit) VALUES('%s','%s','%s','%s','%s');",
+				table, sha_name, sha_meta, sha, hdr[i].name,
+				(hdr[i].description ? hdr[i].description : ""),
+				(hdr[i].unit ? hdr[i].unit : ""));
+		ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
+		if (ret != SQLITE_OK) {
+			printk(KERN_ERR "Failed to insert metadata into %s (%s)L %s\n",
+					table, *stmt, errmsg);
+			sqlite3_free(errmsg);
+			return -1;
+		}
+	}
+	return 0;
+}
+
 static void *sqlite3_init(const char *path)
 {
 	struct sqlite3_data *d;
@@ -219,6 +267,24 @@ static void *sqlite3_init(const char *path)
 				NULL, NULL, &errmsg);
 	if (ret != SQLITE_OK) {
 		printk(KERN_ERR "Failed to create plugin_grp table: %s\n",
+				errmsg);
+		sqlite3_free(errmsg);
+		goto error_sqldb;
+	}
+
+	ret = sqlite3_exec(d->db, "CREATE TABLE IF NOT EXISTS plugin_option_meta(sha UNIQUE PRIMARY KEY,plugin_sha,name,description,unit);",
+				NULL, NULL, &errmsg);
+	if (ret != SQLITE_OK) {
+		printk(KERN_ERR "Failed to create plugin_option_meta table: %s\n",
+				errmsg);
+		sqlite3_free(errmsg);
+		goto error_sqldb;
+	}
+
+	ret = sqlite3_exec(d->db, "CREATE TABLE IF NOT EXISTS plugin_data_meta(sha UNIQUE PRIMARY KEY,plugin_sha,name,description,unit);",
+				NULL, NULL, &errmsg);
+	if (ret != SQLITE_OK) {
+		printk(KERN_ERR "Failed to create plugin_option_meta table: %s\n",
 				errmsg);
 		sqlite3_free(errmsg);
 		goto error_sqldb;
@@ -444,6 +510,11 @@ static int sqlite3_init_plugin_grp(void *storage, struct list_head *plugins,
 		sha256_starts(&ctx);
 		opts = plugin_get_options(plug);
 		if (opts) {
+			ret = sqlite3_store_header_metadata(d, opts, "plugin_sha",
+					plug->sha256, "plugin_option_meta");
+			if (ret)
+				return -1;
+
 			ret = option_to_hdr_csv(opts, buf1, buf1_len, QUOTE_SINGLE);
 			if (ret) {
 				printk(KERN_ERR "Failed to translate option header to csv\n");
@@ -511,27 +582,28 @@ static int sqlite3_init_plugin_grp(void *storage, struct list_head *plugins,
 		sha256_finish_str(&ctx, sha);
 
 		hdr = plugin_data_hdr(plug);
-		if (!hdr) {
-			printk(KERN_ERR "Failed to get headers from plugin %s\n",
-					plug->id->name);
-			return -1;
-		}
+		if (hdr) {
+			ret = sqlite3_store_header_metadata(d, hdr, "plugin_sha",
+					plug->sha256, "plugin_data_meta");
+			if (ret)
+				return -1;
 
-		ret = mem_grow((void**)buf1, buf1_len, strlen(plug->mod->name)
-				+ strlen(plug->id->name)
-				+ strlen(plug->version->version) + 128);
-		if (ret) {
-			return -1;
-		}
+			ret = mem_grow((void**)buf1, buf1_len, strlen(plug->mod->name)
+					+ strlen(plug->id->name)
+					+ strlen(plug->version->version) + 128);
+			if (ret) {
+				return -1;
+			}
 
-		sprintf(*buf1, "plugin_%s__%s__%s", plug->mod->name,
-				plug->id->name,
-				plug->version->version);
-		ret = sqlite3_alter_by_hdr(*buf1, d, hdr, "run_uuid,type_monitor");
-		if (ret) {
-			printk(KERN_ERR "Failed to update plugin table %s\n",
-					buf1);
-			goto error;
+			sprintf(*buf1, "plugin_%s__%s__%s", plug->mod->name,
+					plug->id->name,
+					plug->version->version);
+			ret = sqlite3_alter_by_hdr(*buf1, d, hdr, "run_uuid,type_monitor");
+			if (ret) {
+				printk(KERN_ERR "Failed to update plugin table %s\n",
+						buf1);
+				return -1;
+			}
 		}
 
 		ret = mem_grow((void**)stmt, stmt_size, strlen(*buf1)
@@ -542,7 +614,7 @@ static int sqlite3_init_plugin_grp(void *storage, struct list_head *plugins,
 				+ strlen(plug->id->name)
 				+ strlen(plug->version->version) + 128);
 		if (ret) {
-			goto error;
+			return -1;
 		}
 
 		sprintf(*stmt, "INSERT OR IGNORE INTO plugin_groups(sha,group_sha,plugin_sha,plugin_table,plugin_opts_sha,plugin_opt_table) VALUES('%s','%s','%s','%s','%s','plugin_opts_%s__%s__%s');",
@@ -558,8 +630,6 @@ static int sqlite3_init_plugin_grp(void *storage, struct list_head *plugins,
 	}
 
 	return 0;
-error:
-	return -1;
 }
 
 static int sqlite3_init_run(void *storage, const char *uuid, int nr_run)
