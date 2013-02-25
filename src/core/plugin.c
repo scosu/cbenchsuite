@@ -85,6 +85,16 @@ void plugin_id_print_version(struct version *v, int verbose)
 	int i;
 	printf("        %s\n", v->version);
 
+	if (v->comp_versions) {
+		printf("          Components: ");
+		for (i = 0; v->comp_versions[i].name != NULL; ++i) {
+			struct comp_version *cv = &v->comp_versions[i];
+			if (i != 0)
+				printf(", ");
+			printf("%s-%s", cv->name, cv->version);
+		}
+		printf("\n");
+	}
 	if (v->requirements) {
 		printf("          Requirements\n");
 		for (i = 0; v->requirements[i].name; ++i) {
@@ -106,6 +116,8 @@ void plugin_id_print_version(struct version *v, int verbose)
 
 			printf("            %s (Default: ", o->name);
 			value_print(&o->opt_val);
+			if (o->unit)
+				printf(o->unit);
 			printf(")\n");
 		}
 	}
