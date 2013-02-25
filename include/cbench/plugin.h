@@ -78,7 +78,7 @@ struct plugin_id {
 
 	void (*stop)(struct plugin *plug);
 
-	const struct value* (*data_hdr)(struct plugin *plug);
+	const struct header* (*data_hdr)(struct plugin *plug);
 
 	int (*monitor)(struct plugin *plug);
 	int (*check_stderr)(struct plugin *plug);
@@ -113,12 +113,12 @@ static inline const char *plugin_get_download_dir(struct plugin *plug)
 	return plug->download_dir;
 }
 
-static inline const struct option *plugin_get_options(struct plugin *plug)
+static inline const struct header *plugin_get_options(struct plugin *plug)
 {
 	return plug->options;
 }
 
-static inline const struct value *plugin_data_hdr(struct plugin *plug)
+static inline const struct header *plugin_data_hdr(struct plugin *plug)
 {
 	if (!plug->id->data_hdr)
 		return NULL;

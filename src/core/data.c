@@ -95,6 +95,46 @@ int values_to_csv(const struct value *values, char **buf, size_t *buf_len,
 	return 0;
 }
 
+int header_to_csv(const struct header *hdr, char **buf, size_t *buf_len,
+		enum value_quote_type quotes)
+{
+	size_t est_size = 0;
+	char *ptr;
+	int ret;
+	int i;
+
+	for (i = 0; hdr[i].name != NULL; ++i) {
+		est_size += strlen(hdr[i].name) + 3;
+	}
+	est_size += 1;
+
+	ret = mem_grow((void**)buf, buf_len, est_size);
+	if (ret)
+		return -1;
+
+	ptr = *buf;
+	for (i = 0; hdr[i].name != NULL; ++i) {
+		if (i != 0) {
+			*ptr = ',';
+			++ptr;
+		}
+
+		switch(quotes) {
+		case QUOTE_SINGLE:
+			ptr += sprintf(ptr, "'%s'", hdr[i].name);
+			break;
+		case QUOTE_DOUBLE:
+			ptr += sprintf(ptr, "\"%s\"", hdr[i].name);
+			break;
+		case QUOTE_NONE:
+			ptr += sprintf(ptr, "%s", hdr[i].name);
+			break;
+		}
+	}
+
+	return 0;
+}
+
 int values_nr_items(struct value *val)
 {
 	int i;

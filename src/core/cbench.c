@@ -433,6 +433,7 @@ int cmd_execute(struct arguments *pargs, int argc, char **argv, int as_benchsuit
 	struct environment env = {
 		.work_dir = pargs->work_dir,
 		.bin_dir = pargs->module_dir,
+		.download_dir = pargs->download_dir,
 		.settings = {
 			.warmup_runs = CONFIG_WARMUP_RUNS,
 			.runs_min = CONFIG_MIN_RUNS,

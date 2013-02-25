@@ -4,44 +4,46 @@
 #include <cbench/option.h>
 #include <cbench/plugin.h>
 
-#define OPTION_INT32(opt_name, def_val) \
-	{ .name = opt_name, .value = { .type = VALUE_INT32, .v_int32 = def_val }}
+#define OPTION_INT32(opt_name, desc, unit_str, def_val) \
+	{ .name = opt_name, .description = desc, .unit = unit_str,\
+	  .opt_val = { .type = VALUE_INT32, .v_int32 = def_val } }
 
-#define OPTION_INT64(opt_name, def_val) \
-	{ .name = opt_name, .value = { .type = VALUE_INT64, .v_int64 = def_val }}
+#define OPTION_INT64(opt_name, desc, unit_str, def_val) \
+	{ .name = opt_name, .description = desc, .unit = unit_str,\
+	  .opt_val = { .type = VALUE_INT64, .v_int64 = def_val } }
 
-#define OPTION_STR(opt_name, def_val) \
-	{ .name = opt_name, .value = { .type = VALUE_STRING, .v_str = def_val }}
+#define OPTION_STR(opt_name, desc, unit_str, def_val) \
+	{ .name = opt_name, .description = desc, .unit = unit_str,\
+	  .opt_val = { .type = VALUE_STR, .v_str = def_val } }
 
-#define OPTION_BOOL(opt_name, def_val) \
-		OPTION_INT32(opt_name, def_val)
+#define OPTION_BOOL(opt_name, desc, unit_str, def_val) \
+		OPTION_INT32(opt_name, desc, unit_str, def_val)
 
-/* Define one option for every general purpose execution function available,
- * add a prefix to the option */
-#define OPTIONS_BOOL_EACH_FUNC_PRE(prefix, def_val) \
-	OPTION_BOOL(prefix "init_pre", def_val), \
-	OPTION_BOOL(prefix "init", def_val), \
-	OPTION_BOOL(prefix "init_post", def_val), \
-	OPTION_BOOL(prefix "run_pre", def_val), \
-	OPTION_BOOL(prefix "run", def_val), \
-	OPTION_BOOL(prefix "run_post", def_val), \
-	OPTION_BOOL(prefix "parse_results", def_val), \
-	OPTION_BOOL(prefix "exit_pre", def_val), \
-	OPTION_BOOL(prefix "exit", def_val), \
-	OPTION_BOOL(prefix "exit_post", def_val)
+#define OPTION_FUNC_OPTION(func, def_val) \
+	OPTION_BOOL(func, "Enable execution of this plugin in function slot " func,\
+			NULL, def_val)
 
 /* Define one option for every general purpose execution function available */
 #define OPTIONS_BOOL_EACH_FUNC(def_val) \
-		OPTIONS_BOOL_EACH_FUNC_PRE("", def_val)
+	OPTION_FUNC_OPTION("init_pre", def_val), \
+	OPTION_FUNC_OPTION("init", def_val), \
+	OPTION_FUNC_OPTION("init_post", def_val), \
+	OPTION_FUNC_OPTION("run_pre", def_val), \
+	OPTION_FUNC_OPTION("run", def_val), \
+	OPTION_FUNC_OPTION("run_post", def_val), \
+	OPTION_FUNC_OPTION("parse_results", def_val), \
+	OPTION_FUNC_OPTION("exit_pre", def_val), \
+	OPTION_FUNC_OPTION("exit", def_val), \
+	OPTION_FUNC_OPTION("exit_post", def_val)
 
-#define OPTION_SENTINEL { .value = VALUE_STATIC_SENTINEL }
+#define OPTION_SENTINEL { }
 
 /* Returns != 0 if the currently executed function has an equivalent option
  * that is set to != 0. This can help you to create plugins with variable
  * slot execution, for example to clean systems or wait for something. */
 static inline int plugin_exec_func_opt_set(struct plugin *plug)
 {
-	const struct option *opts = plugin_get_options(plug);
+	const struct header *opts = plugin_get_options(plug);
 	switch (plug->called_fun) {
 	case PLUGIN_CALLED_INIT_PRE:
 		return option_get_int32(opts, "init_pre");

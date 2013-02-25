@@ -61,7 +61,7 @@ static void *yield_bench_thread(void *data)
 static int yield_bench_init(struct plugin *plug)
 {
 	struct yield_bench_data *data = malloc(sizeof(*data));
-	const struct option *options = plugin_get_options(plug);
+	const struct header *options = plugin_get_options(plug);
 	int i;
 	int ret;
 	if (!data)
@@ -155,19 +155,24 @@ static int yield_bench_exit(struct plugin *plug)
 	return 0;
 }
 
-static const struct value *yield_bench_data_hdr(struct plugin *plug)
+static const struct header *yield_bench_data_hdr(struct plugin *plug)
 {
-	static const struct value hdr[] = {
-		{ .v_str = "Iterations" },
-		VALUE_STATIC_SENTINEL
+	static const struct header hdr[] = {
+		{
+			.name = "iterations",
+			.description = "Number of iterations the benchmark completed",
+			.data_type = DATA_MORE_IS_BETTER,
+		}, {
+			/* Sentinel */
+		}
 	};
 
 	return hdr;
 }
 
-static struct option yield_bench_options[] = {
-	OPTION_INT32("threads", 16),
-	OPTION_INT32("seconds", 30),
+static struct header yield_bench_options[] = {
+	OPTION_INT32("threads", "Number of threads used", NULL, 16),
+	OPTION_INT32("seconds", "Number of seconds this benchmark should run", "s", 30),
 	OPTION_SENTINEL
 };
 

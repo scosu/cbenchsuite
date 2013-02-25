@@ -50,7 +50,7 @@ struct sqlite3_data {
 };
 
 struct values_present {
-	const struct value *vals;
+	const struct header *vals;
 	int *present;
 };
 
@@ -60,8 +60,8 @@ static int sqlite3_alter_by_hdr_cb(void *ctx, int nr_col, char **cols,
 	struct values_present *vp = (struct values_present *) ctx;
 	int i;
 
-	for (i = 0; vp->vals[i].type != VALUE_SENTINEL; ++i) {
-		if (!strcmp(vp->vals[i].v_str, cols[1])) {
+	for (i = 0; vp->vals[i].name != NULL; ++i) {
+		if (!strcmp(vp->vals[i].name, cols[1])) {
 			vp->present[i] = 1;
 			break;
 		}
@@ -73,7 +73,7 @@ static int sqlite3_alter_by_hdr_cb(void *ctx, int nr_col, char **cols,
  * WARNING: This internal function uses buf2 and stmt buffers.
  */
 static int sqlite3_alter_by_hdr(const char *table, struct sqlite3_data *d,
-				const struct value *hdr, const char *additional_hdr)
+				const struct header *hdr, const char *additional_hdr)
 {
 	struct values_present vp;
 	int nr_vals;
@@ -86,7 +86,7 @@ static int sqlite3_alter_by_hdr(const char *table, struct sqlite3_data *d,
 	int ret;
 	int sum_found;
 
-	for (i = 0; hdr[i].type != VALUE_SENTINEL; ++i) ;
+	for (i = 0; hdr[i].name != NULL; ++i) ;
 	nr_vals = i;
 
 	vp.vals = hdr;
@@ -119,7 +119,7 @@ static int sqlite3_alter_by_hdr(const char *table, struct sqlite3_data *d,
 		return 0;
 	if (sum_found == 0) {
 
-		ret = values_to_csv(hdr, buf, buf_len, QUOTE_SINGLE);
+		ret = header_to_csv(hdr, buf, buf_len, QUOTE_SINGLE);
 		if (ret) {
 			goto error_table_info;
 		}
@@ -143,17 +143,17 @@ static int sqlite3_alter_by_hdr(const char *table, struct sqlite3_data *d,
 			goto error_table_info;
 		}
 	} else {
-		for (i = 0; vp.vals[i].type != VALUE_SENTINEL; ++i) {
+		for (i = 0; vp.vals[i].name != NULL; ++i) {
 			if (vp.present[i])
 				continue;
-			ret = mem_grow((void**)stmt, stmt_size, strlen(hdr[i].v_str)
+			ret = mem_grow((void**)stmt, stmt_size, strlen(hdr[i].name)
 					+ strlen(table) + 128);
 			if (ret) {
 				goto error_table_info;
 			}
 
 			sprintf(*stmt, "ALTER TABLE %s ADD COLUMN '%s';", table,
-					vp.vals[i].v_str);
+					vp.vals[i].name);
 			ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
 			if (ret != SQLITE_OK) {
 				printk(KERN_ERR "Failed to add column (%s): %s\n",
@@ -245,7 +245,7 @@ static int sqlite3_add_sysinfo(void *storage, struct system *sys)
 	char **buf2 = &d->buf2;
 	size_t *buf2_len = &d->buf2_size;
 	char *errmsg;
-	const struct value *hdr;
+	const struct header *hdr;
 	struct data *dat;
 	char system_cpu_sha[65];
 	sha256_context ctx;
@@ -265,7 +265,7 @@ static int sqlite3_add_sysinfo(void *storage, struct system *sys)
 		goto error;
 	}
 
-	ret = values_to_csv(hdr, buf1, buf1_len, QUOTE_SINGLE);
+	ret = header_to_csv(hdr, buf1, buf1_len, QUOTE_SINGLE);
 	if (ret) {
 		printk(KERN_ERR "Failed translating system header to csv\n");
 		goto error;
@@ -313,7 +313,7 @@ static int sqlite3_add_sysinfo(void *storage, struct system *sys)
 		goto error;
 	}
 
-	ret = values_to_csv(hdr, buf1, buf1_len, QUOTE_SINGLE);
+	ret = header_to_csv(hdr, buf1, buf1_len, QUOTE_SINGLE);
 	if (ret) {
 		printk(KERN_ERR "Failed to translate system cpu header to csv\n");
 		goto error;
@@ -364,7 +364,7 @@ static int sqlite3_add_sysinfo(void *storage, struct system *sys)
 		goto error;
 	}
 
-	ret = values_to_csv(hdr, buf1, buf1_len, QUOTE_SINGLE);
+	ret = header_to_csv(hdr, buf1, buf1_len, QUOTE_SINGLE);
 	if (ret) {
 		printk(KERN_ERR "Failed to translate system cpu header to csv\n");
 		goto error;
@@ -434,8 +434,8 @@ static int sqlite3_init_plugin_grp(void *storage, struct list_head *plugins,
 	d->group_sha = group_sha;
 
 	list_for_each_entry(plug, plugins, plugin_grp) {
-		const struct value *hdr;
-		const struct option *opts;
+		const struct header *hdr;
+		const struct header *opts;
 
 		if (!plugin_data_hdr(plug)) {
 			continue;
@@ -602,7 +602,7 @@ static int sqlite3_add_data(void *storage, struct plugin *plug,
 	size_t *buf2_size = &d->buf2_size;
 	char *errmsg;
 	int ret;
-	const struct value *hdr;
+	const struct header *hdr;
 
 
 	hdr = plugin_data_hdr(plug);
@@ -612,7 +612,7 @@ static int sqlite3_add_data(void *storage, struct plugin *plug,
 		return -1;
 	}
 
-	ret = values_to_csv(hdr, buf1, buf1_size, QUOTE_SINGLE);
+	ret = header_to_csv(hdr, buf1, buf1_size, QUOTE_SINGLE);
 	if (ret) {
 		printk(KERN_ERR "Failed to translate plugin %s header to csv\n",
 				plug->id->name);

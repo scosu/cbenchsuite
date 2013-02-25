@@ -5,7 +5,7 @@
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
+ * of the License, or (at your header) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -108,9 +108,9 @@ int option_parse_bool(struct option_iterator *iter)
 	return 0;
 }
 
-struct option *option_parse(const struct option *defaults, const char *optstr)
+struct header *option_parse(const struct header *defaults, const char *optstr)
 {
-	struct option *opts;
+	struct header *opts;
 	struct option_iterator itr;
 	int i;
 	int nr_items;
@@ -119,11 +119,11 @@ struct option *option_parse(const struct option *defaults, const char *optstr)
 		opts = malloc(sizeof(*opts));
 		if (!opts)
 			return NULL;
-		opts->value.type = VALUE_SENTINEL;
+		opts->opt_val.type = VALUE_SENTINEL;
 		return opts;
 	}
 
-	for (i = 0; defaults[i].value.type != VALUE_SENTINEL; ++i) ;
+	for (i = 0; defaults[i].opt_val.type != VALUE_SENTINEL; ++i) ;
 	nr_items = i;
 
 	opts = malloc(sizeof(*opts) * (nr_items + 1));
@@ -138,16 +138,16 @@ struct option *option_parse(const struct option *defaults, const char *optstr)
 	options_for_each_entry(&itr, optstr) {
 		for (i = 0; i != nr_items; ++i) {
 			if (!option_key_cmp(&itr, opts[i].name)) {
-				switch (opts[i].value.type) {
+				switch (opts[i].opt_val.type) {
 				case VALUE_STRING:
-					opts[i].value.v_str = malloc(option_value_strlen(&itr) + 1);
-					option_value_copy(&itr, opts[i].value.v_str);
+					opts[i].opt_val.v_str = malloc(option_value_strlen(&itr) + 1);
+					option_value_copy(&itr, opts[i].opt_val.v_str);
 					break;
 				case VALUE_INT32:
-					opts[i].value.v_int32 = option_parse_int(&itr);
+					opts[i].opt_val.v_int32 = option_parse_int(&itr);
 					break;
 				case VALUE_INT64:
-					opts[i].value.v_int64 = option_parse_int(&itr);
+					opts[i].opt_val.v_int64 = option_parse_int(&itr);
 					break;
 				default:
 					printf("ERROR: Option values may not be something else than string or int (%s)\n",
@@ -157,7 +157,7 @@ struct option *option_parse(const struct option *defaults, const char *optstr)
 				goto found;
 			}
 		}
-		printf("ERROR: Could not find option starting at %s\n",
+		printf("ERROR: Could not find header starting at %s\n",
 				itr.k_start);
 		return NULL;
 found:
@@ -166,7 +166,7 @@ found:
 	return opts;
 }
 
-int option_to_hdr_csv(const struct option *opts, char **buf, size_t *buf_size,
+int option_to_hdr_csv(const struct header *opts, char **buf, size_t *buf_size,
 		enum value_quote_type quotes)
 {
 	size_t est_size = 0;
@@ -174,7 +174,7 @@ int option_to_hdr_csv(const struct option *opts, char **buf, size_t *buf_size,
 	int ret;
 	char *ptr;
 
-	for (i = 0; opts[i].value.type != VALUE_SENTINEL; ++i) {
+	for (i = 0; opts[i].opt_val.type != VALUE_SENTINEL; ++i) {
 		est_size += strlen(opts[i].name) + 10;
 	}
 
@@ -183,7 +183,7 @@ int option_to_hdr_csv(const struct option *opts, char **buf, size_t *buf_size,
 		return -1;
 
 	ptr = *buf;
-	for (i = 0; opts[i].value.type != VALUE_SENTINEL; ++i) {
+	for (i = 0; opts[i].opt_val.type != VALUE_SENTINEL; ++i) {
 		if (i != 0) {
 			*ptr = ',';
 			++ptr;
@@ -204,7 +204,7 @@ int option_to_hdr_csv(const struct option *opts, char **buf, size_t *buf_size,
 	return 0;
 }
 
-int option_to_data_csv(const struct option *opts, char **buf, size_t *buf_size,
+int option_to_data_csv(const struct header *opts, char **buf, size_t *buf_size,
 		enum value_quote_type quotes)
 {
 	size_t est_size = 0;
@@ -212,8 +212,8 @@ int option_to_data_csv(const struct option *opts, char **buf, size_t *buf_size,
 	int ret;
 	char *ptr;
 
-	for (i = 0; opts[i].value.type != VALUE_SENTINEL; ++i) {
-		est_size += value_as_str_len(&opts[i].value);
+	for (i = 0; opts[i].opt_val.type != VALUE_SENTINEL; ++i) {
+		est_size += value_as_str_len(&opts[i].opt_val);
 	}
 
 	ret = mem_grow((void**)buf, buf_size, est_size);
@@ -222,36 +222,36 @@ int option_to_data_csv(const struct option *opts, char **buf, size_t *buf_size,
 
 	ptr = *buf;
 	*ptr = '\0';
-	for (i = 0; opts[i].value.type != VALUE_SENTINEL; ++i) {
+	for (i = 0; opts[i].opt_val.type != VALUE_SENTINEL; ++i) {
 		if (i != 0) {
 			*ptr = ',';
 			++ptr;
 		}
-		switch (opts[i].value.type) {
+		switch (opts[i].opt_val.type) {
 		case VALUE_INT32:
-			ptr += sprintf(ptr, "%" PRId32, opts[i].value.v_int32);
+			ptr += sprintf(ptr, "%" PRId32, opts[i].opt_val.v_int32);
 			break;
 		case VALUE_INT64:
-			ptr += sprintf(ptr, "%" PRId64, opts[i].value.v_int64);
+			ptr += sprintf(ptr, "%" PRId64, opts[i].opt_val.v_int64);
 			break;
 		case VALUE_FLOAT:
-			ptr += sprintf(ptr, "%f", opts[i].value.v_flt);
+			ptr += sprintf(ptr, "%f", opts[i].opt_val.v_flt);
 			break;
 		case VALUE_DOUBLE:
-			ptr += sprintf(ptr, "%f", opts[i].value.v_dbl);
+			ptr += sprintf(ptr, "%f", opts[i].opt_val.v_dbl);
 			break;
 		case VALUE_STRING:
-			if (!opts[i].value.v_str)
+			if (!opts[i].opt_val.v_str)
 				break;
 			switch(quotes) {
 			case QUOTE_SINGLE:
-				ptr += sprintf(ptr, "'%s'", opts[i].value.v_str);
+				ptr += sprintf(ptr, "'%s'", opts[i].opt_val.v_str);
 				break;
 			case QUOTE_DOUBLE:
-				ptr += sprintf(ptr, "\"%s\"", opts[i].value.v_str);
+				ptr += sprintf(ptr, "\"%s\"", opts[i].opt_val.v_str);
 				break;
 			case QUOTE_NONE:
-				ptr += sprintf(ptr, "%s", opts[i].value.v_str);
+				ptr += sprintf(ptr, "%s", opts[i].opt_val.v_str);
 				break;
 			}
 			break;

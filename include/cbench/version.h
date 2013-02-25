@@ -17,7 +17,7 @@ struct version {
 
 	int nr_independent_values;
 
-	struct option *default_options;
+	struct header *default_options;
 };
 
 int version_compare(const char *rule, const char *ver, int rule_compare);

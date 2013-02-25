@@ -30,6 +30,22 @@ struct value {
 	};
 };
 
+enum data_value_cmp {
+	DATA_MORE_IS_BETTER,
+	DATA_LESS_IS_BETTER,
+};
+
+struct header {
+	const char *name;
+	const char *description;
+	const char *unit;
+	union {
+		enum data_value_cmp data_type;
+		struct value opt_val;
+	};
+};
+
+
 enum data_type {
 	DATA_TYPE_MONITOR = 0x1,
 	DATA_TYPE_RESULT = 0x2,
@@ -160,6 +176,9 @@ static inline int data_to_csv(const struct data *data, char **buf, size_t *buf_l
 {
 	return values_to_csv(data->data, buf, buf_len, quotes);
 }
+
+int header_to_csv(const struct header *hdr, char **buf, size_t *buf_len,
+		enum value_quote_type quotes);
 
 static inline size_t value_as_str_len(const struct value *v)
 {

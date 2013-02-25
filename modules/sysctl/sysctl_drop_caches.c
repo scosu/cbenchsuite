@@ -14,7 +14,7 @@ static struct requirement plugin_drop_caches_requirements[] = {
 	{ }
 };
 
-struct option plugin_drop_caches_defaults[] = {
+struct header plugin_drop_caches_defaults[] = {
 	OPTIONS_BOOL_EACH_FUNC(0),
 	OPTION_SENTINEL
 };

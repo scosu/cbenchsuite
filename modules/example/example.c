@@ -63,11 +63,17 @@ static int plug_parse_results(struct plugin *plug)
 	printf("%s\n", __func__);
 	return 0;
 }
-static const struct value* plug_data_hdr(struct plugin *plug)
+static const struct header* plug_data_hdr(struct plugin *plug)
 {
-	static const struct value hdr[] = {
-		{ .v_str = "Example header for first field" },
-		VALUE_STATIC_SENTINEL
+	static const struct header hdr[] = {
+		{
+			.name = "header field",
+			.unit = "s",
+			.description = "example header field for an arbitrary data type with unit s",
+			.data_type = DATA_MORE_IS_BETTER,
+		}, {
+			/* Sentinel */
+		}
 	};
 
 	return hdr;
@@ -125,12 +131,15 @@ static void plug_stop(struct plugin *plug)
  *
  * Required fields:
  *  - name: Name of the option.
+ *  - description: Description of the option.
+ *  - unit: Unit of the option value.
  *  - value type: Type of the value, one of VALUE_STRING, VALUE_INT32, VALUE_INT64
  *  - value v_int32,v_int64,v_str: Default value.
  */
-static struct option example_default_options[] = {
-	{ .name = "opt-1" , .value = { .type = VALUE_INT32, .v_int32 = 1 }, },
-	{ .value = VALUE_STATIC_SENTINEL }
+static struct header example_default_options[] = {
+	{ .name = "opt-1" , .description = "foo description", .unit = "s",
+		.opt_val = { .type = VALUE_INT32, .v_int32 = 1 }, },
+	{ /* Sentinel */ }
 };
 
 /*

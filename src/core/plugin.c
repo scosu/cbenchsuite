@@ -101,11 +101,11 @@ void plugin_id_print_version(struct version *v, int verbose)
 		printf("          Independent values: %d\n", v->nr_independent_values);
 	if (v->default_options) {
 		printf("          Options\n");
-		for (i = 0; v->default_options[i].value.type != VALUE_SENTINEL; ++i) {
-			struct option *o = &v->default_options[i];
+		for (i = 0; v->default_options[i].name != NULL; ++i) {
+			struct header *o = &v->default_options[i];
 
 			printf("            %s (Default: ", o->name);
-			value_print(&o->value);
+			value_print(&o->opt_val);
 			printf(")\n");
 		}
 	}

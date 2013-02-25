@@ -126,7 +126,6 @@ struct module *module_create(const char *name, const char *mod_dir)
 
 	return mod;
 
-failed_init_module:
 	module_unload(mod);
 failed_load_module:
 	free(mod->so_path);

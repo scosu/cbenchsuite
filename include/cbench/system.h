@@ -100,11 +100,11 @@ struct system {
 int system_info_init(struct system *sys, const char *custom_info);
 void system_info_free(struct system *sys);
 
-const struct value *system_info_hdr(struct system *sys);
+const struct header *system_info_hdr(struct system *sys);
 struct data *system_info_data(struct system *sys);
-const struct value *system_cpu_type_hdr(struct system_cpu *cpu);
+const struct header *system_cpu_type_hdr(struct system_cpu *cpu);
 struct data *system_cpu_type_data(struct system_cpu *cpu);
-const struct value *system_cpu_hdr(struct system_cpu *cpu);
+const struct header *system_cpu_hdr(struct system_cpu *cpu);
 struct data *system_cpu_data(struct system_cpu *cpu);
 
 #endif  /* _CBENCH_SYSTEM_H_ */

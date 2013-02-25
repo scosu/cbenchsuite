@@ -469,21 +469,24 @@ void system_info_free(struct system *sys)
 }
 
 #define system_info_fields 11
-const struct value *system_info_hdr(struct system *sys)
+const struct header *system_info_hdr(struct system *sys)
 {
-	static const struct value hdr[system_info_fields + 1] = {
-		{ .v_str = "custom_info" },
-		{ .v_str = "machine" },
-		{ .v_str = "kernel" },
-		{ .v_str = "nr_cpus" },
-		{ .v_str = "nr_cpus_on" },
-		{ .v_str = "nr_cores_on" },
-		{ .v_str = "physical_cores_on" },
-		{ .v_str = "mem_total" },
-		{ .v_str = "mem_totalhigh" },
-		{ .v_str = "mem_unit" },
-		{ .v_str = "swap_total" },
-		{ .type = VALUE_SENTINEL }
+	static const struct header hdr[system_info_fields + 1] = {
+		{
+			.name = "custom_info",
+			.description = "User provided system information",
+		},
+		{ .name = "machine" },
+		{ .name = "kernel" },
+		{ .name = "nr_cpus" },
+		{ .name = "nr_cpus_on" },
+		{ .name = "nr_cores_on" },
+		{ .name = "physical_cores_on" },
+		{ .name = "mem_total" },
+		{ .name = "mem_totalhigh" },
+		{ .name = "mem_unit" },
+		{ .name = "swap_total" },
+		{ /* Sentinel */ }
 	};
 	return hdr;
 }
@@ -511,24 +514,24 @@ struct data *system_info_data(struct system *sys)
 }
 
 #define system_cpu_fields 14
-const struct value *system_cpu_hdr(struct system_cpu *cpu)
+const struct header *system_cpu_hdr(struct system_cpu *cpu)
 {
-	static const struct value hdr[system_cpu_fields + 1] = {
-		{ .v_str = "processor" },
-		{ .v_str = "online" },
-		{ .v_str = "core_id" },
-		{ .v_str = "physical_id" },
-		{ .v_str = "apicid" },
-		{ .v_str = "apicid_initial" },
-		{ .v_str = "cpuid_level" },
-		{ .v_str = "mhz" },
-		{ .v_str = "bogomips" },
-		{ .v_str = "governor" },
-		{ .v_str = "avail_freq" },
-		{ .v_str = "min_freq" },
-		{ .v_str = "max_freq" },
-		{ .v_str = "cur_freq" },
-		{ .type = VALUE_SENTINEL },
+	static const struct header hdr[system_cpu_fields + 1] = {
+		{ .name = "processor" },
+		{ .name = "online" },
+		{ .name = "core_id" },
+		{ .name = "physical_id" },
+		{ .name = "apicid" },
+		{ .name = "apicid_initial" },
+		{ .name = "cpuid_level" },
+		{ .name = "mhz" },
+		{ .name = "bogomips" },
+		{ .name = "governor" },
+		{ .name = "avail_freq" },
+		{ .name = "min_freq" },
+		{ .name = "max_freq" },
+		{ .name = "cur_freq" },
+		{ /* Sentinel */ },
 	};
 
 	return hdr;
@@ -560,27 +563,27 @@ struct data *system_cpu_data(struct system_cpu *cpu)
 }
 
 #define system_cpu_type_fields 17
-const struct value *system_cpu_type_hdr(struct system_cpu *cpu)
+const struct header *system_cpu_type_hdr(struct system_cpu *cpu)
 {
-	static const struct value hdr[system_cpu_type_fields + 1] = {
-		{ .v_str = "cores" },
-		{ .v_str = "siblings" },
-		{ .v_str = "cache_size" },
-		{ .v_str = "clflush_size" },
-		{ .v_str = "cache_alignment" },
-		{ .v_str = "family" },
-		{ .v_str = "model" },
-		{ .v_str = "stepping" },
-		{ .v_str = "fpu" },
-		{ .v_str = "fpu_exception" },
-		{ .v_str = "wp" },
-		{ .v_str = "vendor_id" },
-		{ .v_str = "model_name" },
-		{ .v_str = "microcode" },
-		{ .v_str = "address_sizes" },
-		{ .v_str = "power_management" },
-		{ .v_str = "flags" },
-		{ .type = VALUE_SENTINEL }
+	static const struct header hdr[system_cpu_type_fields + 1] = {
+		{ .name = "cores" },
+		{ .name = "siblings" },
+		{ .name = "cache_size" },
+		{ .name = "clflush_size" },
+		{ .name = "cache_alignment" },
+		{ .name = "family" },
+		{ .name = "model" },
+		{ .name = "stepping" },
+		{ .name = "fpu" },
+		{ .name = "fpu_exception" },
+		{ .name = "wp" },
+		{ .name = "vendor_id" },
+		{ .name = "model_name" },
+		{ .name = "microcode" },
+		{ .name = "address_sizes" },
+		{ .name = "power_management" },
+		{ .name = "flags" },
+		{ /* Sentinel */ }
 	};
 
 	return hdr;

@@ -3,54 +3,49 @@
 
 #include <cbench/data.h>
 
-struct option {
-	const char *name;
-	struct value value;
-};
-
-static inline const struct option* option_get(const struct option *opts, const char *key)
+static inline const struct header* option_get(const struct header *opts, const char *key)
 {
 	int i;
-	for (i = 0; opts[i].value.type != VALUE_SENTINEL; ++i) {
+	for (i = 0; opts[i].name != NULL; ++i) {
 		if (!strcmp(opts[i].name, key))
 			return &opts[i];
 	}
 	return &opts[i];
 }
-static inline struct option* option_get_ind(struct option *opts, int ind)
+static inline struct header* option_get_ind(struct header *opts, int ind)
 {
 	return &opts[ind];
 }
 
-static inline int32_t option_get_int32(const struct option *opts, const char *key)
+static inline int32_t option_get_int32(const struct header *opts, const char *key)
 {
-	return option_get(opts, key)->value.v_int32;
+	return option_get(opts, key)->opt_val.v_int32;
 }
 
-static inline int64_t option_get_int64(const struct option *opts, const char *key)
+static inline int64_t option_get_int64(const struct header *opts, const char *key)
 {
-	return option_get(opts, key)->value.v_int64;
+	return option_get(opts, key)->opt_val.v_int64;
 }
 
-static inline const char *option_get_str(const struct option *opts, const char *key)
+static inline const char *option_get_str(const struct header *opts, const char *key)
 {
-	return option_get(opts, key)->value.v_str;
+	return option_get(opts, key)->opt_val.v_str;
 }
 
-static inline void option_sha256_add(sha256_context *ctx, struct option *opts)
+static inline void option_sha256_add(sha256_context *ctx, struct header *opts)
 {
 	int i;
-	for (i = 0; opts[i].value.type != VALUE_SENTINEL; ++i) {
-		value_sha256_add(ctx, &opts[i].value);
+	for (i = 0; opts[i].name != NULL; ++i) {
+		value_sha256_add(ctx, &opts[i].opt_val);
 	}
 }
 
-struct option *option_parse(const struct option *defaults, const char *optstr);
+struct header *option_parse(const struct header *defaults, const char *optstr);
 
-int option_to_data_csv(const struct option *opts, char **buf, size_t *buf_size,
+int option_to_data_csv(const struct header *opts, char **buf, size_t *buf_size,
 		enum value_quote_type quotes);
 
-int option_to_hdr_csv(const struct option *opts, char **buf, size_t *buf_size,
+int option_to_hdr_csv(const struct header *opts, char **buf, size_t *buf_size,
 		enum value_quote_type quotes);
 
 #endif  /* _CBENCH_OPTION_H_ */
