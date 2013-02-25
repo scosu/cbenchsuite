@@ -1,0 +1,11 @@
+menuconfig KERNEL
+	bool "Linux kernel module"
+
+if KERNEL
+
+config KERNEL_MIRROR
+	string "Kernel mirror for downloads"
+	default "ftp://ftp.kernel.org/pub/linux/kernel/v3.x/"
+
+endif
+
