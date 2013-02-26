@@ -19,7 +19,7 @@ CFLAGS_TYPE := -O2
 endif
 
 CC := gcc
-CFLAGS := $(CFLAGS_TYPE) $(patsubst "%",%,$(CONFIG_CFLAGS)) -Iinclude -Ilibs/klib/include -Igen/include -Ilibs -std=gnu99 -D_BSD_SOURCE
+CFLAGS := $(CFLAGS_TYPE) $(patsubst "%",%,$(CONFIG_CFLAGS)) -Iinclude -Ilibs/klib/include -Igen/include -Ilibs -std=gnu99 -D_BSD_SOURCE -D_GNU_SOURCE
 LDFLAGS :=
 MODULE_CFLAGS := $(CFLAGS) -shared -fPIC -I.
 MODULE_LDFLAGS :=

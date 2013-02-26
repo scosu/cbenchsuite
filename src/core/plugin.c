@@ -21,6 +21,7 @@
 
 #include <math.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -42,6 +43,13 @@
 #include <cbench/version.h>
 
 struct plugin_exec;
+
+static int received_sigstop = 0;
+void plugins_sighandler(int signum)
+{
+	received_sigstop = 1;
+	printk(KERN_INFO "Received signal to shutdown. After the current execution cbenchsuite will be stopped\n");
+}
 
 enum plugin_exec_state {
 	EXEC_STOP = 0,
@@ -691,6 +699,11 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 	unsigned int max_time;
 	int max_ind_values = 1;
 	char sha256[65];
+	sighandler_t sigterm_handler;
+	sighandler_t sigint_handler;
+
+	sigterm_handler = signal(SIGTERM, plugins_sighandler);
+	sigint_handler = signal(SIGINT, plugins_sighandler);
 
 	plugins_calc_sha256(plugins, sha256);
 	storage_init_plg_grp(&env->storage, plugins, sha256);
@@ -765,7 +778,7 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 		}
 	}
 
-	while (exec_env.state != EXEC_STOP) {
+	while (exec_env.state != EXEC_STOP && !received_sigstop) {
 		char uuid[37];
 		uuid_t uuid_raw;
 		uuid_generate(uuid_raw);
@@ -904,6 +917,10 @@ uninstall:
 failed_exec_alloc:
 failed_barrier_init:
 	pthread_barrier_destroy(&exec_env.barrier);
+	signal(SIGTERM, sigterm_handler);
+	signal(SIGINT, sigint_handler);
+	if (received_sigstop)
+		return -1;
 	return exec_env.error_shutdown;
 }
 
