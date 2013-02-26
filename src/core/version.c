@@ -19,10 +19,13 @@
 
 #include <cbench/version.h>
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include <klib/printk.h>
+
+#include <cbench/util.h>
 
 int version_compare(const char *rule, const char *ver, int rule_compare)
 {
@@ -183,4 +186,82 @@ int version_matching(const struct version *ver, const char **rules)
 	}
 	printk(KERN_DEBUG "Version match\n");
 	return 1;
+}
+
+int comp_versions_to_csv(const struct comp_version *vers, char **buf,
+		size_t *buf_len, enum value_quote_type quotes)
+{
+	size_t est_size = 0;
+	int i;
+	int ret;
+	char *ptr;
+
+	for (i = 0; vers[i].name != NULL; ++i) {
+		est_size += 3 + strlen(vers[i].name);
+	}
+
+	ret = mem_grow((void**)buf, buf_len, est_size + 3);
+	if (ret)
+		return -1;
+
+	ptr = *buf;
+
+	for (i = 0; vers[i].name != NULL; ++i) {
+		if (i != 0) {
+			*ptr = ',';
+			++ptr;
+		}
+
+		switch(quotes) {
+		case QUOTE_SINGLE:
+			ptr += sprintf(ptr, "'%s'", vers[i].name);
+			break;
+		case QUOTE_DOUBLE:
+			ptr += sprintf(ptr, "\"%s\"", vers[i].name);
+			break;
+		case QUOTE_NONE:
+			ptr += sprintf(ptr, "%s", vers[i].name);
+			break;
+		}
+	}
+	return 0;
+}
+
+int comp_versions_to_data_csv(const struct comp_version *vers, char **buf,
+		size_t *buf_len, enum value_quote_type quotes)
+{
+	size_t est_size = 0;
+	int i;
+	int ret;
+	char *ptr;
+
+	for (i = 0; vers[i].name != NULL; ++i) {
+		est_size += 3 + strlen(vers[i].version);
+	}
+
+	ret = mem_grow((void**)buf, buf_len, est_size + 3);
+	if (ret)
+		return -1;
+
+	ptr = *buf;
+
+	for (i = 0; vers[i].name != NULL; ++i) {
+		if (i != 0) {
+			*ptr = ',';
+			++ptr;
+		}
+
+		switch(quotes) {
+		case QUOTE_SINGLE:
+			ptr += sprintf(ptr, "'%s'", vers[i].version);
+			break;
+		case QUOTE_DOUBLE:
+			ptr += sprintf(ptr, "\"%s\"", vers[i].version);
+			break;
+		case QUOTE_NONE:
+			ptr += sprintf(ptr, "%s", vers[i].version);
+			break;
+		}
+	}
+	return 0;
 }

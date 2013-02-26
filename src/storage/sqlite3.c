@@ -254,7 +254,7 @@ static void *sqlite3_init(const char *path)
 		goto error_sqldb;
 	}
 
-	ret = sqlite3_exec(d->db, "CREATE TABLE IF NOT EXISTS plugin_groups(sha UNIQUE PRIMARY KEY,group_sha,plugin_sha,plugin_table,plugin_opts_sha,plugin_opt_table);",
+	ret = sqlite3_exec(d->db, "CREATE TABLE IF NOT EXISTS plugin_groups(sha UNIQUE PRIMARY KEY,group_sha,plugin_sha,plugin_table,plugin_opts_sha,plugin_opt_table,plugin_comp_vers_sha,plugin_comp_vers_table);",
 				NULL, NULL, &errmsg);
 	if (ret != SQLITE_OK) {
 		printk(KERN_ERR "Failed to create plugin_grp table: %s\n",
@@ -481,6 +481,159 @@ error:
 	return -1;
 }
 
+static int sqlite3_plugin_store_options(struct sqlite3_data *d,
+		struct plugin *plug)
+{
+	int ret;
+	struct header *opts = plug->options;
+	char **buf1 = &d->buf1;
+	size_t *buf1_len = &d->buf1_size;
+	char **buf2 = &d->buf2;
+	size_t *buf2_len = &d->buf2_size;
+	char **stmt = &d->stmt;
+	size_t *stmt_size = &d->stmt_size;
+	char *errmsg;
+
+	ret = sqlite3_store_header_metadata(d, opts, "plugin_sha",
+			plug->sha256, "plugin_option_meta");
+	if (ret)
+		return -1;
+
+	ret = option_to_hdr_csv(opts, buf1, buf1_len, QUOTE_SINGLE);
+	if (ret) {
+		printk(KERN_ERR "Failed to translate option header to csv\n");
+		return -1;
+	}
+
+	ret = mem_grow((void**)stmt, stmt_size,
+			strlen(plug->mod->name)
+			+ strlen(plug->id->name)
+			+ strlen(plug->version->version)
+			+ strlen(*buf1)
+			+ 128);
+	if (ret)
+		return -1;
+
+	sprintf(*stmt, "CREATE TABLE IF NOT EXISTS 'plugin_opts_%s__%s__%s'(sha UNIQUE PRIMARY KEY,%s);",
+			plug->mod->name,
+			plug->id->name,
+			plug->version->version,
+			*buf1);
+	ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
+	if (ret != SQLITE_OK) {
+		printk(KERN_ERR "Failed creating option table (%s): %s",
+				*stmt, errmsg);
+		sqlite3_free(errmsg);
+		return -1;
+	}
+
+	ret = option_to_data_csv(opts, buf2, buf2_len, QUOTE_SINGLE);
+	if (ret) {
+		printk(KERN_ERR "Failed to translate option data to csv\n");
+		return -1;
+	}
+
+	ret = mem_grow((void**)stmt, stmt_size,
+			strlen(plug->mod->name)
+			+ strlen(plug->id->name)
+			+ strlen(plug->version->version)
+			+ strlen(*buf1)
+			+ strlen(*buf2)
+			+ strlen(plug->opt_sha256)
+			+ 128);
+	if (ret)
+		return -1;
+	sprintf(*stmt, "INSERT OR IGNORE INTO \"plugin_opts_%s__%s__%s\"(sha,%s) VALUES('%s',%s);",
+			plug->mod->name,
+			plug->id->name,
+			plug->version->version,
+			*buf1,
+			plug->opt_sha256,
+			*buf2);
+	ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
+	if (ret != SQLITE_OK) {
+		printk(KERN_ERR "Failed inserting plugin options (%s): %s\n",
+				*stmt, errmsg);
+		sqlite3_free(errmsg);
+		return -1;
+	}
+	return 0;
+}
+
+static int sqlite3_plugin_store_versions(struct sqlite3_data *d,
+		struct plugin *plug)
+{
+	int ret;
+	char **buf1 = &d->buf1;
+	size_t *buf1_len = &d->buf1_size;
+	char **buf2 = &d->buf2;
+	size_t *buf2_len = &d->buf2_size;
+	char **stmt = &d->stmt;
+	size_t *stmt_size = &d->stmt_size;
+	char *errmsg;
+	struct comp_version *vers = plug->version->comp_versions;
+
+	ret = comp_versions_to_csv(vers, buf1, buf1_len, QUOTE_SINGLE);
+	if (ret) {
+		printk(KERN_ERR "Failed to translate comp versions to csv\n");
+		return -1;
+	}
+
+	ret = mem_grow((void**)stmt, stmt_size,
+			strlen(plug->mod->name)
+			+ strlen(plug->id->name)
+			+ strlen(plug->version->version)
+			+ strlen(*buf1)
+			+ 128);
+	if (ret)
+		return -1;
+
+	sprintf(*stmt, "CREATE TABLE IF NOT EXISTS 'plugin_comp_vers_%s__%s__%s'(sha UNIQUE PRIMARY KEY,%s);",
+			plug->mod->name,
+			plug->id->name,
+			plug->version->version,
+			*buf1);
+	ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
+	if (ret != SQLITE_OK) {
+		printk(KERN_ERR "Failed creating option table (%s): %s",
+				*stmt, errmsg);
+		sqlite3_free(errmsg);
+		return -1;
+	}
+
+	ret = comp_versions_to_data_csv(vers, buf2, buf2_len, QUOTE_SINGLE);
+	if (ret) {
+		printk(KERN_ERR "Failed to translate version data to csv\n");
+		return -1;
+	}
+
+	ret = mem_grow((void**)stmt, stmt_size,
+			strlen(plug->mod->name)
+			+ strlen(plug->id->name)
+			+ strlen(plug->version->version)
+			+ strlen(*buf1)
+			+ strlen(*buf2)
+			+ strlen(plug->ver_sha256)
+			+ 128);
+	if (ret)
+		return -1;
+	sprintf(*stmt, "INSERT OR IGNORE INTO \"plugin_comp_vers_%s__%s__%s\"(sha,%s) VALUES('%s',%s);",
+			plug->mod->name,
+			plug->id->name,
+			plug->version->version,
+			*buf1,
+			plug->ver_sha256,
+			*buf2);
+	ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
+	if (ret != SQLITE_OK) {
+		printk(KERN_ERR "Failed inserting plugin versions (%s): %s\n",
+				*stmt, errmsg);
+		sqlite3_free(errmsg);
+		return -1;
+	}
+	return 0;
+}
+
 static int sqlite3_init_plugin_grp(void *storage, struct list_head *plugins,
 					const char *group_sha)
 {
@@ -491,8 +644,6 @@ static int sqlite3_init_plugin_grp(void *storage, struct list_head *plugins,
 	int ret;
 	char **buf1 = &d->buf1;
 	size_t *buf1_len = &d->buf1_size;
-	char **buf2 = &d->buf2;
-	size_t *buf2_len = &d->buf2_size;
 	sha256_context ctx;
 	char sha[65];
 	char *errmsg;
@@ -503,82 +654,24 @@ static int sqlite3_init_plugin_grp(void *storage, struct list_head *plugins,
 		const struct header *hdr;
 		const struct header *opts;
 
-		if (!plugin_data_hdr(plug)) {
-			continue;
-		}
-
 		sha256_starts(&ctx);
 		opts = plugin_get_options(plug);
 		if (opts) {
-			ret = sqlite3_store_header_metadata(d, opts, "plugin_sha",
-					plug->sha256, "plugin_option_meta");
+			ret = sqlite3_plugin_store_options(d, plug);
 			if (ret)
 				return -1;
-
-			ret = option_to_hdr_csv(opts, buf1, buf1_len, QUOTE_SINGLE);
-			if (ret) {
-				printk(KERN_ERR "Failed to translate option header to csv\n");
-				return -1;
-			}
-
-			ret = mem_grow((void**)stmt, stmt_size,
-					strlen(plug->mod->name)
-					+ strlen(plug->id->name)
-					+ strlen(plug->version->version)
-					+ strlen(*buf1)
-					+ 128);
-			if (ret)
-				return -1;
-
-			sprintf(*stmt, "CREATE TABLE IF NOT EXISTS 'plugin_opts_%s__%s__%s'(sha UNIQUE PRIMARY KEY,%s);",
-					plug->mod->name,
-					plug->id->name,
-					plug->version->version,
-					*buf1);
-			ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
-			if (ret != SQLITE_OK) {
-				printk(KERN_ERR "Failed creating option table (%s): %s",
-						*stmt, errmsg);
-				sqlite3_free(errmsg);
-				return -1;
-			}
-
-			ret = option_to_data_csv(opts, buf2, buf2_len, QUOTE_SINGLE);
-			if (ret) {
-				printk(KERN_ERR "Failed to translate option data to csv\n");
-				return -1;
-			}
-
-			ret = mem_grow((void**)stmt, stmt_size,
-					strlen(plug->mod->name)
-					+ strlen(plug->id->name)
-					+ strlen(plug->version->version)
-					+ strlen(*buf1)
-					+ strlen(*buf2)
-					+ strlen(plug->opt_sha256)
-					+ 128);
-			if (ret)
-				return -1;
-			sprintf(*stmt, "INSERT OR IGNORE INTO \"plugin_opts_%s__%s__%s\"(sha,%s) VALUES('%s',%s);",
-					plug->mod->name,
-					plug->id->name,
-					plug->version->version,
-					*buf1,
-					plug->opt_sha256,
-					*buf2);
-			ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
-			if (ret != SQLITE_OK) {
-				printk(KERN_ERR "Failed inserting plugin options (%s): %s\n",
-						*stmt, errmsg);
-				sqlite3_free(errmsg);
-				return -1;
-			}
 			sha256_add_str(&ctx, plug->opt_sha256);
+		}
+
+		if (plug->version->comp_versions) {
+			ret = sqlite3_plugin_store_versions(d, plug);
+			if (ret)
+				return -1;
+			sha256_add_str(&ctx, plug->ver_sha256);
 		}
 
 		sha256_add_str(&ctx, group_sha);
 		sha256_add_str(&ctx, plug->sha256);
-		sha256_add_str(&ctx, plug->opt_sha256);
 		sha256_finish_str(&ctx, sha);
 
 		hdr = plugin_data_hdr(plug);
@@ -617,9 +710,11 @@ static int sqlite3_init_plugin_grp(void *storage, struct list_head *plugins,
 			return -1;
 		}
 
-		sprintf(*stmt, "INSERT OR IGNORE INTO plugin_groups(sha,group_sha,plugin_sha,plugin_table,plugin_opts_sha,plugin_opt_table) VALUES('%s','%s','%s','%s','%s','plugin_opts_%s__%s__%s');",
+		sprintf(*stmt, "INSERT OR IGNORE INTO plugin_groups(sha,group_sha,plugin_sha,plugin_table,plugin_opts_sha,plugin_opt_table,plugin_comp_vers_sha,plugin_comp_vers_table) VALUES('%s','%s','%s','%s','%s','plugin_opts_%s__%s__%s','%s','plugin_comp_vers_%s__%s__%s');",
 				sha, group_sha, plug->sha256, *buf1,
 				plug->opt_sha256, plug->mod->name,
+				plug->id->name, plug->version->version,
+				plug->ver_sha256, plug->mod->name,
 				plug->id->name, plug->version->version);
 		ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
 		if (ret != SQLITE_OK) {

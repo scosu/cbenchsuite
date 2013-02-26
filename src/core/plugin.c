@@ -143,7 +143,6 @@ void plugin_id_print(const struct plugin_id *plug, int verbose)
 void plugin_calc_sha256(struct plugin *plug)
 {
 	sha256_context ctx;
-	sha256_context opt_ctx;
 	int i;
 	struct comp_version *vers = plug->version->comp_versions;
 
@@ -153,18 +152,31 @@ void plugin_calc_sha256(struct plugin *plug)
 	sha256_add_str(&ctx, plug->version->version);
 	sha256_add(&ctx, &plug->version->nr_independent_values);
 
+	sha256_finish_str(&ctx, plug->sha256);
+
 	if (vers) {
+		sha256_context ver_ctx;
+		sha256_starts(&ver_ctx);
+
 		for (i = 0; vers[i].name; ++i) {
-			sha256_add_str(&ctx, vers[i].name);
-			sha256_add_str(&ctx, vers[i].version);
+			sha256_add_str(&ver_ctx, vers[i].name);
+			sha256_add_str(&ver_ctx, vers[i].version);
 		}
+
+		sha256_finish_str(&ver_ctx, plug->ver_sha256);
+	} else {
+		plug->ver_sha256[0] = '\0';
 	}
 
-	sha256_starts(&opt_ctx);
-	option_sha256_add(&opt_ctx, plug->options);
-	sha256_finish_str(&opt_ctx, plug->opt_sha256);
+	if (plug->options) {
+		sha256_context opt_ctx;
 
-	sha256_finish_str(&ctx, plug->sha256);
+		sha256_starts(&opt_ctx);
+		option_sha256_add(&opt_ctx, plug->options);
+		sha256_finish_str(&opt_ctx, plug->opt_sha256);
+	} else {
+		plug->opt_sha256[0] = '\0';
+	}
 }
 
 void plugins_calc_sha256(struct list_head *plugins, char *sha256)

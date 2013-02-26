@@ -33,6 +33,7 @@ struct plugin {
 
 	char sha256[65];
 	char opt_sha256[65];
+	char ver_sha256[65];
 
 	const char *bin_path;
 	char *work_dir;
