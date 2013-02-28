@@ -21,7 +21,6 @@
 
 #include <sched.h>
 #include <sys/resource.h>
-#define _GNU_SOURCE
 #include <unistd.h>
 #include <sys/syscall.h>
 

@@ -204,8 +204,19 @@ static int sqlite3_store_header_metadata(struct sqlite3_data *d,
 		if (ret)
 			return -1;
 
-		sprintf(*stmt, "INSERT OR IGNORE INTO %s(sha,%s,name,description,unit) VALUES('%s','%s','%s','%s','%s');",
-				table, sha_name, sha_meta, sha, hdr[i].name,
+		sprintf(*stmt, "INSERT OR IGNORE INTO %s("
+					"sha,"
+					"%s,"
+					"name,"
+					"description,"
+					"unit"
+				") VALUES("
+					"'%s','%s','%s','%s','%s');",
+				table,
+				sha_name,
+				sha_meta,
+				sha,
+				hdr[i].name,
 				(hdr[i].description ? hdr[i].description : ""),
 				(hdr[i].unit ? hdr[i].unit : ""));
 		ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
@@ -254,7 +265,29 @@ static void *sqlite3_init(const char *path)
 		goto error_sqldb;
 	}
 
-	ret = sqlite3_exec(d->db, "CREATE TABLE IF NOT EXISTS plugin_groups(sha UNIQUE PRIMARY KEY,group_sha,plugin_sha,plugin_table,plugin_opts_sha,plugin_opt_table,plugin_comp_vers_sha,plugin_comp_vers_table);",
+	ret = sqlite3_exec(d->db, "CREATE TABLE IF NOT EXISTS plugins("
+					"sha UNIQUE PRIMARY KEY,"
+					"module,"
+					"name,"
+					"description,"
+					"version,"
+					"plugin_table,"
+					"plugin_opt_table,"
+					"plugin_comp_vers_table);",
+				NULL, NULL, &errmsg);
+	if (ret != SQLITE_OK) {
+		printk(KERN_ERR "Failed to create plugins table: %s\n",
+				errmsg);
+		sqlite3_free(errmsg);
+		goto error_sqldb;
+	}
+
+	ret = sqlite3_exec(d->db, "CREATE TABLE IF NOT EXISTS plugin_groups("
+					"sha UNIQUE PRIMARY KEY,"
+					"group_sha,"
+					"plugin_sha,"
+					"plugin_opts_sha,"
+					"plugin_comp_vers_sha);",
 				NULL, NULL, &errmsg);
 	if (ret != SQLITE_OK) {
 		printk(KERN_ERR "Failed to create plugin_grp table: %s\n",
@@ -263,16 +296,25 @@ static void *sqlite3_init(const char *path)
 		goto error_sqldb;
 	}
 
-	ret = sqlite3_exec(d->db, "CREATE TABLE IF NOT EXISTS unique_runs(uuid UNIQUE PRIMARY KEY,group_sha,prev_runs,system_sha);",
+	ret = sqlite3_exec(d->db, "CREATE TABLE IF NOT EXISTS unique_runs("
+					"uuid UNIQUE PRIMARY KEY,"
+					"group_sha,"
+					"prev_runs,"
+					"system_sha);",
 				NULL, NULL, &errmsg);
 	if (ret != SQLITE_OK) {
-		printk(KERN_ERR "Failed to create plugin_grp table: %s\n",
+		printk(KERN_ERR "Failed to create unique_runs table: %s\n",
 				errmsg);
 		sqlite3_free(errmsg);
 		goto error_sqldb;
 	}
 
-	ret = sqlite3_exec(d->db, "CREATE TABLE IF NOT EXISTS plugin_option_meta(sha UNIQUE PRIMARY KEY,plugin_sha,name,description,unit);",
+	ret = sqlite3_exec(d->db, "CREATE TABLE IF NOT EXISTS plugin_option_meta("
+					"sha UNIQUE PRIMARY KEY,"
+					"plugin_sha,"
+					"name,"
+					"description,"
+					"unit);",
 				NULL, NULL, &errmsg);
 	if (ret != SQLITE_OK) {
 		printk(KERN_ERR "Failed to create plugin_option_meta table: %s\n",
@@ -281,7 +323,12 @@ static void *sqlite3_init(const char *path)
 		goto error_sqldb;
 	}
 
-	ret = sqlite3_exec(d->db, "CREATE TABLE IF NOT EXISTS plugin_data_meta(sha UNIQUE PRIMARY KEY,plugin_sha,name,description,unit);",
+	ret = sqlite3_exec(d->db, "CREATE TABLE IF NOT EXISTS plugin_data_meta("
+					"sha UNIQUE PRIMARY KEY,"
+					"plugin_sha,"
+					"name,"
+					"description,"
+					"unit);",
 				NULL, NULL, &errmsg);
 	if (ret != SQLITE_OK) {
 		printk(KERN_ERR "Failed to create plugin_option_meta table: %s\n",
@@ -357,8 +404,16 @@ static int sqlite3_add_sysinfo(void *storage, struct system *sys)
 		goto error;
 
 
-	sprintf(*stmt, "INSERT OR IGNORE INTO systems(%s,sha,cpus_sha) VALUES(%s,'%s','%s');",
-			*buf1, *buf2, sys->sha256, sys->hw.cpus_sha256);
+	sprintf(*stmt, "INSERT OR IGNORE INTO systems("
+				"%s,"
+				"sha,"
+				"cpus_sha"
+			") VALUES("
+				"%s,'%s','%s');",
+			*buf1,
+			*buf2,
+			sys->sha256,
+			sys->hw.cpus_sha256);
 	ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
 	if (ret != SQLITE_OK) {
 		printk(KERN_ERR "Failed inserting system data (%s): %s\n",
@@ -407,8 +462,14 @@ static int sqlite3_add_sysinfo(void *storage, struct system *sys)
 			goto error;
 		}
 
-		sprintf(*stmt, "INSERT OR IGNORE INTO cpu_types(%s,sha) VALUES(%s,'%s');",
-				*buf1, *buf2, cpu->type_sha256);
+		sprintf(*stmt, "INSERT OR IGNORE INTO cpu_types("
+					"%s,"
+					"sha"
+				") VALUES("
+					"%s,'%s');",
+				*buf1,
+				*buf2,
+				cpu->type_sha256);
 		ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
 		if (ret != SQLITE_OK) {
 			printk(KERN_ERR "Failed to insert cpu type (%s): %s\n",
@@ -466,8 +527,17 @@ static int sqlite3_add_sysinfo(void *storage, struct system *sys)
 			goto error;
 		}
 
-		sprintf(*stmt, "INSERT OR IGNORE INTO system_cpus(%s,cpus_sha,sha,type_sha) VALUES(%s,'%s','%s','%s');",
-				*buf1, *buf2, sys->hw.cpus_sha256, cpu->sha256, cpu->type_sha256);
+		sprintf(*stmt, "INSERT OR IGNORE INTO system_cpus("
+					"%s,"
+					"cpus_sha,"
+					"sha,type_sha"
+				") VALUES("
+					"%s,'%s','%s','%s');",
+				*buf1,
+				*buf2,
+				sys->hw.cpus_sha256,
+				cpu->sha256,
+				cpu->type_sha256);
 		ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
 		if (ret != SQLITE_OK) {
 			printk(KERN_ERR "Failed to insert cpu (%s): %s\n",
@@ -514,7 +584,9 @@ static int sqlite3_plugin_store_options(struct sqlite3_data *d,
 	if (ret)
 		return -1;
 
-	sprintf(*stmt, "CREATE TABLE IF NOT EXISTS 'plugin_opts_%s__%s__%s'(sha UNIQUE PRIMARY KEY,%s);",
+	sprintf(*stmt, "CREATE TABLE IF NOT EXISTS 'plugin_opts_%s__%s__%s'("
+				"sha UNIQUE PRIMARY KEY,"
+				"%s);",
 			plug->mod->name,
 			plug->id->name,
 			plug->version->version,
@@ -543,7 +615,11 @@ static int sqlite3_plugin_store_options(struct sqlite3_data *d,
 			+ 128);
 	if (ret)
 		return -1;
-	sprintf(*stmt, "INSERT OR IGNORE INTO \"plugin_opts_%s__%s__%s\"(sha,%s) VALUES('%s',%s);",
+	sprintf(*stmt, "INSERT OR IGNORE INTO \"plugin_opts_%s__%s__%s\"("
+				"sha,"
+				"%s"
+			") VALUES("
+				"'%s',%s);",
 			plug->mod->name,
 			plug->id->name,
 			plug->version->version,
@@ -588,7 +664,9 @@ static int sqlite3_plugin_store_versions(struct sqlite3_data *d,
 	if (ret)
 		return -1;
 
-	sprintf(*stmt, "CREATE TABLE IF NOT EXISTS 'plugin_comp_vers_%s__%s__%s'(sha UNIQUE PRIMARY KEY,%s);",
+	sprintf(*stmt, "CREATE TABLE IF NOT EXISTS 'plugin_comp_vers_%s__%s__%s'("
+				"sha UNIQUE PRIMARY KEY,"
+				"%s);",
 			plug->mod->name,
 			plug->id->name,
 			plug->version->version,
@@ -617,7 +695,11 @@ static int sqlite3_plugin_store_versions(struct sqlite3_data *d,
 			+ 128);
 	if (ret)
 		return -1;
-	sprintf(*stmt, "INSERT OR IGNORE INTO \"plugin_comp_vers_%s__%s__%s\"(sha,%s) VALUES('%s',%s);",
+	sprintf(*stmt, "INSERT OR IGNORE INTO \"plugin_comp_vers_%s__%s__%s\"("
+				"sha,"
+				"%s"
+			") VALUES("
+				"'%s',%s);",
 			plug->mod->name,
 			plug->id->name,
 			plug->version->version,
@@ -699,23 +781,63 @@ static int sqlite3_init_plugin_grp(void *storage, struct list_head *plugins,
 			}
 		}
 
-		ret = mem_grow((void**)stmt, stmt_size, strlen(*buf1)
+		ret = mem_grow((void**)stmt, stmt_size, strlen(plug->sha256)
+				+ 4 * strlen(plug->mod->name)
+				+ (plug->id->description ? strlen(plug->id->description) : 0)
+				+ 4 * strlen(plug->version->version)
+				+ 3 * strlen(plug->id->name));
+		if (ret)
+			return -1;
+
+		sprintf(*stmt, "INSERT OR IGNORE INTO plugins("
+					"sha,"
+					"module,"
+					"name,"
+					"description,"
+					"version,"
+					"plugin_table,"
+					"plugin_opt_table,"
+					"plugin_comp_vers_table"
+				") VALUES("
+					"'%s','%s','%s','%s','%s',"
+					"'plugin_table_%s__%s__%s',"
+					"'plugin_opts_%s__%s__%s',"
+					"'plugin_comp_vers_%s__%s__%s');",
+				plug->sha256,
+				plug->mod->name,
+				plug->id->name,
+				plug->id->description ? plug->id->description : "",
+				plug->version->version,
+				plug->mod->name, plug->id->name, plug->version->version,
+				plug->mod->name, plug->id->name, plug->version->version,
+				plug->mod->name, plug->id->name, plug->version->version);
+		ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
+		if (ret != SQLITE_OK) {
+			printk(KERN_ERR "Failed to insert into plugins (%s): %s\n",
+					*stmt, errmsg);
+			sqlite3_free(errmsg);
+		}
+
+		ret = mem_grow((void**)stmt, stmt_size,
 				+ strlen(group_sha) + strlen(sha)
 				+ strlen(plug->sha256)
-				+ strlen(plug->opt_sha256)
-				+ strlen(plug->mod->name)
-				+ strlen(plug->id->name)
-				+ strlen(plug->version->version) + 128);
+				+ strlen(plug->opt_sha256) + 128);
 		if (ret) {
 			return -1;
 		}
 
-		sprintf(*stmt, "INSERT OR IGNORE INTO plugin_groups(sha,group_sha,plugin_sha,plugin_table,plugin_opts_sha,plugin_opt_table,plugin_comp_vers_sha,plugin_comp_vers_table) VALUES('%s','%s','%s','%s','%s','plugin_opts_%s__%s__%s','%s','plugin_comp_vers_%s__%s__%s');",
-				sha, group_sha, plug->sha256, *buf1,
-				plug->opt_sha256, plug->mod->name,
-				plug->id->name, plug->version->version,
-				plug->ver_sha256, plug->mod->name,
-				plug->id->name, plug->version->version);
+		sprintf(*stmt, "INSERT OR IGNORE INTO plugin_groups("
+					"sha,"
+					"group_sha,"
+					"plugin_sha,"
+					"plugin_opts_sha,"
+					"plugin_comp_vers_sha"
+				") VALUES("
+					"'%s','%s','%s','%s','%s');",
+				sha, group_sha,
+				plug->sha256,
+				plug->opt_sha256,
+				plug->ver_sha256);
 		ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
 		if (ret != SQLITE_OK) {
 			printk(KERN_ERR "Failed to insert into plugin_groups (%s): %s\n",
@@ -741,8 +863,17 @@ static int sqlite3_init_run(void *storage, const char *uuid, int nr_run)
 				+ strlen(d->sys_sha) + 128);
 	if (ret)
 		return -1;
-	sprintf(*stmt, "INSERT INTO unique_runs(uuid,group_sha,prev_runs,system_sha) VALUES('%s','%s',%d,'%s');",
-			uuid, d->group_sha, nr_run, d->sys_sha);
+	sprintf(*stmt, "INSERT INTO unique_runs("
+				"uuid,"
+				"group_sha,"
+				"prev_runs,"
+				"system_sha"
+			") VALUES("
+				"'%s','%s',%d,'%s');",
+			uuid,
+			d->group_sha,
+			nr_run,
+			d->sys_sha);
 
 	ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
 	if (ret != SQLITE_OK) {
@@ -799,9 +930,16 @@ static int sqlite3_add_data(void *storage, struct plugin *plug,
 		return -1;
 	}
 
-	sprintf(*stmt, "INSERT INTO 'plugin_%s__%s__%s'(%s,run_uuid,type_monitor) VALUES(%s,'%s',%d);",
-			plug->mod->name, plug->id->name,
-			plug->version->version, *buf1, *buf2, d->run_uuid,
+	sprintf(*stmt, "INSERT INTO 'plugin_%s__%s__%s'("
+				"%s,"
+				"run_uuid,"
+				"type_monitor"
+			") VALUES("
+				"%s,'%s',%d);",
+			plug->mod->name, plug->id->name, plug->version->version,
+			*buf1,
+			*buf2,
+			d->run_uuid,
 			(data->type == DATA_TYPE_MONITOR));
 	ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
 	if (ret) {
