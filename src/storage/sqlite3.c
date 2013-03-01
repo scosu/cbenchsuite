@@ -801,7 +801,7 @@ static int sqlite3_init_plugin_grp(void *storage, struct list_head *plugins,
 					"plugin_comp_vers_table"
 				") VALUES("
 					"'%s','%s','%s','%s','%s',"
-					"'plugin_table_%s__%s__%s',"
+					"'plugin_%s__%s__%s',"
 					"'plugin_opts_%s__%s__%s',"
 					"'plugin_comp_vers_%s__%s__%s');",
 				plug->sha256,
