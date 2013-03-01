@@ -173,7 +173,7 @@ error_table_info:
 
 static int sqlite3_store_header_metadata(struct sqlite3_data *d,
 		const struct header *hdr, const char *sha_name, const char *sha,
-		const char *table)
+		const char *table, const char *join_sha)
 {
 	int ret;
 	char **stmt = &d->stmt;
@@ -205,7 +205,7 @@ static int sqlite3_store_header_metadata(struct sqlite3_data *d,
 			return -1;
 
 		sprintf(*stmt, "INSERT OR IGNORE INTO %s("
-					"sha,"
+					"%s,"
 					"%s,"
 					"name,"
 					"description,"
@@ -213,6 +213,7 @@ static int sqlite3_store_header_metadata(struct sqlite3_data *d,
 				") VALUES("
 					"'%s','%s','%s','%s','%s');",
 				table,
+				join_sha,
 				sha_name,
 				sha_meta,
 				sha,
@@ -265,8 +266,8 @@ static void *sqlite3_init(const char *path)
 		goto error_sqldb;
 	}
 
-	ret = sqlite3_exec(d->db, "CREATE TABLE IF NOT EXISTS plugins("
-					"sha UNIQUE PRIMARY KEY,"
+	ret = sqlite3_exec(d->db, "CREATE TABLE IF NOT EXISTS plugin("
+					"plugin_sha UNIQUE PRIMARY KEY,"
 					"module,"
 					"name,"
 					"description,"
@@ -282,9 +283,9 @@ static void *sqlite3_init(const char *path)
 		goto error_sqldb;
 	}
 
-	ret = sqlite3_exec(d->db, "CREATE TABLE IF NOT EXISTS plugin_groups("
+	ret = sqlite3_exec(d->db, "CREATE TABLE IF NOT EXISTS plugin_group("
 					"sha UNIQUE PRIMARY KEY,"
-					"group_sha,"
+					"plugin_group_sha,"
 					"plugin_sha,"
 					"plugin_opts_sha,"
 					"plugin_comp_vers_sha);",
@@ -296,9 +297,9 @@ static void *sqlite3_init(const char *path)
 		goto error_sqldb;
 	}
 
-	ret = sqlite3_exec(d->db, "CREATE TABLE IF NOT EXISTS unique_runs("
-					"uuid UNIQUE PRIMARY KEY,"
-					"group_sha,"
+	ret = sqlite3_exec(d->db, "CREATE TABLE IF NOT EXISTS unique_run("
+					"run_uuid UNIQUE PRIMARY KEY,"
+					"plugin_group_sha,"
 					"prev_runs,"
 					"system_sha);",
 				NULL, NULL, &errmsg);
@@ -310,7 +311,7 @@ static void *sqlite3_init(const char *path)
 	}
 
 	ret = sqlite3_exec(d->db, "CREATE TABLE IF NOT EXISTS plugin_option_meta("
-					"sha UNIQUE PRIMARY KEY,"
+					"plugin_option_meta_sha UNIQUE PRIMARY KEY,"
 					"plugin_sha,"
 					"name,"
 					"description,"
@@ -324,7 +325,7 @@ static void *sqlite3_init(const char *path)
 	}
 
 	ret = sqlite3_exec(d->db, "CREATE TABLE IF NOT EXISTS plugin_data_meta("
-					"sha UNIQUE PRIMARY KEY,"
+					"plugin_data_meta_sha UNIQUE PRIMARY KEY,"
 					"plugin_sha,"
 					"name,"
 					"description,"
@@ -373,7 +374,7 @@ static int sqlite3_add_sysinfo(void *storage, struct system *sys)
 		return -1;
 	}
 
-	ret = sqlite3_alter_by_hdr("systems", d, hdr, "cpus_sha,sha UNIQUE PRIMARY KEY");
+	ret = sqlite3_alter_by_hdr("system", d, hdr, "cpus_sha,system_sha UNIQUE PRIMARY KEY");
 	if (ret) {
 		goto error;
 	}
@@ -404,9 +405,9 @@ static int sqlite3_add_sysinfo(void *storage, struct system *sys)
 		goto error;
 
 
-	sprintf(*stmt, "INSERT OR IGNORE INTO systems("
+	sprintf(*stmt, "INSERT OR IGNORE INTO system("
 				"%s,"
-				"sha,"
+				"system_sha,"
 				"cpus_sha"
 			") VALUES("
 				"%s,'%s','%s');",
@@ -428,7 +429,7 @@ static int sqlite3_add_sysinfo(void *storage, struct system *sys)
 		goto error;
 	}
 
-	ret = sqlite3_alter_by_hdr("cpu_types", d, hdr, "sha UNIQUE PRIMARY KEY");
+	ret = sqlite3_alter_by_hdr("cpu_type", d, hdr, "cpu_type_sha UNIQUE PRIMARY KEY");
 	if (ret) {
 		printk(KERN_ERR "Failed to alter system_cpus\n");
 		goto error;
@@ -462,9 +463,9 @@ static int sqlite3_add_sysinfo(void *storage, struct system *sys)
 			goto error;
 		}
 
-		sprintf(*stmt, "INSERT OR IGNORE INTO cpu_types("
+		sprintf(*stmt, "INSERT OR IGNORE INTO cpu_type("
 					"%s,"
-					"sha"
+					"cpu_type_sha"
 				") VALUES("
 					"%s,'%s');",
 				*buf1,
@@ -485,7 +486,7 @@ static int sqlite3_add_sysinfo(void *storage, struct system *sys)
 		goto error;
 	}
 
-	ret = sqlite3_alter_by_hdr("system_cpus", d, hdr, "sha UNIQUE PRIMARY KEY,cpus_sha,type_sha");
+	ret = sqlite3_alter_by_hdr("system_cpu", d, hdr, "sha UNIQUE PRIMARY KEY,cpus_sha,cpu_type_sha");
 	if (ret) {
 		printk(KERN_ERR "Failed to alter system_cpus\n");
 		goto error;
@@ -527,10 +528,10 @@ static int sqlite3_add_sysinfo(void *storage, struct system *sys)
 			goto error;
 		}
 
-		sprintf(*stmt, "INSERT OR IGNORE INTO system_cpus("
+		sprintf(*stmt, "INSERT OR IGNORE INTO system_cpu("
 					"%s,"
 					"cpus_sha,"
-					"sha,type_sha"
+					"sha,cpu_type_sha"
 				") VALUES("
 					"%s,'%s','%s','%s');",
 				*buf1,
@@ -565,7 +566,7 @@ static int sqlite3_plugin_store_options(struct sqlite3_data *d,
 	char *errmsg;
 
 	ret = sqlite3_store_header_metadata(d, opts, "plugin_sha",
-			plug->sha256, "plugin_option_meta");
+			plug->sha256, "plugin_option_meta", "plugin_option_meta_sha");
 	if (ret)
 		return -1;
 
@@ -585,7 +586,7 @@ static int sqlite3_plugin_store_options(struct sqlite3_data *d,
 		return -1;
 
 	sprintf(*stmt, "CREATE TABLE IF NOT EXISTS 'plugin_opts_%s__%s__%s'("
-				"sha UNIQUE PRIMARY KEY,"
+				"plugin_opts_sha UNIQUE PRIMARY KEY,"
 				"%s);",
 			plug->mod->name,
 			plug->id->name,
@@ -616,7 +617,7 @@ static int sqlite3_plugin_store_options(struct sqlite3_data *d,
 	if (ret)
 		return -1;
 	sprintf(*stmt, "INSERT OR IGNORE INTO \"plugin_opts_%s__%s__%s\"("
-				"sha,"
+				"plugin_opts_sha,"
 				"%s"
 			") VALUES("
 				"'%s',%s);",
@@ -665,7 +666,7 @@ static int sqlite3_plugin_store_versions(struct sqlite3_data *d,
 		return -1;
 
 	sprintf(*stmt, "CREATE TABLE IF NOT EXISTS 'plugin_comp_vers_%s__%s__%s'("
-				"sha UNIQUE PRIMARY KEY,"
+				"plugin_comp_vers_sha UNIQUE PRIMARY KEY,"
 				"%s);",
 			plug->mod->name,
 			plug->id->name,
@@ -696,7 +697,7 @@ static int sqlite3_plugin_store_versions(struct sqlite3_data *d,
 	if (ret)
 		return -1;
 	sprintf(*stmt, "INSERT OR IGNORE INTO \"plugin_comp_vers_%s__%s__%s\"("
-				"sha,"
+				"plugin_comp_vers_sha,"
 				"%s"
 			") VALUES("
 				"'%s',%s);",
@@ -759,7 +760,7 @@ static int sqlite3_init_plugin_grp(void *storage, struct list_head *plugins,
 		hdr = plugin_data_hdr(plug);
 		if (hdr) {
 			ret = sqlite3_store_header_metadata(d, hdr, "plugin_sha",
-					plug->sha256, "plugin_data_meta");
+					plug->sha256, "plugin_data_meta", "plugin_data_meta_sha");
 			if (ret)
 				return -1;
 
@@ -789,8 +790,8 @@ static int sqlite3_init_plugin_grp(void *storage, struct list_head *plugins,
 		if (ret)
 			return -1;
 
-		sprintf(*stmt, "INSERT OR IGNORE INTO plugins("
-					"sha,"
+		sprintf(*stmt, "INSERT OR IGNORE INTO plugin("
+					"plugin_sha,"
 					"module,"
 					"name,"
 					"description,"
@@ -826,9 +827,9 @@ static int sqlite3_init_plugin_grp(void *storage, struct list_head *plugins,
 			return -1;
 		}
 
-		sprintf(*stmt, "INSERT OR IGNORE INTO plugin_groups("
+		sprintf(*stmt, "INSERT OR IGNORE INTO plugin_group("
 					"sha,"
-					"group_sha,"
+					"plugin_group_sha,"
 					"plugin_sha,"
 					"plugin_opts_sha,"
 					"plugin_comp_vers_sha"
@@ -863,9 +864,9 @@ static int sqlite3_init_run(void *storage, const char *uuid, int nr_run)
 				+ strlen(d->sys_sha) + 128);
 	if (ret)
 		return -1;
-	sprintf(*stmt, "INSERT INTO unique_runs("
-				"uuid,"
-				"group_sha,"
+	sprintf(*stmt, "INSERT INTO unique_run("
+				"run_uuid,"
+				"plugin_group_sha,"
 				"prev_runs,"
 				"system_sha"
 			") VALUES("
