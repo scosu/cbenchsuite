@@ -34,7 +34,9 @@ properties_default = {
 		'ytickfontsize': 15,
 		'xtickfontsize': 15,
 		'barfontsize': 15,
-		'titlefontsize': 20}
+		'titlefontsize': 20,
+		'watermark': 'Generated with cbenchsuite (http://cbench.allfex.org)',
+		'watermarkfontsize': 13}
 
 def property_get(properties, key):
 	if properties and key in properties:
@@ -80,7 +82,11 @@ def _create_figure(properties):
 	fontsize = property_get(properties, 'fontsize')
 	return pyplt.figure(figsize=(xsize, ysize), dpi=dpi)
 
-def _plot_stuff(ax, properties, max_x = None):
+def _plot_stuff(fig, ax, properties, max_x = None):
+	wm = property_get(properties, 'watermark')
+	fs = property_get(properties, 'watermarkfontsize')
+	print(wm)
+	fig.text(0.98, 0.02, wm, fontsize=fs, color='black', ha='right', va='bottom', alpha=0.6)
 	fs = property_get(properties, 'xtickfontsize')
 	ax.tick_params(axis='x', which='major', labelsize=fs)
 	ax.tick_params(axis='x', which='minor', labelsize=fs)
@@ -185,7 +191,7 @@ def plot_line_chart(data, path, properties=None):
 			ax.plot(xs, ys, label=k, linestyle=fmt['linestyle'], marker=fmt['marker'], color=fmt['color'])
 	rang = max_overall_x - min_overall_x
 	ax.set_xlim(xmin = (min_overall_x - rang*0.05))
-	_plot_stuff(title=title, x_label=x_label, y_label=y_label, no_legend=no_legend, max_x=(max_overall_x + rang*0.05))
+	_plot_stuff(fig, ax, properties, max_x=(max_overall_x + rang*0.05))
 	path += '.png'
 	fig.savefig(path)
 
@@ -327,7 +333,7 @@ def plot_bar_chart(data, path, properties = None, l1_keys = None, l2_keys = None
 	print(str(xxticks) + str(xticks))
 	ax.set_xticks(xxticks)
 	ax.set_xticklabels(xticks)
-	_plot_stuff(ax, properties, max_x = x-1)
+	_plot_stuff(fig, ax, properties, max_x = x-1)
 
 	path += '.svg'
 	fig.savefig(path)

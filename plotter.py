@@ -350,7 +350,9 @@ class plot:
 			'ytickfontsize': float,
 			'xtickfontsize': float,
 			'barfontsize': float,
-			'titlefontsize': float}
+			'titlefontsize': float,
+			'watermark': str,
+			'watermarkfontsize': float}
 	def __init__(self, db, filters, plugin_sha, combos, levels, base_path, replacerules = None):
 		super(plot, self).__init__()
 		self.plugin_sha = plugin_sha
@@ -738,10 +740,10 @@ def plotgrps_generate(db, filters, levels):
 						'name': inst['module'] + '.' + inst['name']})
 
 		for psha,p in plugs.items():
-			names = []
+			names = set()
 			for i in p:
-				names.append(i['name'])
-			local_path = os.path.join(path, '#'.join(names))
+				names.add(i['name'])
+			local_path = os.path.join(path, '#'.join(sorted(list(names))))
 			plots.append(plot(db, filters, psha, p, levels, local_path, default_replacements))
 		if len(plots) > 0:
 			plot_grps.append(plots)
@@ -1144,7 +1146,7 @@ Arguments:
 		and 'plotgroup.plot', where plotgroup is the number of the group
 		and plot the number of the plot within a group. See 'plots' for
 		the numbers.
-	property: One of title, xtitle, ytitle
+	property: The property you want to set.
 	value: Arbitrary string
 '''
 		args = arg.split()
