@@ -736,6 +736,9 @@ static int sqlite3_init_plugin_grp(void *storage, struct list_head *plugins,
 	list_for_each_entry(plug, plugins, plugin_grp) {
 		const struct header *hdr;
 		const struct header *opts;
+		char *opt_table;
+		char *comp_vers_table;
+		size_t written;
 
 		sha256_starts(&ctx);
 		opts = plugin_get_options(plug);
@@ -782,6 +785,23 @@ static int sqlite3_init_plugin_grp(void *storage, struct list_head *plugins,
 			}
 		}
 
+		ret = mem_grow((void**)buf1, buf1_len, 3 * strlen(plug->mod->name)
+				+ 3 * strlen(plug->version->version)
+				+ 3 * strlen(plug->id->name) + 256);
+		if (ret)
+			return -1;
+
+		written = sprintf(*buf1, "plugin_%s__%s__%s",
+				plug->mod->name, plug->id->name, plug->version->version);
+
+		opt_table = *buf1 + written + 1;
+		written = sprintf(opt_table, "plugin_opts_%s__%s__%s",
+				plug->mod->name, plug->id->name, plug->version->version);
+
+		comp_vers_table = opt_table + written + 1;
+		sprintf(comp_vers_table, "plugin_comp_vers_%s__%s__%s",
+				plug->mod->name, plug->id->name, plug->version->version);
+
 		ret = mem_grow((void**)stmt, stmt_size, strlen(plug->sha256)
 				+ 4 * strlen(plug->mod->name)
 				+ (plug->id->description ? strlen(plug->id->description) : 0)
@@ -801,17 +821,17 @@ static int sqlite3_init_plugin_grp(void *storage, struct list_head *plugins,
 					"plugin_comp_vers_table"
 				") VALUES("
 					"'%s','%s','%s','%s','%s',"
-					"'plugin_%s__%s__%s',"
-					"'plugin_opts_%s__%s__%s',"
-					"'plugin_comp_vers_%s__%s__%s');",
+					"'%s',"
+					"'%s',"
+					"'%s');",
 				plug->sha256,
 				plug->mod->name,
 				plug->id->name,
 				plug->id->description ? plug->id->description : "",
 				plug->version->version,
-				plug->mod->name, plug->id->name, plug->version->version,
-				plug->mod->name, plug->id->name, plug->version->version,
-				plug->mod->name, plug->id->name, plug->version->version);
+				(plugin_data_hdr(plug) ? *buf1 : ""),
+				(plugin_get_options(plug) ? opt_table : ""),
+				(plug->version->comp_versions ? comp_vers_table : ""));
 		ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
 		if (ret != SQLITE_OK) {
 			printk(KERN_ERR "Failed to insert into plugins (%s): %s\n",
