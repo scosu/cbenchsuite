@@ -196,6 +196,8 @@ void plugins_calc_sha256(struct list_head *plugins, char *sha256)
 
 	list_for_each_entry(plug, plugins, plugin_grp) {
 		sha256_add_str(&ctx, plug->sha256);
+		sha256_add_str(&ctx, plug->opt_sha256);
+		sha256_add_str(&ctx, plug->ver_sha256);
 	}
 
 	sha256_finish_str(&ctx, sha256);

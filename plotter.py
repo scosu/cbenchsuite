@@ -259,9 +259,9 @@ class diff_tree:
 		for i in range(len(self.childs)):
 			if len(self.childs[i].ptr.name) == 0 and len(self.childs[i].ptr.properties) == 0:
 				if i == len(self.childs) - 1:
-					print(prefix + ' `- ', end='')
+					print(prefix + '  `- ', end='')
 				else:
-					print(prefix + '|`- ', end='')
+					print(prefix + ' |`- ', end='')
 			else:
 				if i == len(self.childs) - 1:
 					print(prefix + ' \\ ', end='')
@@ -560,7 +560,6 @@ class plot:
 					print(indent(3) + translate(k, self.replacerules, True) + " = " + translate(self.removed_values[k], self.replacerules, True))
 			print(indent(2) + "Parameter graph: (Everything right of '||' will be in the figure)")
 			self.root.print(self.replacerules, indent(4), indent(3) + '-', self.properties['plot-depth'])
-			#self.root.print_flattened(self.replacerules, self.properties['plot-depth'])
 	def autoremove(self):
 		if self.dummy:
 			return
@@ -603,7 +602,8 @@ def db_create_filters(filters, tables):
 
 def db_generic_run_exec(db, filters, select, group_by = None, order_by = None):
 	involved_tables = ['unique_run', 'system', 'system_cpu', 'cpu_type', 'plugin_group', 'plugin']
-	filter_query = db_create_filters(filters, involved_tables)
+	involved_opt_tables = ['unique_run', 'plugin_group', 'plugin']
+	filter_query = db_create_filters(filters, involved_opt_tables)
 	query = '''
 		SELECT plugin_opt_table,plugin_comp_vers_table
 		FROM
@@ -642,7 +642,7 @@ def db_generic_run_exec(db, filters, select, group_by = None, order_by = None):
 				plugin USING(plugin_sha) '''
 	query += plugin_tables
 	if filter_query:
-		query += 'WHERE ' + filter_query
+		query += ' WHERE ' + filter_query
 	if group_by:
 		query += ' GROUP BY ' + group_by
 	if order_by:
@@ -686,7 +686,7 @@ def input_get_selected(prompt, select_list, max_ct):
 def plotgrps_generate(db, filters, levels):
 	default_replacements = {}
 	res = db_generic_run_exec(db, filters, "plugin_group_sha, plugin_sha, system_sha, plugin_group.plugin_opts_sha, plugin_group.plugin_comp_vers_sha, system.custom_info, system.nr_cpus_on, system.kernel, module, name",
-			group_by = "plugin_group_sha, plugin_sha, system_sha")
+			group_by = "plugin_group_sha, plugin_sha, system_sha, plugin_group.plugin_opts_sha, plugin_group.plugin_comp_vers_sha")
 
 	grp_sys_rows = {}
 	for row in res:
@@ -732,7 +732,6 @@ def plotgrps_generate(db, filters, levels):
 
 				if k not in plugs:
 					plugs[k] = []
-				print(inst['plugin_group_sha'])
 				plugs[k].append({'system': inst['system_sha'],
 						'options': inst['plugin_opts_sha'],
 						'versions': inst['plugin_comp_vers_sha'],

@@ -28,7 +28,7 @@ properties_default = {
 		'xsize': 16,
 		'ysize': 9,
 		'dpi': 300,
-		'legendfontsize': 15,
+		'legendfontsize': 16,
 		'xlabelfontsize': 17,
 		'ylabelfontsize': 17,
 		'ytickfontsize': 15,
@@ -85,8 +85,7 @@ def _create_figure(properties):
 def _plot_stuff(fig, ax, properties, max_x = None):
 	wm = property_get(properties, 'watermark')
 	fs = property_get(properties, 'watermarkfontsize')
-	print(wm)
-	fig.text(0.98, 0.02, wm, fontsize=fs, color='black', ha='right', va='bottom', alpha=0.6)
+	fig.text(1, 0, wm, fontsize=fs, color='black', ha='right', va='bottom', alpha=0.7)
 	fs = property_get(properties, 'xtickfontsize')
 	ax.tick_params(axis='x', which='major', labelsize=fs)
 	ax.tick_params(axis='x', which='minor', labelsize=fs)
@@ -116,7 +115,9 @@ def _plot_stuff(fig, ax, properties, max_x = None):
 		max_label = 0
 		for k in labels:
 			max_label = max(len(k), max_label)
-		ax.set_xlim(xmax = max(max_x + 1, max_x * max(0, max_label * 0.0028 * fs - 0.4)))
+
+		est_len = (max_label * fs) / 30
+		ax.set_xlim(xmax = max_x * max(1.01, 0.00155 * est_len ** 2 - 0.0135 * est_len + 1.01))
 		ax.legend(handles, labels, loc='center right', bbox_to_anchor=(1.13, 0.5), fancybox=True, shadow=True, fontsize=fs)
 
 
@@ -297,7 +298,7 @@ def plot_bar_chart(data, path, properties = None, l1_keys = None, l2_keys = None
 			_plt_bar(x, l1_val, l1_key)
 			x += 1
 		else:
-			_xtick(l1_key, x + int(len(l1_val.keys()) / 2))
+			_xtick(l1_key, x + len(l1_val.keys()) / 2 - 0.5)
 			levels = 2
 			for l2_key in l2_keys:
 				if l2_key not in l1_val:
@@ -330,7 +331,6 @@ def plot_bar_chart(data, path, properties = None, l1_keys = None, l2_keys = None
 		ax.set_ylim(ymin = 0, ymax=1.2*max_overall)
 	else:
 		ax.set_ylim(ymin = 0)
-	print(str(xxticks) + str(xticks))
 	ax.set_xticks(xxticks)
 	ax.set_xticklabels(xticks)
 	_plot_stuff(fig, ax, properties, max_x = x-1)
