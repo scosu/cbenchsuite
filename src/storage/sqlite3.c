@@ -173,7 +173,7 @@ error_table_info:
 
 static int sqlite3_store_header_metadata(struct sqlite3_data *d,
 		const struct header *hdr, const char *sha_name, const char *sha,
-		const char *table, const char *join_sha)
+		const char *table, const char *join_sha, int persist_data_scale)
 {
 	int ret;
 	char **stmt = &d->stmt;
@@ -210,16 +210,19 @@ static int sqlite3_store_header_metadata(struct sqlite3_data *d,
 					"name,"
 					"description,"
 					"unit"
+					"%s"
 				") VALUES("
-					"'%s','%s','%s','%s','%s');",
+					"'%s','%s','%s','%s','%s'%s);",
 				table,
 				join_sha,
 				sha_name,
+				(persist_data_scale ? ",more_is_better" : ""),
 				sha_meta,
 				sha,
 				hdr[i].name,
 				(hdr[i].description ? hdr[i].description : ""),
-				(hdr[i].unit ? hdr[i].unit : ""));
+				(hdr[i].unit ? hdr[i].unit : ""),
+				(persist_data_scale ? (hdr[i].data_type ? ",1":",0") : ""));
 		ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
 		if (ret != SQLITE_OK) {
 			printk(KERN_ERR "Failed to insert metadata into %s (%s)L %s\n",
@@ -329,7 +332,8 @@ static void *sqlite3_init(const char *path)
 					"plugin_sha,"
 					"name,"
 					"description,"
-					"unit);",
+					"unit,"
+					"more_is_better);",
 				NULL, NULL, &errmsg);
 	if (ret != SQLITE_OK) {
 		printk(KERN_ERR "Failed to create plugin_option_meta table: %s\n",
@@ -566,7 +570,7 @@ static int sqlite3_plugin_store_options(struct sqlite3_data *d,
 	char *errmsg;
 
 	ret = sqlite3_store_header_metadata(d, opts, "plugin_sha",
-			plug->sha256, "plugin_option_meta", "plugin_option_meta_sha");
+			plug->sha256, "plugin_option_meta", "plugin_option_meta_sha", 0);
 	if (ret)
 		return -1;
 
@@ -763,7 +767,7 @@ static int sqlite3_init_plugin_grp(void *storage, struct list_head *plugins,
 		hdr = plugin_data_hdr(plug);
 		if (hdr) {
 			ret = sqlite3_store_header_metadata(d, hdr, "plugin_sha",
-					plug->sha256, "plugin_data_meta", "plugin_data_meta_sha");
+					plug->sha256, "plugin_data_meta", "plugin_data_meta_sha", 1);
 			if (ret)
 				return -1;
 
