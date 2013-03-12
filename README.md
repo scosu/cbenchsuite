@@ -82,9 +82,79 @@ Installation
 
 		make
 
-4. You now can directly execute the benchsuite.
+	There is no install target at the moment avaiable. After the build
+	everything is located where it is needed and you can directly start
+	using it.
 
-		./build/cbenchsuite
+4. Now the benchsuite is ready to use.
+
+		./cbenchsuite
+
+Usage
+-----
+
+1. Let's have a look at all the plugins.
+
+		./cbenchsuite -l
+
+	This will give you a list of available modules and plugins:
+
+		kernel
+		    compile              Linux kernel compile benchmark. It measures how fast the kernel can be compiled
+
+		compression
+		    7zip-bench           p7zip's integrated benchmark. The performance is measured in compression/decompression-speed.
+
+		cpusched
+		    yield-bench          This benchmark stresses the cpu kernel scheduler by repeating sched_yield calls for a given time.
+
+		linux_perf
+		    hackbench            Benchmark that spawns a number of groups that internally send/receive packets. Also known within the linux kernel perf tool as sched-messaging.
+		    sched-pipe           Benchmarks the pipe performance by spawning two processes and sending data between them.
+		...
+
+	If you want more information about some modules, you can simply append
+	them to the commandline.
+
+		./cbenchsuite -l -v kernel
+
+	`-v` increases the verbosity of the list command. The command above will
+	give you verbose information about the kernel module:
+
+		kernel
+		    compile              Linux kernel compile benchmark. It measures how fast the kernel can be compiled
+		      Version
+			1.0
+			  Components: kernel-3.8
+			  Options
+			    threads (Default: 16)
+
+	As you can see, cbenchsuite keeps track of different versions and supports
+	options for plugins. To get even more information about a module, you
+	can append another `-v`.
+
+		kernel
+		  shared object 'build/modules/kernel/module.so'
+		    compile              Linux kernel compile benchmark. It measures how fast the kernel can be compiled
+		      Versions
+			1.0
+			  Components: kernel-3.8
+			  Independent values: 1
+			  Options
+			    threads (Default: 16)
+			1.0
+			  Components: kernel-3.7
+			  Independent values: 1
+			  Options
+			    threads (Default: 16)
+
+	This is obviously even more verbose. It will show you all available
+	versions of plugins and much more detailed information. Of course, the
+	different verbosity levels can also be used without specifying a special
+	module.
+
+2. Execute a plugin
+	
 
 
 Help
