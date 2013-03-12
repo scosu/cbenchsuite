@@ -69,7 +69,7 @@ modules-y :=
 module_tgts := $(patsubst %,$(BUILDDIR)/modules/%/module.so,$(modules-y))
 
 
-all: directories $(module_tgts) $(BUILDDIR)/cbench
+all: directories $(module_tgts) cbenchsuite
 
 $(OBJMODDIR)/%.o: src/%.c $(core_hdr) gen/include/cbench/config.h
 	$(CC) $(CFLAGS) -fPIC -c -o $@ $<
@@ -77,7 +77,7 @@ $(OBJMODDIR)/%.o: src/%.c $(core_hdr) gen/include/cbench/config.h
 $(OBJDIR)/%.o: src/%.c $(core_hdr) gen/include/cbench/config.h
 	$(CC) $(CORE_CFLAGS) -c -o $@ $<
 
-$(BUILDDIR)/cbench: $(objs) $(core_hdr) $(libs)
+cbenchsuite: $(objs) $(core_hdr) $(libs)
 	$(CC) $(CORE_CFLAGS) -o $@ $(objs) $(libs) $(CORE_LDFLAGS)
 
 libs/klib/libklib.a:
@@ -120,3 +120,4 @@ clean:
 	rm -rf libs/kconfig-frontends/inst/
 	rm -rf gen
 	rm -f $(libs)
+	rm -f cbenchsuite
