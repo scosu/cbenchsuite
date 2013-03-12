@@ -1,0 +1,2 @@
+config COOLDOWN
+	bool "Cooldown module"
