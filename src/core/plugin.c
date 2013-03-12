@@ -47,6 +47,8 @@ struct plugin_exec;
 static int received_sigstop = 0;
 void plugins_sighandler(int signum)
 {
+	if (received_sigstop)
+		exit(-1);
 	received_sigstop = 1;
 	printk(KERN_INFO "Received signal to shutdown. After the current execution cbenchsuite will be stopped\n");
 }
