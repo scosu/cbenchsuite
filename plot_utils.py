@@ -35,7 +35,7 @@ properties_default = {
 		'xtickfontsize': 15,
 		'barfontsize': 15,
 		'titlefontsize': 20,
-		'watermark': 'Generated with cbenchsuite (http://cbench.allfex.org)',
+		'watermark': 'Powered by cbenchsuite (http://cbench.allfex.org)',
 		'watermarkfontsize': 13}
 
 def property_get(properties, key):
