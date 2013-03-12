@@ -10,11 +10,30 @@ struct header plugin_p7zip_bench_defaults[] = {
 	OPTION_SENTINEL
 };
 
+static struct requirement p7zip_requirements[] = {
+	{
+		.name = "p7zip",
+	}, {
+		/* Sentinel */
+	}
+};
+
+static struct comp_version p7zip_comp_versions[] = {
+	{
+		.name = "p7zip",
+		.version = NULL,
+	}, {
+		/* Sentinel */
+	}
+};
+
 static struct version plugin_p7zip_bench_versions[] = {
 	{
 		.version = "0.1",
 		.default_options = plugin_p7zip_bench_defaults,
-		.nr_independent_values = 1,
+		.requirements = p7zip_requirements,
+		.nr_independent_values = 2,
+		.comp_versions = p7zip_comp_versions,
 	}, {
 		/* Sentinel */
 	}
@@ -31,6 +50,55 @@ struct p7zip_bench_data {
 
 	char *result;
 };
+
+static int p7zip_init_7z()
+{
+	char *args[] = {"7z", NULL};
+	char *ver_info;
+	int ret;
+	char *ver_start;
+	char *ver_end;
+	char *version;
+
+	ret = subproc_call_get_stdout("7z", args, &ver_info);
+
+	if (ret)
+		return -1;
+
+	ver_start = strstr(ver_info, "] ");
+	if (!ver_start)
+		goto error;
+
+	ver_start += 2;
+
+	ver_end = strstr(ver_start, " ");
+	if (!ver_end)
+		goto error;
+	*ver_end = '\0';
+
+	version = malloc(strlen(ver_start) + 1);
+	if (!version)
+		goto error;
+
+	strcpy(version, ver_start);
+	p7zip_comp_versions[0].version = version;
+
+	p7zip_requirements[0].found = 1;
+
+	free(ver_info);
+	return 0;
+error:
+	free(ver_info);
+	return -1;
+}
+
+static void p7zip_exit_7z()
+{
+	if (p7zip_comp_versions[0].version) {
+		free(p7zip_comp_versions[0].version);
+		p7zip_comp_versions[0].version = NULL;
+	}
+}
 
 static int p7zip_bench_install(struct plugin *plug)
 {

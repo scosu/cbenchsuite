@@ -16,6 +16,17 @@ struct module_id perf_module;
 
 #include "7zip.c"
 
+static int mod_init()
+{
+	return p7zip_init_7z();
+}
+
+static int mod_exit()
+{
+	p7zip_exit_7z();
+	return 0;
+}
+
 static struct plugin_id plugins[] = {
 	{
 		.name = "7zip-bench",
@@ -32,5 +43,7 @@ static struct plugin_id plugins[] = {
 
 struct module_id perf_module = {
 	.plugins = plugins,
+	.init = mod_init,
+	.exit = mod_exit,
 };
 MODULE_REGISTER(perf_module);
