@@ -34,7 +34,6 @@ static inline int subproc_call_get_stdout(const char *bin, char * const argv[],
 		_exit(-1);
 	} else {
 		size_t out_len = 512;
-		char **out;
 		size_t off = 0;
 
 		*out = malloc(out_len);
