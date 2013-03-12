@@ -57,7 +57,8 @@ module_makefiles := $(patsubst %,%/CBench.mk,$(module_dirs))
 
 TOP = modules/
 BDIR = $(MOBJDIR)/$(MODULE_NAME)
-MODULE_TARGET = $(BUILDDIR)/modules/$(MODULE_NAME)/module.so
+MODULE_TARGET_DIR = $(BUILDDIR)/modules
+MODULE_TARGET = $(MODULE_TARGET_DIR)/$(MODULE_NAME)/module.so
 MODULE_NAME_UPPER = $(shell echo $(MODULE_NAME) | tr a-z A-Z)
 
 
