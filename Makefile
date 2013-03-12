@@ -99,7 +99,7 @@ oldconfig: libs/kconfig-frontends/inst/bin/kconfig-mconf modules/Kconfig
 	$(generate_config_h)
 
 libs/kconfig-frontends/inst/bin/kconfig-mconf:
-	cd libs/kconfig-frontends/ && ./configure --prefix=`pwd`/inst && $(MAKE) $(MFLAGS) && $(MAKE) $(MFLAGS) install
+	cd libs/kconfig-frontends/ && ./configure --prefix=`pwd`/inst --disable-qconf --disable-nconf --disable-gconf && $(MAKE) $(MFLAGS) && $(MAKE) $(MFLAGS) install
 
 libs/sha256-gpl/sha256.o: libs/sha256-gpl/sha256.c libs/sha256-gpl/sha256.h
 	$(CC) $(CFLAGS) -c -o libs/sha256-gpl/sha256.o libs/sha256-gpl/sha256.c
