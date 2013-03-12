@@ -112,10 +112,15 @@ struct module *module_create(const char *name, const char *mod_dir)
 		goto failed_alloc_name;
 	strcpy(mod->name, name);
 
-	mod->so_path = malloc(name_len * 2 + strlen(mod_dir) + 6);
+	mod->bin_path = malloc(name_len + strlen(mod_dir) + 2);
+	if (!mod->bin_path)
+		goto failed_alloc_bin_path;
+	sprintf(mod->bin_path, "%s/%s", mod_dir, name);
+
+	mod->so_path = malloc(strlen(mod->bin_path) + strlen(module_so_name) + 2);
 	if (!mod->so_path)
 		goto failed_alloc_so_path;
-	sprintf(mod->so_path, "%s/%s/%s", mod_dir, name, module_so_name);
+	sprintf(mod->so_path, "%s/%s", mod->bin_path, module_so_name);
 
 	err = module_load(mod);
 	if (err)
@@ -130,6 +135,8 @@ struct module *module_create(const char *name, const char *mod_dir)
 failed_load_module:
 	free(mod->so_path);
 failed_alloc_so_path:
+	free(mod->bin_path);
+failed_alloc_bin_path:
 	free(mod->name);
 failed_alloc_name:
 	free(mod);
@@ -139,6 +146,7 @@ failed_alloc_name:
 void module_free(struct module *mod)
 {
 	module_unload(mod);
+	free(mod->bin_path);
 	free(mod->so_path);
 	free(mod->name);
 	free(mod);

@@ -6,10 +6,10 @@
 #include <klib/list.h>
 
 #include <cbench/data.h>
+#include <cbench/module.h>
 
 struct data;
 struct environment;
-struct module;
 struct plugin_id;
 struct version;
 
@@ -35,7 +35,6 @@ struct plugin {
 	char opt_sha256[65];
 	char ver_sha256[65];
 
-	const char *bin_path;
 	char *work_dir;
 	const char *download_dir;
 
@@ -103,7 +102,7 @@ static inline void *plugin_get_plugin_data(struct plugin *plug)
 }
 static inline const char *plugin_get_bin_path(struct plugin *plug)
 {
-	return plug->bin_path;
+	return plug->mod->bin_path;
 }
 static inline const char *plugin_get_work_dir(struct plugin *plug)
 {

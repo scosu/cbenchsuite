@@ -13,6 +13,8 @@ struct module {
 	char *so_path;
 	void *so_handle;
 
+	char *bin_path;
+
 	void *user_data;
 
 	struct list_head modules;
