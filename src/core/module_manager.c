@@ -223,14 +223,14 @@ struct module *mod_mgr_find_module(struct mod_mgr *mm, const char *fid)
 void mod_mgr_print_module(struct module *mod, int verbose)
 {
 	int i;
-	printf("Module '%s'\n", mod->name);
-	if (verbose)
+	printf("%s\n", mod->name);
+	if (verbose == 2)
 		printf("  shared object '%s'\n", mod->so_path);
 	if (mod->id->plugins) {
-		printf("  Plugins:\n");
 		for (i = 0; mod->id->plugins[i].name; ++i) {
 			plugin_id_print(&mod->id->plugins[i], verbose);
 		}
+		printf("\n");
 	}
 	if (mod->id->benchsuites) {
 		printf("  Benchsuites:\n");

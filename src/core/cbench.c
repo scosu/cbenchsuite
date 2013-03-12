@@ -135,7 +135,7 @@ int args_parse(struct arguments *pargs, int argc, char **argv)
 		} else if (arg_match(arg, "--list", "-l")) {
 			pargs->cmd_list = 1;
 		} else if (arg_match(arg, "--verbose", "-v")) {
-			pargs->verbose = 1;
+			++pargs->verbose;
 		} else if (arg_match(arg, "--module-dir", "-m")) {
 			parse_arg_tgt = &pargs->module_dir;
 		} else if (arg_match(arg, "--work-dir", "-w")) {
@@ -592,6 +592,7 @@ int main(int argc, char **argv)
 		.download_dir = CONFIG_DOWNLOAD_DIR,
 		.custom_sysinfo = "",
 		.std_err = CONFIG_STDERR_PERCENT,
+		.verbose = 0,
 	};
 	int ret = 0;
 	printk_set_log_level(CONFIG_PRINT_LOG_LEVEL);

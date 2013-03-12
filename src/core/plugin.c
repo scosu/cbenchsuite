@@ -108,16 +108,16 @@ void plugin_id_print_version(struct version *v, int verbose)
 	if (v->requirements) {
 		printf("          Requirements\n");
 		for (i = 0; v->requirements[i].name; ++i) {
-			if (!v->requirements[i].found || verbose) {
+			if (!v->requirements[i].found || verbose == 2) {
 				printf("            %s (%s)\n",
 						v->requirements[i].name,
 						v->requirements[i].found ? "found": "not found");
 			}
-			if (verbose && v->requirements[i].description)
+			if (verbose == 2 && v->requirements[i].description)
 				printf("            %s\n", v->requirements[i].description);
 		}
 	}
-	if (verbose)
+	if (verbose == 2)
 		printf("          Independent values: %d\n", v->nr_independent_values);
 	if (v->default_options) {
 		printf("          Options\n");
@@ -136,15 +136,17 @@ void plugin_id_print_version(struct version *v, int verbose)
 void plugin_id_print(const struct plugin_id *plug, int verbose)
 {
 	int i;
-	printf("    %s\n", plug->name);
-	if (verbose) {
-		if (plug->description)
-			printf("        %s\n", plug->description);
+	printf("    %-20s", plug->name);
+	if (plug->description)
+		printf(" %s\n", plug->description);
+	else
+		printf("\n");
+	if (verbose == 2) {
 		printf("      Versions\n");
 		for (i = 0; plug->versions[i].version; ++i) {
 			plugin_id_print_version(&plug->versions[i], verbose);
 		}
-	} else {
+	} else if (verbose) {
 		printf("      Version\n");
 		plugin_id_print_version(&plug->versions[0], verbose);
 	}
