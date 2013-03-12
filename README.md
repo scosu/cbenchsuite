@@ -45,6 +45,7 @@ without changing any cbenchsuite source files. It will be autodetected by cbench
 Makefiles.
 
 In order to get your module registered, you need three files:
+
 	your_module/your_module.c      Module c file
 	your_module/CBench.mk          Makefile to compile your module
 	your_module/Kconfig            Compiletime configurations for your module
@@ -57,6 +58,26 @@ Requirements
 - gcc
 - libuuid
 - sqlite3
+
+Installation
+------------
+
+1. First clone cbenchsuite.
+
+		git clone https://github.com/scosu/cbenchsuite.git
+
+2. Configure cbenchsuite.
+
+		make menuconfig
+
+3. Compile cbenchsuite.
+
+		make
+
+4. You now can directly execute the benchsuite.
+
+		./build/cbenchsuite
+
 
 Help
 ----
