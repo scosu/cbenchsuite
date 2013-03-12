@@ -65,10 +65,18 @@ Installation
 1. First clone cbenchsuite.
 
 		git clone https://github.com/scosu/cbenchsuite.git
+		cd cbenchsuite
 
 2. Configure cbenchsuite.
 
 		make menuconfig
+
+	![menuconfig screenshot](http://allfex.org/files/cbenchsuite/0.1/menuconfig.png)
+
+	Here you can configure some options of cbenchsuite. However,
+	most settings only define the default values, so it is not
+	important to configure anything here.  Simply choose
+	exit and save the configuration file.
 
 3. Compile cbenchsuite.
 
