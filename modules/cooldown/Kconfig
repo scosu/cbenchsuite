@@ -1,2 +1,3 @@
 config COOLDOWN
 	bool "Cooldown module"
+	default y

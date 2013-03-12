@@ -1,5 +1,6 @@
 menuconfig KERNEL
 	bool "Linux kernel module"
+	default y
 
 if KERNEL
 
