@@ -32,10 +32,12 @@ static int module_init(struct module *mod)
 static struct plugin_id plugins[] = {
 	{
 		.name = "drop-caches",
+		.description = "Helper plugin to increase benchmarking accuracy by dropping caches between runs. You have configure in which function slot the caches are dropped.",
 		PLUGIN_ALL_FUNCS(drop_caches_func),
 		.versions = plugin_drop_caches_versions,
 	}, {
 		.name = "swap-reset",
+		.description = "Helper plugin to increase benchmarking accuracy by resetting the swap between runs. You have to configure in which function slot the swap is reset. Make sure your swap is configured in fstab so that swapoff/swapon doesn't  change the swap setup.",
 		PLUGIN_ALL_FUNCS(swapreset_func),
 		.versions = plugin_swapreset_versions,
 	}, {

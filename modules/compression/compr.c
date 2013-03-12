@@ -30,6 +30,7 @@ static int mod_exit()
 static struct plugin_id plugins[] = {
 	{
 		.name = "7zip-bench",
+		.description = "p7zip's integrated benchmark. The performance is measured in compression/decompression-speed.",
 		.install = p7zip_bench_install,
 		.uninstall = p7zip_bench_uninstall,
 		.parse_results = p7zip_bench_parse_results,

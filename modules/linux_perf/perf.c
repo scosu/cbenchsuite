@@ -20,6 +20,7 @@ struct module_id perf_module;
 static struct plugin_id plugins[] = {
 	{
 		.name = "hackbench",
+		.description = "Benchmark that spawns a number of groups that internally send/receive packets. Also known within the linux kernel perf tool as sched-messaging.",
 		.install = hackbench_install,
 		.uninstall = hackbench_uninstall,
 		.parse_results = hackbench_parse_results,
@@ -28,6 +29,7 @@ static struct plugin_id plugins[] = {
 		.versions = plugin_hackbench_versions,
 	}, {
 		.name = "sched-pipe",
+		.description = "Benchmarks the pipe performance by spawning two processes and sending data between them.",
 		.run = sched_pipe_run,
 		.data_hdr = sched_pipe_data_hdr,
 		.versions = plugin_sched_pipe_versions,

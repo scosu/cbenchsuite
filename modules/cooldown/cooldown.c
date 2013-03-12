@@ -18,6 +18,7 @@ struct module_id cooldown_module;
 static struct plugin_id plugins[] = {
 	{
 		.name = "sleep",
+		.description = "Helper plugin. Sleeps a given time to make sure that the system had some time to cool down.",
 		PLUGIN_ALL_FUNCS(sleep_func),
 		.versions = plugin_sleep_versions,
 	}, {
