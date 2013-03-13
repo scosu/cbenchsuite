@@ -65,7 +65,6 @@ class parameter_sort:
 			obj = obj[0]
 		self.cmp_list = self._part_parameter(obj)
 	def _rec_cmp(self, a, b):
-		print("Compare " + str(a) + " " + str(b))
 		if isinstance(a, int):
 			if a < b:
 				return -1
@@ -77,15 +76,12 @@ class parameter_sort:
 			am = re.match(mstr, a)
 			bm = re.match(mstr, b)
 			if not am or not bm:
-				print("no regex match")
 				if a < b:
 					return -1
 				if a == b:
 					return 0
 				return 1
 
-			print("matched " + am.group(1) + " " + am.group(2) + " " + am.group(3) + " " + am.group(4))
-			print("matched " + bm.group(1) + " " + bm.group(2) + " " + bm.group(3) + " " + bm.group(4))
 			if am.group(1) < bm.group(1):
 				return -1
 			if am.group(1) > bm.group(1):
