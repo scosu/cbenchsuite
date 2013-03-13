@@ -5,7 +5,7 @@ MODULE_NAME := sysctl
 
 modules-$(CONFIG_$(MODULE_NAME_UPPER)) += $(MODULE_NAME)
 
-$(MODULE_TARGET): $(MODULE_BUILD_DEPS) $(TOP)/sysctl/sysctl.c $(TOP)/sysctl/sysctl_drop_caches.c $(TOP)/sysctl/sysctl_swap_reset.c
+$(MODULE_TARGET): $(MODULE_BUILD_DEPS) $(TOP)/sysctl/sysctl.c $(TOP)/sysctl/sysctl_drop_caches.c $(TOP)/sysctl/sysctl_swap_reset.c $(TOP)/sysctl/sysctl_monitor_stat.c
 	$(CC) $(CFLAGS) $(MODULE_CFLAGS) -o $@ $(TOP)/sysctl/sysctl.c $(MODULE_BUILD_SOURCES)
 
 
