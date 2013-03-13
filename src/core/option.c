@@ -108,7 +108,8 @@ int option_parse_bool(struct option_iterator *iter)
 	return 0;
 }
 
-struct header *option_parse(const struct header *defaults, const char *optstr)
+int option_parse(const struct header *defaults, const char *optstr,
+		struct header **out)
 {
 	struct header *opts;
 	struct option_iterator itr;
@@ -116,11 +117,8 @@ struct header *option_parse(const struct header *defaults, const char *optstr)
 	int nr_items;
 
 	if (!defaults) {
-		opts = malloc(sizeof(*opts));
-		if (!opts)
-			return NULL;
-		opts->name = NULL;
-		return opts;
+		*out = NULL;
+		return 0;
 	}
 
 	for (i = 0; defaults[i].name != NULL; ++i) ;
@@ -128,12 +126,14 @@ struct header *option_parse(const struct header *defaults, const char *optstr)
 
 	opts = malloc(sizeof(*opts) * (nr_items + 1));
 	if (!opts) {
-		return NULL;
+		return -1;
 	}
 	memcpy(opts, defaults, sizeof(*opts) * (nr_items + 1));
 
-	if (!optstr)
-		return opts;
+	if (!optstr) {
+		*out = opts;
+		return 0;
+	}
 
 	options_for_each_entry(&itr, optstr) {
 		for (i = 0; i != nr_items; ++i) {
@@ -159,11 +159,12 @@ struct header *option_parse(const struct header *defaults, const char *optstr)
 		}
 		printf("ERROR: Could not find header starting at %s\n",
 				itr.k_start);
-		return NULL;
+		return -1;
 found:
 		continue;
 	}
-	return opts;
+	*out = opts;
+	return 0;
 }
 
 int option_to_hdr_csv(const struct header *opts, char **buf, size_t *buf_size,

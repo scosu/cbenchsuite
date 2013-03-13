@@ -40,7 +40,7 @@ static inline void option_sha256_add(sha256_context *ctx, struct header *opts)
 	}
 }
 
-struct header *option_parse(const struct header *defaults, const char *optstr);
+int option_parse(const struct header *defaults, const char *optstr, struct header **out);
 
 int option_to_data_csv(const struct header *opts, char **buf, size_t *buf_size,
 		enum value_quote_type quotes);

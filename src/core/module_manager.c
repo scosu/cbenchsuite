@@ -351,6 +351,7 @@ struct plugin *mod_mgr_plugin_create(struct mod_mgr *mm, const char *fid,
 	const char *plug_start;
 	struct module *mod = mod_mgr_find_module(mm, fid);
 	struct plugin *plug;
+	int ret;
 
 	if (!mod) {
 		printk(KERN_ERR "Failed to get module %s\n", fid);
@@ -368,8 +369,8 @@ struct plugin *mod_mgr_plugin_create(struct mod_mgr *mm, const char *fid,
 	if (!plug)
 		return NULL;
 
-	plug->options = option_parse(plug->version->default_options, options);
-	if (!plug->options) {
+	ret = option_parse(plug->version->default_options, options, &plug->options);
+	if (ret) {
 		printk(KERN_ERR "Option parsing error\n");
 		mod_mgr_module_put_plugin(mm, mod, plug);
 		return NULL;
