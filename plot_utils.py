@@ -21,6 +21,7 @@
 import matplotlib.pyplot as pyplt
 import statistics
 import operator
+import re
 
 properties_default = {
 		'confidence': 0.95,
@@ -49,31 +50,90 @@ def mean_confidence_interval(data, confidence=0.95):
 	mean, _, _, _, _, h = statistics.stats(data, 1-confidence)
 	return mean, h
 
-def _arg_string_sort(a, b):
-	al = a.split(' ')
-	bl = b.split(' ')
-	l = min(len(al), len(bl))
-	for i in range(0, l):
-		try:
-			if float(al[i]) < float(bl[i]):
+class parameter_sort:
+	def _part_parameter(self, par):
+		slash = par.split('/')
+		equal = [i.split('=') for i in slash]
+
+		ret = []
+
+		for i in equal:
+			ret += [j.split(' ') for j in i]
+		return ret
+	def __init__(self, obj, *args):
+		if isinstance(obj, tuple):
+			obj = obj[0]
+		self.cmp_list = self._part_parameter(obj)
+	def _rec_cmp(self, a, b):
+		print("Compare " + str(a) + " " + str(b))
+		if isinstance(a, int):
+			if a < b:
 				return -1
-			if float(al[i]) > float(bl[i]):
+			if a > b:
 				return 1
-			continue
-		except:
-			pass
-		if al[i] < bl[i]:
+			return 0
+		if isinstance(a, str):
+			mstr = "([^0-9]*)([0-9]+(.[0-9]+|))(.*)"
+			am = re.match(mstr, a)
+			bm = re.match(mstr, b)
+			if not am or not bm:
+				print("no regex match")
+				if a < b:
+					return -1
+				if a == b:
+					return 0
+				return 1
+
+			print("matched " + am.group(1) + " " + am.group(2) + " " + am.group(3) + " " + am.group(4))
+			print("matched " + bm.group(1) + " " + bm.group(2) + " " + bm.group(3) + " " + bm.group(4))
+			if am.group(1) < bm.group(1):
+				return -1
+			if am.group(1) > bm.group(1):
+				return 1
+			ai = float(am.group(2))
+			bi = float(bm.group(2))
+			if ai < bi:
+				return -1
+			if ai > bi:
+				return 1
+
+			if am.group(4) < bm.group(4):
+				return -1
+			if am.group(4) > bm.group(4):
+				return 1
+			return 0
+
+		for i in range(len(a)):
+			if i == len(b):
+				return -1
+			ret = self._rec_cmp(a[i], b[i])
+			if ret != 0:
+				return ret
+
+		if len(a) < len(b):
 			return -1
-		if al[i] > bl[i]:
-			return 1
-	if len(al) < len(bl):
-		return -1
-	if len(al) > len(bl):
-		return 1
-	return 0
+		return 0
+	def _compare(self, opt):
+		a = self.cmp_list
+		b = opt.cmp_list
+		return self._rec_cmp(a, b)
+	def __lt__(self, obj):
+		return self._compare(obj) < 0
+	def __gt__(self, obj):
+		return self._compare(obj) > 0
+	def __le__(self, obj):
+		return self._compare(obj) <= 0
+	def __ge__(self, obj):
+		return self._compare(obj) >= 0
+	def __eq__(self, obj):
+		return self._compare(obj) == 0
+	def __ne__(self, obj):
+		return self._compare(obj) != 0
+def parameter_sort_create(obj):
+	return parameter_sort(obj)
 
 def _sort_keys(keys):
-	return sorted(keys)#, cmp=_arg_string_sort)
+	return sorted(keys, key=parameter_sort_create)
 
 def _create_figure(properties):
 	xsize = property_get(properties, 'xsize')
@@ -110,8 +170,8 @@ def _plot_stuff(fig, ax, properties, max_x = None):
 	if not no_legend and max_x != None:
 		fs = property_get(properties, 'legendfontsize')
 		handles, labels = ax.get_legend_handles_labels()
-		hl = sorted(zip(handles, labels), key=operator.itemgetter(1))
-		handles, labels = zip(*hl)
+		hl = sorted(zip(labels, handles), key=parameter_sort_create)
+		labels, handles = zip(*hl)
 		max_label = 0
 		for k in labels:
 			max_label = max(len(k), max_label)
