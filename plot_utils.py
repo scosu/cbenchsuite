@@ -37,7 +37,8 @@ properties_default = {
 		'barfontsize': 15,
 		'titlefontsize': 20,
 		'watermark': 'Powered by cbenchsuite (http://cbench.allfex.org)',
-		'watermarkfontsize': 13}
+		'watermarkfontsize': 13,
+		'file-type': 'svg'}
 
 def property_get(properties, key):
 	if properties and key in properties:
@@ -173,7 +174,7 @@ def _plot_stuff(fig, ax, properties, max_x = None):
 			max_label = max(len(k), max_label)
 
 		est_len = (max_label * fs) / 30
-		ax.set_xlim(xmax = max_x * max(1.01, 0.00155 * est_len ** 2 - 0.0135 * est_len + 1.01))
+		ax.set_xlim(xmax = max_x * max(1.01, 0.00155 * est_len ** 2 - 0.0135 * est_len + 1.08))
 		ax.legend(handles, labels, loc='center right', bbox_to_anchor=(1.13, 0.5), fancybox=True, shadow=True, fontsize=fs)
 
 
@@ -183,7 +184,7 @@ def _plot_stuff(fig, ax, properties, max_x = None):
 #		'y': [(0,1), (2,1), (3,2), (4,5)],
 #		'z': [(0,[1,2,3,2,2,2,2]), (1,[2,3,2,2,3,3,3,3]), (2,2), (3,5)]
 #}
-def plot_line_chart(data, path, properties=None):
+def plot_line_chart(data, path, properties=None, fmts_arg = None, x_keys = None):
 	fig = _create_figure(properties)
 	ax = fig.add_subplot(111)
 	if fmts_arg == None:
@@ -249,8 +250,9 @@ def plot_line_chart(data, path, properties=None):
 	rang = max_overall_x - min_overall_x
 	ax.set_xlim(xmin = (min_overall_x - rang*0.05))
 	_plot_stuff(fig, ax, properties, max_x=(max_overall_x + rang*0.05))
-	path += '.png'
+	path += '.' + property_get(properties, 'file-type')
 	fig.savefig(path)
+	print("Generated figure " + path)
 
 
 # Works with all those structures:
@@ -389,9 +391,10 @@ def plot_bar_chart(data, path, properties = None, l1_keys = None, l2_keys = None
 		ax.set_ylim(ymin = 0)
 	ax.set_xticks(xxticks)
 	ax.set_xticklabels(xticks)
-	_plot_stuff(fig, ax, properties, max_x = x-1)
+	_plot_stuff(fig, ax, properties, max_x = x-0.5)
 
-	path += '.svg'
+	path += '.' + property_get(properties, 'file-type')
 	fig.savefig(path)
+	print("Generated figure " + path)
 
 

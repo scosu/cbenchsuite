@@ -303,7 +303,12 @@ class diff_tree:
 			self.name = child.name
 			self.childs = child.childs
 			self.combo = child.combo
-			self.properties = child.properties
+			for e in self.childs:
+				c = e.ptr
+				new_child_properties = self.properties.copy()
+				for k,v in c.properties.items():
+					new_child_properties[k] = v
+				c.properties = new_child_properties
 			return
 		for e in self.childs:
 			e.ptr.remove_name(name)
@@ -352,7 +357,11 @@ class plot:
 			'barfontsize': float,
 			'titlefontsize': float,
 			'watermark': str,
-			'watermarkfontsize': float}
+			'watermarkfontsize': float,
+			'line-xtick-data': str,
+			'line-nr-runs': int,
+			'file-type': str
+			}
 	def __init__(self, db, filters, plugin_sha, combos, levels, base_path, replacerules = None):
 		super(plot, self).__init__()
 		self.plugin_sha = plugin_sha
@@ -412,18 +421,73 @@ class plot:
 			if 'data' not in self.removed_values:
 				return {}
 			data_field = self.removed_values['data']
-		query = 'SELECT "' + self.tables['results'] + '"."' + data_field + '''"
-			FROM
-				unique_run,
-				"''' + self.tables['results'] + '''" USING(run_uuid)
-			WHERE
-				system_sha = ''' + "'" + lastnode.combo['system'] + """' and
-				plugin_group_sha = '""" + lastnode.combo['group'] + """';"""
-		res = self.threaddb.execute(query)
-		data = []
-		for row in res:
-			data.append(row[0])
-		return data
+		if self.barchart:
+			query = 'SELECT "' + self.tables['results'] + '"."' + data_field + '''"
+				FROM
+					unique_run,
+					"''' + self.tables['results'] + '''" USING(run_uuid)
+				WHERE
+					system_sha = ''' + "'" + lastnode.combo['system'] + """' and
+					plugin_group_sha = '""" + lastnode.combo['group'] + """';"""
+			res = self.threaddb.execute(query)
+			data = []
+			for row in res:
+				data.append(row[0])
+			return data
+		elif self.linechart:
+			query = 'SELECT run_uuid,"' + self.tables['results'] + '"."' + data_field
+			if 'line-xtick-data' in self.properties:
+				query += '","' + self.tables['results'] + '"."' + self.properties['line-xtick-data']
+			query += '''"
+				FROM
+					unique_run,
+					"''' + self.tables['results'] + '''" USING(run_uuid)
+				WHERE
+					system_sha = ''' + "'" + lastnode.combo['system'] + """' and
+					plugin_group_sha = '""" + lastnode.combo['group'] + "' ORDER BY run_uuid "
+			if 'line-xtick-data' in self.properties:
+				query += ',"' + self.tables['results'] + '"."' + self.properties['line-xtick-data']
+			query += '"'
+			res = self.threaddb.execute(query)
+			data = []
+			last_uuid = ''
+			last_x = 0.0
+			offset = 0.0
+			ct = 1
+			if self.linechart and 'line-xtick-data' in self.properties:
+				for row in res:
+					if last_uuid == '':
+						last_uuid = row[0]
+					if last_uuid != row[0]:
+						ct += 1
+						if 'line-nr-runs' in self.properties:
+							if ct >= self.properties['line-nr-runs']:
+								break
+						data.append((offset + last_x + 0.00001, 0))
+						last_uuid = row[0]
+						offset += last_x + last_x * 0.05
+						data.append((offset - 0.00001, 0))
+					data.append((offset + row[2], row[1]))
+					last_x = row[2]
+			else:
+				last_x = 0
+				for row in res:
+					if last_uuid == '':
+						last_uuid = row[0]
+					if last_uuid != row[0]:
+						last_uuid = row[0]
+						ct += 1
+						if 'line-nr-runs' in self.properties:
+							if ct >= self.properties['line-nr-runs']:
+								break
+						data.append((offset + last_x + 0.00001, 0))
+						offset += last_x * 0.05
+						last_x = 0
+						data.append((offset - 0.00001, 0))
+					data.append((offset + last_x, row[2]))
+					last_x += 1
+			return data
+
 	def _plot_cb(self, nodepath, last_node):
 		path = self.base_path
 		for n in nodepath:
@@ -453,13 +517,9 @@ class plot:
 		else:
 			plot_utils.plot_line_chart(data, path, props)
 		del data
-		print("Generated " + path)
 	def _plot(self):
 		self.threaddb = sqlite3.connect(os.path.expanduser(parsed.database));
-		if self.barchart:
-			self.root.plot(self._plot_cb, 3, [])
-		else:
-			self.root.plot(self._plot_cb, 1, [])
+		self.root.plot(self._plot_cb, self.properties['plot-depth'], [])
 		self.threaddb.close()
 		self.threaddb = None
 	def plot(self):
@@ -486,6 +546,7 @@ class plot:
 			if d < depth:
 				depth = d
 		self.properties['plot-depth'] = depth
+		print("new depth " + str(depth))
 	def rebuild_tree(self):
 		if self.dummy:
 			return
@@ -529,6 +590,9 @@ class plot:
 					res = self.db.execute("SELECT * FROM plugin_data_meta WHERE plugin_sha = '" + self.plugin_sha + "';")
 					new_ptrs = []
 					for row in res:
+						if self.linechart and row['name'] == 'time':
+							self.properties['line-xtick-data'] = 'time'
+							continue
 						for pind in range(len(ptrs)):
 							tmp_child = ptrs[pind].add_child(row['name'])
 							tmp_child.properties['ylabel'] = row['name'].capitalize()
@@ -738,11 +802,12 @@ def plotgrps_generate(db, filters, levels):
 						'group': inst['plugin_group_sha'],
 						'name': inst['module'] + '.' + inst['name']})
 
-		for psha,p in plugs.items():
-			names = set()
+		names = set()
+		for psha, p in plugs.items():
 			for i in p:
 				names.add(i['name'])
-			local_path = os.path.join(path, '#'.join(sorted(list(names))))
+		local_path = os.path.join(path, '#'.join(sorted(list(names))))
+		for psha,p in plugs.items():
 			plots.append(plot(db, filters, psha, p, levels, local_path, default_replacements))
 		if len(plots) > 0:
 			plot_grps.append(plots)
