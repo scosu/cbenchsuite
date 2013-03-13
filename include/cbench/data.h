@@ -31,6 +31,7 @@ struct value {
 };
 
 enum data_value_cmp {
+	DATA_UNDEFINED = 0,
 	DATA_MORE_IS_BETTER,
 	DATA_LESS_IS_BETTER,
 };
