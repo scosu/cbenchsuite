@@ -29,6 +29,7 @@ enum plugins {
 	PLUGIN_DROP_CACHES = 0,
 	PLUGIN_SWAP_RESET,
 	PLUGIN_MONITOR_STAT,
+	PLUGIN_MONITOR_MEMINFO,
 };
 
 const char vm_drop_caches[] = "/proc/sys/vm/drop_caches";
@@ -38,6 +39,7 @@ struct module_id sysctl_module;
 #include "sysctl_drop_caches.c"
 #include "sysctl_swap_reset.c"
 #include "sysctl_monitor_stat.c"
+#include "sysctl_monitor_meminfo.c"
 
 static int module_init(struct module *mod)
 {
@@ -48,6 +50,8 @@ static int module_init(struct module *mod)
 		sysctl_module.plugins[PLUGIN_SWAP_RESET].versions[0].requirements[0].found = 1;
 	if (!access(monitor_stats_path, F_OK | R_OK))
 		sysctl_module.plugins[PLUGIN_MONITOR_STAT].versions[0].requirements[0].found = 1;
+	if (!access(monitor_meminfo_path, F_OK | R_OK))
+		sysctl_module.plugins[PLUGIN_MONITOR_MEMINFO].versions[0].requirements[0].found = 1;
 	return 0;
 }
 
@@ -71,6 +75,15 @@ static struct plugin_id plugins[] = {
 		.monitor = monitor_stat_mon,
 		.versions = plugin_monitor_stats_versions,
 		.data_hdr = monitor_stat_data_hdr,
+	}, {
+		.name = "monitor-meminfo",
+		.description = "Monitor plugin to keep track of different values shown in /proc/meminfo.",
+		.install = monitor_meminfo_install,
+		.uninstall = monitor_meminfo_uninstall,
+		.init = monitor_meminfo_init,
+		.monitor = monitor_meminfo_mon,
+		.versions = plugin_monitor_meminfo_versions,
+		.data_hdr = monitor_meminfo_data_hdr,
 	}, {
 		/* Sentinel */
 	}
