@@ -360,7 +360,8 @@ class plot:
 			'watermarkfontsize': float,
 			'line-xtick-data': str,
 			'line-nr-runs': int,
-			'file-type': str
+			'file-type': str,
+			'plot-depth': int
 			}
 	def __init__(self, db, filters, plugin_sha, combos, levels, base_path, replacerules = None):
 		super(plot, self).__init__()
