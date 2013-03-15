@@ -5,7 +5,7 @@ MODULE_NAME := cpusched
 
 modules-$(CONFIG_$(MODULE_NAME_UPPER)) += $(MODULE_NAME)
 
-$(MODULE_TARGET): $(MODULE_BUILD_DEPS) $(TOP)/cpusched/cpusched.c $(TOP)/cpusched/yield.c $(TOP)/cpusched/fork-bench.c
+$(MODULE_TARGET): $(MODULE_BUILD_DEPS) $(TOP)/cpusched/cpusched.c $(TOP)/cpusched/yield.c $(TOP)/cpusched/fork-bench.c $(TOP)/cpusched/monitor_latency.c
 	$(CC) $(CFLAGS) $(MODULE_CFLAGS) -o $@ $(TOP)/cpusched/cpusched.c $(MODULE_BUILD_SOURCES)
 
 

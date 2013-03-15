@@ -3,11 +3,13 @@
 
 #include "yield.c"
 #include "fork-bench.c"
+#include "monitor_latency.c"
 
 
 static const struct plugin_id cpusched_plugins[] = {
 	yield_bench_plugin_id
 	fork_bench_plugin_id
+	monitor_latency_plugin_id
 	{
 		/* Sentinel */
 	}
