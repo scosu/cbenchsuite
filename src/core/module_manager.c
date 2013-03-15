@@ -401,6 +401,12 @@ struct benchsuite *mod_mgr_module_get_benchsuite(struct mod_mgr *mm,
 
 	printk(KERN_DEBUG "Module get benchsuite %s\n", bench_name);
 
+	if (!benchsuites) {
+		printk(KERN_ERR "Module %s does not define any benchsuites.\n",
+				bench_name);
+		return NULL;
+	}
+
 	for (i = 0; benchsuites[i].name; ++i) {
 		int ret;
 		if (strcmp(benchsuites[i].name, bench_name))
