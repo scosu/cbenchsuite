@@ -30,6 +30,7 @@ enum plugins {
 	PLUGIN_SWAP_RESET,
 	PLUGIN_MONITOR_STAT,
 	PLUGIN_MONITOR_MEMINFO,
+	PLUGIN_MONITOR_SCHEDSTAT,
 };
 
 const char vm_drop_caches[] = "/proc/sys/vm/drop_caches";
@@ -40,6 +41,7 @@ struct module_id sysctl_module;
 #include "sysctl_swap_reset.c"
 #include "sysctl_monitor_stat.c"
 #include "sysctl_monitor_meminfo.c"
+#include "sysctl_schedstat.c"
 
 static int module_init(struct module *mod)
 {
@@ -52,6 +54,8 @@ static int module_init(struct module *mod)
 		sysctl_module.plugins[PLUGIN_MONITOR_STAT].versions[0].requirements[0].found = 1;
 	if (!access(monitor_meminfo_path, F_OK | R_OK))
 		sysctl_module.plugins[PLUGIN_MONITOR_MEMINFO].versions[0].requirements[0].found = 1;
+	if (!access(monitor_schedstat_path, F_OK | R_OK))
+		sysctl_module.plugins[PLUGIN_MONITOR_SCHEDSTAT].versions[0].requirements[0].found = 1;
 	return 0;
 }
 
@@ -84,6 +88,15 @@ static struct plugin_id plugins[] = {
 		.monitor = monitor_meminfo_mon,
 		.versions = plugin_monitor_meminfo_versions,
 		.data_hdr = monitor_meminfo_data_hdr,
+	}, {
+		.name = "monitor-schedstat",
+		.description = "Monitor plugin to keep track of different values shown in /proc/schedstat.",
+		.install = monitor_schedstat_install,
+		.uninstall = monitor_schedstat_uninstall,
+		.init = monitor_schedstat_init,
+		.monitor = monitor_schedstat_mon,
+		.versions = plugin_monitor_schedstat_versions,
+		.data_hdr = monitor_schedstat_data_hdr,
 	}, {
 		/* Sentinel */
 	}
