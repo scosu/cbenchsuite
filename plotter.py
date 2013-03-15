@@ -547,7 +547,6 @@ class plot:
 			if d < depth:
 				depth = d
 		self.properties['plot-depth'] = depth
-		print("new depth " + str(depth))
 	def rebuild_tree(self):
 		if self.dummy:
 			return
