@@ -2,10 +2,12 @@
 #include <cbench/plugin.h>
 
 #include "yield.c"
+#include "fork-bench.c"
 
 
 static const struct plugin_id cpusched_plugins[] = {
 	yield_bench_plugin_id
+	fork_bench_plugin_id
 	{
 		/* Sentinel */
 	}
