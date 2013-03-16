@@ -115,8 +115,13 @@ static inline void data_set_double(struct data *d, int index, double value)
 static inline void data_set_str(struct data *d, int index, const char *value)
 {
 	d->data[index].type = VALUE_STRING;
-	d->data[index].v_str = malloc(strlen(value) + 1);
-	strcpy(d->data[index].v_str, value);
+	if (value == NULL) {
+		d->data[index].v_str = malloc(1);
+		d->data[index].v_str[0] = '\0';
+	} else {
+		d->data[index].v_str = alloc(strlen(value) + 1);
+		strcpy(d->data[index].v_str, value);
+	}
 }
 
 static inline void data_add_int32(struct data *d, int32_t value)
