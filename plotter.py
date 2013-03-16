@@ -301,14 +301,9 @@ class diff_tree:
 		if self.name == name:
 			child = self.childs[0].ptr
 			self.name = child.name
-			self.childs = child.childs
 			self.combo = child.combo
-			for e in self.childs:
-				c = e.ptr
-				new_child_properties = self.properties.copy()
-				for k,v in c.properties.items():
-					new_child_properties[k] = v
-				c.properties = new_child_properties
+			self.childs = child.childs
+			self.properties = child.properties
 			return
 		for e in self.childs:
 			e.ptr.remove_name(name)
@@ -331,7 +326,6 @@ class diff_tree:
 				if lvl_nodes[0].name != None and list(possible_values)[0] != None:
 					for i in range(len(lvl_nodes[0].name)):
 						removed_values[lvl_nodes[0].name[i]] = list(possible_values)[0][i]
-					#removed_values[tuple(lvl_nodes[0].name)] = list(possible_values)[0]
 					for k,v in lvl_nodes[0].properties.items():
 						properties[k] = v
 				self.remove_name(lvl_nodes[0].name)
@@ -595,6 +589,9 @@ class plot:
 					for row in res:
 						if self.linechart and row['name'] == 'time':
 							self.properties['line-xtick-data'] = 'time'
+							self.properties['xlabel'] = row['name'].capitalize()
+							if row['unit'] != '':
+								self.properties['xlabel'] += ' (' + row['unit'] + ')'
 							continue
 						for pind in range(len(ptrs)):
 							tmp_child = ptrs[pind].add_child(row['name'])
@@ -616,6 +613,10 @@ class plot:
 				print(indent(2) + "Chart type: bar")
 			if self.linechart:
 				print(indent(2) + "Chart type: line")
+			if len(self.removed_properties):
+				print(indent(2) + "Autoremoved properties:")
+				for k in sorted(self.removed_properties.keys()):
+					print(indent(3) + k + ": " + str(self.removed_properties[k]))
 			if len(self.properties) > 0:
 				print(indent(2) + "Properties:")
 				for k in sorted(self.properties.keys()):
