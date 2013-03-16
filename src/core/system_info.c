@@ -67,10 +67,14 @@ static void system_cpu_calc_ids(struct system *sys)
 		sha256_add(&type, &cpu->wp);
 		sha256_add_str(&type, cpu->vendor_id);
 		sha256_add_str(&type, cpu->model_name);
-		sha256_add_str(&type, cpu->microcode);
-		sha256_add_str(&type, cpu->address_sizes_str);
-		sha256_add_str(&type, cpu->power_management);
-		sha256_add_str(&type, cpu->flags);
+		if (cpu->microcode)
+			sha256_add_str(&type, cpu->microcode);
+		if (cpu->address_sizes_str)
+			sha256_add_str(&type, cpu->address_sizes_str);
+		if (cpu->power_management)
+			sha256_add_str(&type, cpu->power_management);
+		if (cpu->flags)
+			sha256_add_str(&type, cpu->flags);
 
 		sha256_add(&ctx, &cpu->cpufreq);
 		if (cpu->cpufreq) {
