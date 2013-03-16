@@ -451,6 +451,7 @@ class plot:
 			query += '"'
 			res = self.threaddb.execute(query)
 			data = []
+			datas = []
 			last_uuid = ''
 			last_x = 0.0
 			offset = 0.0
@@ -464,10 +465,10 @@ class plot:
 						if 'line-nr-runs' in self.properties:
 							if ct >= self.properties['line-nr-runs']:
 								break
-						data.append((offset + last_x + 0.00001, 0))
+						datas.append(data)
+						data = []
 						last_uuid = row[0]
 						offset += last_x + last_x * 0.05
-						data.append((offset - 0.00001, 0))
 					data.append((offset + row[2], row[1]))
 					last_x = row[2]
 			else:
@@ -481,13 +482,15 @@ class plot:
 						if 'line-nr-runs' in self.properties:
 							if ct >= self.properties['line-nr-runs']:
 								break
-						data.append((offset + last_x + 0.00001, 0))
+						datas.append(data)
+						data = []
 						offset += last_x * 0.05
 						last_x = 0
-						data.append((offset - 0.00001, 0))
 					data.append((offset + last_x, row[2]))
 					last_x += 1
-			return data
+			if len(data) > 0:
+				datas.append(data)
+			return datas
 
 	def _plot_cb(self, nodepath, last_node):
 		path = self.base_path

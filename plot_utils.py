@@ -167,7 +167,11 @@ def _plot_stuff(fig, ax, properties, max_x = None):
 	if not no_legend and max_x != None:
 		fs = property_get(properties, 'legendfontsize')
 		handles, labels = ax.get_legend_handles_labels()
-		hl = sorted(zip(labels, handles), key=parameter_sort_create)
+		by_label = dict(zip(labels, handles))
+		labels = []
+		for k,v in by_label.items():
+			labels.append((k,v))
+		hl = sorted(labels, key=parameter_sort_create)
 		labels, handles = zip(*hl)
 		max_label = 0
 		for k in labels:
@@ -221,32 +225,36 @@ def plot_line_chart(data, path, properties=None, fmts_arg = None, x_keys = None)
 	for k in x_keys:
 		if k not in data:
 			continue
-		v = data[k]
-		xs = []
-		ys = []
-		yerrs = []
-		yerr_not_zero = False
-		for pt in v:
-			xs.append(pt[0])
-			if max_overall_x == None:
-				max_overall_x = pt[0]
-				min_overall_x = pt[0]
-			else:
-				max_overall_x = max(max_overall_x, pt[0])
-				min_overall_x = min(min_overall_x, pt[0])
-			if isinstance(pt[1], list):
-				m, h = mean_confidence_interval(pt[1])
-				yerrs.append(h)
-				ys.append(m)
-				yerr_not_zero = True
-			else:
-				ys.append(pt[1])
-				yerrs.append(0.0)
 		fmt = _next_fmt()
-		if yerr_not_zero:
-			ax.errorbar(xs, ys, yerrs, label=k, linestyle=fmt['linestyle'], marker=fmt['marker'], color=fmt['color'])
+		if isinstance(data[k][0][0], list) or isinstance(data[k][0][0], tuple):
+			dats = data[k]
 		else:
-			ax.plot(xs, ys, label=k, linestyle=fmt['linestyle'], marker=fmt['marker'], color=fmt['color'])
+			dats = [data[k]]
+		for v in dats:
+			xs = []
+			ys = []
+			yerrs = []
+			yerr_not_zero = False
+			for pt in v:
+				xs.append(pt[0])
+				if max_overall_x == None:
+					max_overall_x = pt[0]
+					min_overall_x = pt[0]
+				else:
+					max_overall_x = max(max_overall_x, pt[0])
+					min_overall_x = min(min_overall_x, pt[0])
+				if isinstance(pt[1], list):
+					m, h = mean_confidence_interval(pt[1])
+					yerrs.append(h)
+					ys.append(m)
+					yerr_not_zero = True
+				else:
+					ys.append(pt[1])
+					yerrs.append(0.0)
+			if yerr_not_zero:
+				ax.errorbar(xs, ys, yerrs, label=k, linestyle=fmt['linestyle'], marker=fmt['marker'], color=fmt['color'])
+			else:
+				ax.plot(xs, ys, label=k, linestyle=fmt['linestyle'], marker=fmt['marker'], color=fmt['color'])
 	rang = max_overall_x - min_overall_x
 	ax.set_xlim(xmin = (min_overall_x - rang*0.05))
 	_plot_stuff(fig, ax, properties, max_x=(max_overall_x + rang*0.05))
