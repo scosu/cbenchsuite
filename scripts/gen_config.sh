@@ -8,6 +8,8 @@ fi
 
 config=$1
 
+mkdir -p `dirname $2`
+
 (
 echo "#ifndef _CBENCH_CONFIG_H_"
 echo "#define _CBENCH_CONFIG_H_"
