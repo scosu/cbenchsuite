@@ -119,7 +119,7 @@ static inline void data_set_str(struct data *d, int index, const char *value)
 		d->data[index].v_str = malloc(1);
 		d->data[index].v_str[0] = '\0';
 	} else {
-		d->data[index].v_str = alloc(strlen(value) + 1);
+		d->data[index].v_str = malloc(strlen(value) + 1);
 		strcpy(d->data[index].v_str, value);
 	}
 }
