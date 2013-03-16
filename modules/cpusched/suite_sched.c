@@ -31,20 +31,20 @@ static struct plugin_link suite_sched_kernel_grps[][SUITE_SCHED_SIZE] = {
 };
 
 static struct plugin_link suite_sched_hackbench_grps[][SUITE_SCHED_SIZE] = {
-	SUITE_SCHED_BENCHMARK("linux-perf.hackbench", "groups=10:pipe=0:process=1"),
-	SUITE_SCHED_BENCHMARK("linux-perf.hackbench", "groups=10:pipe=1:process=1"),
-	SUITE_SCHED_BENCHMARK("linux-perf.hackbench", "groups=30:pipe=0:process=1"),
-	SUITE_SCHED_BENCHMARK("linux-perf.hackbench", "groups=30:pipe=1:process=1"),
-	SUITE_SCHED_BENCHMARK("linux-perf.hackbench", "groups=50:pipe=0:process=1"),
-	SUITE_SCHED_BENCHMARK("linux-perf.hackbench", "groups=50:pipe=1:process=1"),
-	SUITE_SCHED_BENCHMARK("linux-perf.hackbench", "groups=70:pipe=0:process=1"),
-	SUITE_SCHED_BENCHMARK("linux-perf.hackbench", "groups=70:pipe=1:process=1"),
-	SUITE_SCHED_BENCHMARK("linux-perf.hackbench", "groups=90:pipe=0:process=1"),
-	SUITE_SCHED_BENCHMARK("linux-perf.hackbench", "groups=90:pipe=1:process=1"),
+	SUITE_SCHED_BENCHMARK("linux_perf.hackbench", "groups=10:pipe=0:process=1"),
+	SUITE_SCHED_BENCHMARK("linux_perf.hackbench", "groups=10:pipe=1:process=1"),
+	SUITE_SCHED_BENCHMARK("linux_perf.hackbench", "groups=30:pipe=0:process=1"),
+	SUITE_SCHED_BENCHMARK("linux_perf.hackbench", "groups=30:pipe=1:process=1"),
+	SUITE_SCHED_BENCHMARK("linux_perf.hackbench", "groups=50:pipe=0:process=1"),
+	SUITE_SCHED_BENCHMARK("linux_perf.hackbench", "groups=50:pipe=1:process=1"),
+	SUITE_SCHED_BENCHMARK("linux_perf.hackbench", "groups=70:pipe=0:process=1"),
+	SUITE_SCHED_BENCHMARK("linux_perf.hackbench", "groups=70:pipe=1:process=1"),
+	SUITE_SCHED_BENCHMARK("linux_perf.hackbench", "groups=90:pipe=0:process=1"),
+	SUITE_SCHED_BENCHMARK("linux_perf.hackbench", "groups=90:pipe=1:process=1"),
 };
 
 static struct plugin_link suite_sched_pipe_grps[][SUITE_SCHED_SIZE] = {
-	SUITE_SCHED_BENCHMARK("linux-perf.sched-pipe", NULL),
+	SUITE_SCHED_BENCHMARK("linux_perf.sched-pipe", NULL),
 };
 
 static struct plugin_link suite_sched_fork_grps[][SUITE_SCHED_SIZE] = {
