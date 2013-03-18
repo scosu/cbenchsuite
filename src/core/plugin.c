@@ -404,7 +404,7 @@ static void *plugins_thread_execute(void *data)
 		}
 		plugin_exec_barrier(exec);
 		plugin_exec_barrier(exec);
-	} while (exec->exec_env->state != EXEC_STOP);
+	} while (exec->exec_env->state != EXEC_STOP && !received_sigstop);
 	return NULL;
 }
 
