@@ -477,13 +477,18 @@ static void plugin_exec_persist(struct plugin_exec *exec, int persist_types)
 {
 	struct plugin *plug = exec->plug;
 	struct data *data, *ndata;
+	struct list_head data_to_persist;
+	int ret;
+	INIT_LIST_HEAD(&data_to_persist);
 	printk(KERN_DEBUG "Persist data\n");
 	list_for_each_entry_safe(data, ndata, &plug->run_data, run_data) {
 		int persist = 0;
-		int ret;
 		printk(KERN_DEBUG "looping\n");
-		if (exec->exec_env->error_shutdown)
-			goto error;
+		if (exec->exec_env->error_shutdown) {
+			list_del(&data->run_data);
+			plugin_free_data(plug, data);
+			continue;
+		}
 
 		if (DATA_TYPE_MONITOR & persist_types & data->type) {
 			persist = 1;
@@ -495,12 +500,17 @@ static void plugin_exec_persist(struct plugin_exec *exec, int persist_types)
 		if (!persist)
 			continue;
 
-		ret = storage_add_data(&exec->exec_env->env->storage, plug, data);
-		if (ret) {
-			printk(KERN_ERR "Failed persisting data\n");
-			exec->exec_env->error_shutdown = 1;
-		}
-error:
+		list_del(&data->run_data);
+		list_add_tail(&data->run_data, &data_to_persist);
+	}
+
+	ret = storage_add_data(&exec->exec_env->env->storage, plug, &data_to_persist);
+	if (ret) {
+		printk(KERN_ERR "Failed persisting data\n");
+		exec->exec_env->error_shutdown = 1;
+	}
+
+	list_for_each_entry_safe(data, ndata, &data_to_persist, run_data) {
 		list_del(&data->run_data);
 		if (DATA_TYPE_RESULT & persist_types & data->type) {
 			list_add_tail(&data->run_data, &plug->check_err_data);

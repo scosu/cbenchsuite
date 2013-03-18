@@ -186,6 +186,13 @@ static inline int data_to_csv(const struct data *data, char **buf, size_t *buf_l
 int header_to_csv(const struct header *hdr, char **buf, size_t *buf_len,
 		enum value_quote_type quotes);
 
+static inline int header_count_items(const struct header *hdr)
+{
+	int i;
+	for (i = 0; hdr[i].name != NULL; ++i);
+	return i;
+}
+
 static inline size_t value_as_str_len(const struct value *v)
 {
 	switch (v->type) {

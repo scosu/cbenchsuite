@@ -12,7 +12,7 @@ struct storage_ops {
 				const char *sha256);
 	int (*init_run)(void *storage, const char *uuid, int nr_run);
 	int (*add_sysinfo)(void *storage, struct system *sys);
-	int (*add_data)(void *storage, struct plugin *plug, struct data *data);
+	int (*add_data)(void *storage, struct plugin *plug, struct list_head *data_list);
 	int (*exit_run)(void *storage);
 	int (*exit_plugin_grp)(void *storage);
 	void (*exit)(void *storage);
@@ -45,11 +45,11 @@ static inline int storage_add_sysinfo(struct storage *storage, struct system *sy
 	return storage->ops->add_sysinfo(storage->data, sys);
 }
 static inline int storage_add_data(struct storage *storage, struct plugin *plug,
-		struct data *data)
+		struct list_head *data_list)
 {
 	if (!storage->ops->add_data)
 		return 0;
-	return storage->ops->add_data(storage->data, plug, data);
+	return storage->ops->add_data(storage->data, plug, data_list);
 }
 static inline int storage_exit_run(struct storage *storage)
 {

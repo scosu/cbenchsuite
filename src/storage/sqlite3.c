@@ -54,6 +54,38 @@ struct values_present {
 	int *present;
 };
 
+static int sqlite3_bind_cbench_value(sqlite3_stmt *stmt, int ind, struct value *val)
+{
+	switch (val->type) {
+	case VALUE_STRING:
+		return sqlite3_bind_text(stmt, ind, val->v_str, -1, SQLITE_STATIC);
+	case VALUE_INT32:
+		return sqlite3_bind_int(stmt, ind, val->v_int32);
+	case VALUE_INT64:
+		return sqlite3_bind_int64(stmt, ind, val->v_int64);
+	case VALUE_FLOAT:
+		return sqlite3_bind_double(stmt, ind, val->v_flt);
+	case VALUE_DOUBLE:
+		return sqlite3_bind_double(stmt, ind, val->v_dbl);
+	default:
+		return -1;
+	}
+}
+
+static int sqlite3_bind_data(sqlite3_stmt *stmt, int offset, struct data *dat)
+{
+	int i;
+	int ret;
+	struct value *vals = dat->data;
+
+	for (i = 0; vals[i].type != VALUE_SENTINEL; ++i) {
+		ret = sqlite3_bind_cbench_value(stmt, offset + i, &vals[i]);
+		if (ret != SQLITE_OK)
+			return ret;
+	}
+	return SQLITE_OK;
+}
+
 static int sqlite3_alter_by_hdr_cb(void *ctx, int nr_col, char **cols,
 					char **names)
 {
@@ -178,8 +210,22 @@ static int sqlite3_store_header_metadata(struct sqlite3_data *d,
 	int ret;
 	char **stmt = &d->stmt;
 	size_t *stmt_len = &d->stmt_size;
-	char *errmsg;
 	int i;
+	sqlite3_stmt *sqstmt;
+
+	ret = mem_grow((void**)stmt, stmt_len, strlen(table) + strlen(join_sha)
+				+ 128);
+	if (ret)
+		return -1;
+
+	sprintf(*stmt, "INSERT OR IGNORE INTO %s(%s,%s,name,description,unit%s)"
+				" VALUES(?,?,?,?,?%s);",
+				table, join_sha, sha_name,
+				(persist_data_scale ? ",more_is_better" : ""),
+				(persist_data_scale ? ",?" : ""));
+	ret = sqlite3_prepare_v2(d->db, *stmt, -1, &sqstmt, NULL);
+	if (ret != SQLITE_OK)
+		return -1;
 
 	for (i = 0; hdr[i].name != NULL; ++i) {
 		sha256_context ctx;
@@ -202,36 +248,34 @@ static int sqlite3_store_header_metadata(struct sqlite3_data *d,
 				+ (hdr[i].description ? strlen(hdr[i].description) : 0)
 				+ (hdr[i].unit ? strlen(hdr[i].unit) : 0) + 128);
 		if (ret)
-			return -1;
+			goto error;
 
-		sprintf(*stmt, "INSERT OR IGNORE INTO %s("
-					"%s,"
-					"%s,"
-					"name,"
-					"description,"
-					"unit"
-					"%s"
-				") VALUES("
-					"'%s','%s','%s','%s','%s'%s);",
-				table,
-				join_sha,
-				sha_name,
-				(persist_data_scale ? ",more_is_better" : ""),
-				sha_meta,
-				sha,
-				hdr[i].name,
-				(hdr[i].description ? hdr[i].description : ""),
-				(hdr[i].unit ? hdr[i].unit : ""),
-				(persist_data_scale ? (hdr[i].data_type ? ",1":",0") : ""));
-		ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
-		if (ret != SQLITE_OK) {
+		ret = sqlite3_bind_text(sqstmt, 1, sha_meta, -1, SQLITE_STATIC);
+		ret |= sqlite3_bind_text(sqstmt, 2, sha, -1, SQLITE_STATIC);
+		ret |= sqlite3_bind_text(sqstmt, 3, hdr[i].name, -1, SQLITE_STATIC);
+		ret |= sqlite3_bind_text(sqstmt, 4, (hdr[i].description ? hdr[i].description : ""), -1, SQLITE_STATIC);
+		ret |= sqlite3_bind_text(sqstmt, 5, (hdr[i].unit ? hdr[i].unit : ""), -1, SQLITE_STATIC);
+		if (persist_data_scale)
+			ret |= sqlite3_bind_int(sqstmt, 6, hdr[i].data_type == DATA_MORE_IS_BETTER);
+		if (ret != SQLITE_OK)
+			goto error;
+
+		ret = sqlite3_step(sqstmt);
+		if (ret != SQLITE_DONE) {
 			printk(KERN_ERR "Failed to insert metadata into %s (%s)L %s\n",
-					table, *stmt, errmsg);
-			sqlite3_free(errmsg);
-			return -1;
+					table, *stmt, sqlite3_errmsg(d->db));
+			goto error;
 		}
+
+		ret = sqlite3_reset(sqstmt);
+		if (ret != SQLITE_OK)
+			goto error;
 	}
+	sqlite3_finalize(sqstmt);
 	return 0;
+error:
+	sqlite3_finalize(sqstmt);
+	return -1;
 }
 
 static void *sqlite3_init(const char *path)
@@ -353,6 +397,50 @@ error:
 	return NULL;
 }
 
+static int sqlite3_prepare_insert_stmt(sqlite3 *db, sqlite3_stmt **sqstmt, char **stmt,
+		size_t *stmt_len, char **buf, size_t *buf_len,
+		const char *table, const struct header *hdr, const char *prefix_column,
+		int add_columns)
+{
+	int ret;
+	int written;
+	int hdr_items;
+	int i;
+
+	ret = header_to_csv(hdr, buf, buf_len, QUOTE_SINGLE);
+	if (ret)
+		return -1;
+
+	hdr_items = header_count_items(hdr);
+
+	ret = mem_grow((void**)stmt, stmt_len, strlen(table) + strlen(*buf)
+					+ (prefix_column ? strlen(prefix_column) : 0)
+					+ (add_columns + hdr_items) * 3
+					+ 128);
+	if (ret)
+		return -1;
+
+	written = sprintf(*stmt, "INSERT OR IGNORE INTO \"%s\"(%s%s%s) VALUES(", table,
+			(prefix_column ? prefix_column : ""),
+			(prefix_column ? "," : ""),
+			*buf);
+
+	for (i = 0; i != add_columns + hdr_items; ++i) {
+		if (i != 0)
+			written += sprintf(*stmt + written, ",");
+		written += sprintf(*stmt + written, "?");
+	}
+
+	sprintf(*stmt + written, ");");
+
+	ret = sqlite3_prepare_v2(db, *stmt, -1, sqstmt, NULL);
+	if (ret != SQLITE_OK) {
+		printk(KERN_ERR "Failed to prepare sqlite statement %d\n", ret);
+		return -1;
+	}
+	return 0;
+}
+
 static int sqlite3_add_sysinfo(void *storage, struct system *sys)
 {
 	struct sqlite3_data *d = (struct sqlite3_data *) storage;
@@ -360,13 +448,11 @@ static int sqlite3_add_sysinfo(void *storage, struct system *sys)
 	size_t *stmt_len = &d->stmt_size;
 	char **buf1 = &d->buf1;
 	size_t *buf1_len = &d->buf1_size;
-	char **buf2 = &d->buf2;
-	size_t *buf2_len = &d->buf2_size;
-	char *errmsg;
 	const struct header *hdr;
 	struct data *dat;
 	char system_cpu_sha[65];
 	sha256_context ctx;
+	sqlite3_stmt *sqstmt;
 	int ret;
 	int i;
 
@@ -383,10 +469,11 @@ static int sqlite3_add_sysinfo(void *storage, struct system *sys)
 		goto error;
 	}
 
-	ret = header_to_csv(hdr, buf1, buf1_len, QUOTE_SINGLE);
+	ret = sqlite3_prepare_insert_stmt(d->db, &sqstmt, stmt, stmt_len, buf1,
+			buf1_len, "system", hdr, "system_sha,cpus_sha", 2);
 	if (ret) {
-		printk(KERN_ERR "Failed translating system header to csv\n");
-		goto error;
+		printk(KERN_ERR "Failed to prepare statement\n");
+		return -1;
 	}
 
 	dat = system_info_data(sys);
@@ -395,37 +482,22 @@ static int sqlite3_add_sysinfo(void *storage, struct system *sys)
 		goto error;
 	}
 
-	ret = data_to_csv(dat, buf2, buf2_len, QUOTE_SINGLE);
-	data_put(dat);
-	if (ret) {
-		printk(KERN_ERR "Failed translating system data to csv\n");
-		goto error;
-	}
-
-	ret = mem_grow((void**)stmt, stmt_len, strlen(*buf1) + strlen(*buf2)
-			+ strlen(sys->sha256)
-			+ strlen(sys->hw.cpus_sha256) + 128);
-	if (ret)
-		goto error;
-
-
-	sprintf(*stmt, "INSERT OR IGNORE INTO system("
-				"%s,"
-				"system_sha,"
-				"cpus_sha"
-			") VALUES("
-				"%s,'%s','%s');",
-			*buf1,
-			*buf2,
-			sys->sha256,
-			sys->hw.cpus_sha256);
-	ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
+	ret = sqlite3_bind_text(sqstmt, 1, sys->sha256, -1, SQLITE_STATIC);
+	ret |= sqlite3_bind_text(sqstmt, 2, sys->hw.cpus_sha256, -1, SQLITE_STATIC);
+	ret |= sqlite3_bind_data(sqstmt, 3, dat);
 	if (ret != SQLITE_OK) {
-		printk(KERN_ERR "Failed inserting system data (%s): %s\n",
-				*stmt, errmsg);
-		sqlite3_free(errmsg);
 		goto error;
 	}
+
+	ret = sqlite3_step(sqstmt);
+	data_put(dat);
+	if (ret != SQLITE_DONE) {
+		printk(KERN_ERR "Failed inserting system data (%s): %s\n",
+				*stmt, sqlite3_errmsg(d->db));
+		goto error;
+	}
+	sqlite3_finalize(sqstmt);
+	sqstmt = NULL;
 
 	hdr = system_cpu_type_hdr(sys->hw.cpus);
 	if (!hdr) {
@@ -439,9 +511,10 @@ static int sqlite3_add_sysinfo(void *storage, struct system *sys)
 		goto error;
 	}
 
-	ret = header_to_csv(hdr, buf1, buf1_len, QUOTE_SINGLE);
+	ret = sqlite3_prepare_insert_stmt(d->db, &sqstmt, stmt, stmt_len, buf1,
+			buf1_len, "cpu_type", hdr, "cpu_type_sha", 1);
 	if (ret) {
-		printk(KERN_ERR "Failed to translate system cpu header to csv\n");
+		printk(KERN_ERR "Failed to prepare statement for cpu_type\n");
 		goto error;
 	}
 
@@ -454,35 +527,24 @@ static int sqlite3_add_sysinfo(void *storage, struct system *sys)
 			goto error;
 		}
 
-		ret = data_to_csv(dat, buf2, buf2_len, QUOTE_SINGLE);
-		data_put(dat);
-		if (ret) {
-			printk(KERN_ERR "Failed to translate cpu values for %d\n", i);
-			goto error;
-		}
-
-		ret = mem_grow((void**)stmt, stmt_len, strlen(*buf1) + strlen(*buf2)
-				+ strlen(cpu->type_sha256) + 128);
-		if (ret) {
-			goto error;
-		}
-
-		sprintf(*stmt, "INSERT OR IGNORE INTO cpu_type("
-					"%s,"
-					"cpu_type_sha"
-				") VALUES("
-					"%s,'%s');",
-				*buf1,
-				*buf2,
-				cpu->type_sha256);
-		ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
+		ret = sqlite3_bind_text(sqstmt, 1, cpu->type_sha256, -1, SQLITE_STATIC);
+		ret |= sqlite3_bind_data(sqstmt, 2, dat);
 		if (ret != SQLITE_OK) {
-			printk(KERN_ERR "Failed to insert cpu type (%s): %s\n",
-					*stmt, errmsg);
-			sqlite3_free(errmsg);
+			printk(KERN_ERR "Failed binding cputype to sqlstatement\n");
 			goto error;
 		}
+
+		ret = sqlite3_step(sqstmt);
+		data_put(dat);
+		if (ret != SQLITE_DONE) {
+			goto error;
+		}
+
+		sqlite3_reset(sqstmt);
 	}
+	sqlite3_finalize(sqstmt);
+	sqstmt = NULL;
+
 
 	hdr = system_cpu_hdr(sys->hw.cpus);
 	if (!hdr) {
@@ -496,9 +558,11 @@ static int sqlite3_add_sysinfo(void *storage, struct system *sys)
 		goto error;
 	}
 
-	ret = header_to_csv(hdr, buf1, buf1_len, QUOTE_SINGLE);
+	ret = sqlite3_prepare_insert_stmt(d->db, &sqstmt, stmt, stmt_len, buf1,
+			buf1_len, "system_cpu", hdr, "cpus_sha, sha, cpu_type_sha",
+			3);
 	if (ret) {
-		printk(KERN_ERR "Failed to translate system cpu header to csv\n");
+		printk(KERN_ERR "Failed to prepare statement for system_cpu\n");
 		goto error;
 	}
 
@@ -517,42 +581,30 @@ static int sqlite3_add_sysinfo(void *storage, struct system *sys)
 			goto error;
 		}
 
-		ret = data_to_csv(dat, buf2, buf2_len, QUOTE_SINGLE);
-		data_put(dat);
-		if (ret) {
-			printk(KERN_ERR "Failed to translate cpu values for %d\n", i);
-			goto error;
-		}
 
-		ret = mem_grow((void**)stmt, stmt_len, strlen(*buf1) + strlen(*buf2)
-				+ strlen(cpu->type_sha256)
-				+ strlen(system_cpu_sha)
-				+ strlen(cpu->sha256) + 128);
-		if (ret) {
-			goto error;
-		}
-
-		sprintf(*stmt, "INSERT OR IGNORE INTO system_cpu("
-					"%s,"
-					"cpus_sha,"
-					"sha,cpu_type_sha"
-				") VALUES("
-					"%s,'%s','%s','%s');",
-				*buf1,
-				*buf2,
-				sys->hw.cpus_sha256,
-				cpu->sha256,
-				cpu->type_sha256);
-		ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
+		ret = sqlite3_bind_text(sqstmt, 1, sys->hw.cpus_sha256, -1, SQLITE_STATIC);
+		ret |= sqlite3_bind_text(sqstmt, 2, cpu->sha256, -1, SQLITE_STATIC);
+		ret |= sqlite3_bind_text(sqstmt, 3, cpu->type_sha256, -1, SQLITE_STATIC);
+		ret |= sqlite3_bind_data(sqstmt, 4, dat);
 		if (ret != SQLITE_OK) {
-			printk(KERN_ERR "Failed to insert cpu (%s): %s\n",
-					*stmt, errmsg);
-			sqlite3_free(errmsg);
+			data_put(dat);
 			goto error;
 		}
+
+		ret = sqlite3_step(sqstmt);
+		data_put(dat);
+		if (ret != SQLITE_DONE) {
+			printk(KERN_ERR "Failed to insert cpu: %s\n",
+					sqlite3_errmsg(d->db));
+			goto error;
+		}
+		sqlite3_reset(sqstmt);
 	}
+	sqlite3_finalize(sqstmt);
 	return 0;
 error:
+	if (sqstmt)
+		sqlite3_finalize(sqstmt);
 	return -1;
 }
 
@@ -560,7 +612,9 @@ static int sqlite3_plugin_store_options(struct sqlite3_data *d,
 		struct plugin *plug)
 {
 	int ret;
+	int i;
 	struct header *opts = plug->options;
+	sqlite3_stmt *sqstmt;
 	char **buf1 = &d->buf1;
 	size_t *buf1_len = &d->buf1_size;
 	char **buf2 = &d->buf2;
@@ -604,41 +658,38 @@ static int sqlite3_plugin_store_options(struct sqlite3_data *d,
 		return -1;
 	}
 
-	ret = option_to_data_csv(opts, buf2, buf2_len, QUOTE_SINGLE);
-	if (ret) {
-		printk(KERN_ERR "Failed to translate option data to csv\n");
-		return -1;
-	}
-
-	ret = mem_grow((void**)stmt, stmt_size,
-			strlen(plug->mod->name)
-			+ strlen(plug->id->name)
-			+ strlen(plug->version->version)
-			+ strlen(*buf1)
-			+ strlen(*buf2)
-			+ strlen(plug->opt_sha256)
-			+ 128);
+	ret = mem_grow((void**)buf2, buf2_len, strlen(plug->mod->name)
+			+ strlen(plug->id->name) + strlen(plug->version->version)
+			+ 32);
 	if (ret)
 		return -1;
-	sprintf(*stmt, "INSERT OR IGNORE INTO \"plugin_opts_%s__%s__%s\"("
-				"plugin_opts_sha,"
-				"%s"
-			") VALUES("
-				"'%s',%s);",
-			plug->mod->name,
-			plug->id->name,
-			plug->version->version,
-			*buf1,
-			plug->opt_sha256,
-			*buf2);
-	ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
-	if (ret != SQLITE_OK) {
-		printk(KERN_ERR "Failed inserting plugin options (%s): %s\n",
-				*stmt, errmsg);
-		sqlite3_free(errmsg);
+
+	sprintf(*buf2, "plugin_opts_%s__%s__%s", plug->mod->name, plug->id->name,
+			plug->version->version);
+
+	ret = sqlite3_prepare_insert_stmt(d->db, &sqstmt, stmt, stmt_size, buf1,
+			buf1_len, *buf2, opts, "plugin_opts_sha", 1);
+	if (ret)
 		return -1;
+
+	ret = sqlite3_bind_text(sqstmt, 1, plug->opt_sha256, -1, SQLITE_STATIC);
+	for (i = 0; opts[i].name != NULL; ++i) {
+		ret |= sqlite3_bind_cbench_value(sqstmt, 2 + i, &opts[i].opt_val);
 	}
+	if (ret != SQLITE_OK)
+		goto error;
+
+	ret = sqlite3_step(sqstmt);
+	if (ret != SQLITE_DONE) {
+		printk(KERN_ERR "Failed inserting plugin options: %s\n",
+				sqlite3_errmsg(d->db));
+		goto error;
+	}
+	sqlite3_finalize(sqstmt);
 	return 0;
+error:
+	sqlite3_finalize(sqstmt);
+	return -1;
 }
 
 static int sqlite3_plugin_store_versions(struct sqlite3_data *d,
@@ -725,6 +776,7 @@ static int sqlite3_init_plugin_grp(void *storage, struct list_head *plugins,
 					const char *group_sha)
 {
 	struct sqlite3_data *d = storage;
+	sqlite3_stmt *sqstmt;
 	char **stmt = &d->stmt;
 	size_t *stmt_size = &d->stmt_size;
 	struct plugin *plug;
@@ -813,8 +865,7 @@ static int sqlite3_init_plugin_grp(void *storage, struct list_head *plugins,
 				+ 3 * strlen(plug->id->name));
 		if (ret)
 			return -1;
-
-		sprintf(*stmt, "INSERT OR IGNORE INTO plugin("
+		ret = sqlite3_prepare_v2(d->db, "INSERT OR IGNORE INTO plugin("
 					"plugin_sha,"
 					"module,"
 					"name,"
@@ -823,24 +874,38 @@ static int sqlite3_init_plugin_grp(void *storage, struct list_head *plugins,
 					"plugin_table,"
 					"plugin_opt_table,"
 					"plugin_comp_vers_table"
-				") VALUES("
-					"'%s','%s','%s','%s','%s',"
-					"'%s',"
-					"'%s',"
-					"'%s');",
-				plug->sha256,
-				plug->mod->name,
-				plug->id->name,
-				plug->id->description ? plug->id->description : "",
-				plug->version->version,
-				(plugin_data_hdr(plug) ? *buf1 : ""),
-				(plugin_get_options(plug) ? opt_table : ""),
-				(plug->version->comp_versions ? comp_vers_table : ""));
-		ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
+				") VALUES(?,?,?,?,?,?,?,?);", -1, &sqstmt, NULL);
 		if (ret != SQLITE_OK) {
-			printk(KERN_ERR "Failed to insert into plugins (%s): %s\n",
-					*stmt, errmsg);
-			sqlite3_free(errmsg);
+			printk(KERN_ERR "Failed to prepare plugin statement\n");
+			return -1;
+		}
+
+		ret = sqlite3_bind_text(sqstmt, 1, plug->sha256, -1, SQLITE_STATIC);
+		ret |= sqlite3_bind_text(sqstmt, 2, plug->mod->name, -1, SQLITE_STATIC);
+		ret |= sqlite3_bind_text(sqstmt, 3, plug->id->name, -1, SQLITE_STATIC);
+		if (plug->id->description)
+			ret |= sqlite3_bind_text(sqstmt, 4, plug->id->description, -1, SQLITE_STATIC);
+		else
+			ret |= sqlite3_bind_text(sqstmt, 4, "", -1, SQLITE_STATIC);
+		ret |= sqlite3_bind_text(sqstmt, 5, plug->version->version, -1, SQLITE_STATIC);
+		if (plugin_data_hdr(plug))
+			ret |= sqlite3_bind_text(sqstmt, 6, *buf1, -1, SQLITE_STATIC);
+		else
+			ret |= sqlite3_bind_text(sqstmt, 6, "", -1, SQLITE_STATIC);
+		if (plugin_get_options(plug))
+			ret |= sqlite3_bind_text(sqstmt, 7, opt_table, -1, SQLITE_STATIC);
+		else
+			ret |= sqlite3_bind_text(sqstmt, 7, "", -1, SQLITE_STATIC);
+		if (plug->version->comp_versions)
+			ret |= sqlite3_bind_text(sqstmt, 8, comp_vers_table, -1, SQLITE_STATIC);
+		else
+			ret |= sqlite3_bind_text(sqstmt, 8, "", -1, SQLITE_STATIC);
+		ret = sqlite3_step(sqstmt);
+		sqlite3_finalize(sqstmt);
+		if (ret != SQLITE_DONE) {
+			printk(KERN_ERR "Failed to insert into plugins: %s\n",
+					sqlite3_errmsg(d->db));
+			return -1;
 		}
 
 		ret = mem_grow((void**)stmt, stmt_size,
@@ -912,7 +977,7 @@ static int sqlite3_init_run(void *storage, const char *uuid, int nr_run)
 }
 
 static int sqlite3_add_data(void *storage, struct plugin *plug,
-		struct data *data)
+		struct list_head *data_list)
 {
 	struct sqlite3_data *d = storage;
 	char **stmt = &d->stmt;
@@ -921,10 +986,14 @@ static int sqlite3_add_data(void *storage, struct plugin *plug,
 	size_t *buf1_size = &d->buf1_size;
 	char **buf2 = &d->buf2;
 	size_t *buf2_size = &d->buf2_size;
-	char *errmsg;
 	int ret;
 	const struct header *hdr;
+	struct data *data;
+	sqlite3_stmt *sqstmt;
 
+	ret = sqlite3_exec(d->db, "BEGIN TRANSACTION;", NULL, NULL, NULL);
+	if (ret != SQLITE_OK)
+		return -1;
 
 	hdr = plugin_data_hdr(plug);
 	if (!hdr) {
@@ -933,47 +1002,44 @@ static int sqlite3_add_data(void *storage, struct plugin *plug,
 		return -1;
 	}
 
-	ret = header_to_csv(hdr, buf1, buf1_size, QUOTE_SINGLE);
-	if (ret) {
-		printk(KERN_ERR "Failed to translate plugin %s header to csv\n",
-				plug->id->name);
+	ret = mem_grow((void**)buf2, buf2_size, strlen(plug->mod->name)
+			+ strlen(plug->id->name) + strlen(plug->version->version));
+	if (ret)
 		return -1;
-	}
 
-	ret = data_to_csv(data, buf2, buf2_size, QUOTE_SINGLE);
-	if (ret) {
-		printk(KERN_ERR "Failed to translate plugin %s data to csv\n",
-				plug->id->name);
-		return -1;
-	}
+	sprintf(*buf2,"plugin_%s__%s__%s", plug->mod->name, plug->id->name,
+			plug->version->version);
 
-	ret = mem_grow((void**)stmt, stmt_size, strlen(*buf1) + strlen(*buf2)
-			+ strlen(plug->mod->name) + strlen(plug->id->name)
-			+ strlen(plug->version->version) + strlen(d->run_uuid)
-			+ 128);
-	if (ret) {
+	ret = sqlite3_prepare_insert_stmt(d->db, &sqstmt, stmt, stmt_size,
+			buf1, buf1_size, *buf2, hdr, "run_uuid,type_monitor", 2);
+	if (ret != SQLITE_OK)
 		return -1;
-	}
 
-	sprintf(*stmt, "INSERT INTO 'plugin_%s__%s__%s'("
-				"%s,"
-				"run_uuid,"
-				"type_monitor"
-			") VALUES("
-				"%s,'%s',%d);",
-			plug->mod->name, plug->id->name, plug->version->version,
-			*buf1,
-			*buf2,
-			d->run_uuid,
-			(data->type == DATA_TYPE_MONITOR));
-	ret = sqlite3_exec(d->db, *stmt, NULL, NULL, &errmsg);
-	if (ret) {
-		printk(KERN_ERR "Failed to insert plugin %s result into table (%s): %s\n",
-				plug->id->name, *stmt, errmsg);
-		sqlite3_free(errmsg);
-		return -1;
+	list_for_each_entry(data, data_list, run_data) {
+
+		ret = sqlite3_bind_text(sqstmt, 1, d->run_uuid, -1, SQLITE_STATIC);
+		ret |= sqlite3_bind_int(sqstmt, 2, data->type == DATA_TYPE_MONITOR);
+		ret |= sqlite3_bind_data(sqstmt, 3, data);
+		if (ret != SQLITE_OK)
+			goto error;
+
+		ret = sqlite3_step(sqstmt);
+		if (ret != SQLITE_DONE) {
+			printk(KERN_ERR "Failed to insert plugin %s result into table: %s\n",
+					plug->id->name, sqlite3_errmsg(d->db));
+			goto error;
+		}
+		sqlite3_reset(sqstmt);
 	}
+	sqlite3_finalize(sqstmt);
+	ret = sqlite3_exec(d->db, "END TRANSACTION;", NULL, NULL, NULL);
+	if (ret != SQLITE_OK)
+		return -1;
 	return 0;
+error:
+	sqlite3_finalize(sqstmt);
+	sqlite3_exec(d->db, "END TRANSACTION;", NULL, NULL, NULL);
+	return -1;
 }
 
 static void sqlite3_exit(void *storage)

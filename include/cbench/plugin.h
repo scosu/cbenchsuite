@@ -40,7 +40,7 @@ struct plugin {
 
 	void *plugin_data;
 	void *version_data;
-	void *options;
+	struct header *options;
 
 	void *user_data;
 
