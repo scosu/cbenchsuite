@@ -23,28 +23,10 @@ import statistics
 import operator
 import re
 
-properties_default = {
-		'confidence': 0.95,
-		'legend': True,
-		'xsize': 16,
-		'ysize': 9,
-		'dpi': 300,
-		'legendfontsize': 16,
-		'xlabelfontsize': 17,
-		'ylabelfontsize': 17,
-		'ytickfontsize': 15,
-		'xtickfontsize': 15,
-		'barfontsize': 15,
-		'titlefontsize': 20,
-		'watermark': 'Powered by cbenchsuite (http://cbench.allfex.org)',
-		'watermarkfontsize': 13,
-		'file-type': 'svg'}
 
 def property_get(properties, key):
 	if properties and key in properties:
 		return properties[key]
-	if key in properties_default:
-		return properties_default[key]
 	return None
 
 def mean_confidence_interval(data, confidence=0.95):

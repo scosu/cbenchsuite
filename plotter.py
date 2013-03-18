@@ -36,6 +36,122 @@ parsed = parser.parse_args()
 db = sqlite3.connect(os.path.expanduser(parsed.database));
 db.row_factory = sqlite3.Row
 
+class css:
+	def write_css(path):
+		f = open(path, 'w')
+		f.write('''
+div.level {
+	background-color: rgb(240,240,240);
+	margin-left: 3%;
+	padding: 1%;
+}
+div.level div.level {
+	background-color: rgb(225,225,225);
+}
+ul.groups {
+	font-size: 120%;
+}
+p.heading_level {
+	font-size: 150%;
+}
+p.prop_heading_level {
+	font-size: 120%;
+}
+p.legend_heading_level {
+	font-size: 120%;
+}
+table.prop_level {
+	margin-left: 5%;
+	width: 95%;
+}
+table.legend_level {
+	margin-left: 5%;
+	width: 95%;
+}
+td.name {
+	font-weight: bold;
+}
+td.unit {
+	font-style: italic;
+}
+tr.header {
+	font-style: bold;
+	font-size: 110%;
+}
+img {
+	width: 96%;
+	padding: 2%;
+	text-align: center;
+}
+''')
+
+class html:
+	def level_start(level, heading):
+		s = '<div class="level">' + "\n"
+		if heading:
+			s += '<p class="heading_level">' + heading + '</p>' + "\n"
+		return s
+
+	def props_start(level):
+		s = ''
+		s += '<p class="prop_heading_level">Properties</p>' + "\n"
+		s += '<table class="prop_level">' + "\n"
+		s += '<tr class="header"><td>Name</td><td>Unit</td><td>Description</td><td>Value</td></tr>' + "\n"
+		return s
+
+	def prop(level, name, unit, description, value):
+		s = '<tr>' + "\n"
+		s += '<td class="name">' + name + '</td>' + "\n"
+		s += '<td class="unit">' + unit + '</td>' + "\n"
+		s += '<td class="description">' + description + '</td>' + "\n"
+		s += '<td class="value">' + str(value) + '</td>' + "\n"
+		s += '</tr>' + "\n"
+		return s
+
+	def props_end():
+		return '</table>' + "\n"
+
+	def legend_start(level):
+		s = '' + "\n"
+		s += '<p class="legend_heading_level">Legend</p>' + "\n"
+		s += '<table class="legend_level">' + "\n"
+		s += '<tr class="header"><td>Name</td><td>Unit</td><td>Description</td></tr>' + "\n"
+		return s
+	def legend(level, name, unit, description):
+		s = '<tr>' + "\n"
+		s += '<td class="name">' + name + '</td>' + "\n"
+		s += '<td class="unit">' + unit + '</td>' + "\n"
+		s += '<td class="description">' + description + '</td>' + "\n"
+		s += '</tr>' + "\n"
+		return s
+	def legend_end():
+		return '</table>' + "\n"
+
+	def level_end(level):
+		return '</div>' + "\n"
+
+	def write_to_file(base_path, source, title='cbenchsuite'):
+		if os.path.isdir(base_path):
+			path = os.path.join(base_path, 'index.html')
+		else:
+			path = base_path + '.html'
+		css.write_css(os.path.dirname(path) + '/style.css')
+		f = open(path, 'w')
+		f.write('<html><head>')
+		f.write('<link rel="stylesheet" type="text/css" href="style.css">')
+		f.write('<title>' + title + '</title></head><body>' + "\n")
+		f.write(source.replace('###CBENCH_PATH_PREFIX###', '').replace('#', '%23'))
+		f.write('</body></html>')
+		f.close()
+		print("Generated HTML " + path)
+	def figure(fig_name):
+		return '<img src="###CBENCH_PATH_PREFIX###' + fig_name + '" />' + "\n"
+	def update_pathes(s, path):
+		if path == '':
+			return s
+		return s.replace('###CBENCH_PATH_PREFIX###', '###CBENCH_PATH_PREFIX###' + path + '/')
+
+
 def indent(nr):
 	s = ''
 	for i in range(nr):
@@ -86,6 +202,13 @@ class diff_tree:
 		self.childs = []
 		self.combo = None
 		self.properties = {}
+	def child_cb(self, cb, nodepath):
+		s = ''
+		if len(self.name) == 0:
+			return ''
+		for e in self.childs:
+			s += cb(nodepath + [(self, e)], e.ptr)
+		return s
 	def set_name(self, name):
 		self.name = [name]
 	def _add_edge(self, childs, values):
@@ -303,7 +426,8 @@ class diff_tree:
 			self.name = child.name
 			self.combo = child.combo
 			self.childs = child.childs
-			self.properties = child.properties
+			for k,v in child.properties.items():
+				self.properties[k] = v
 			return
 		for e in self.childs:
 			e.ptr.remove_name(name)
@@ -334,6 +458,24 @@ class diff_tree:
 		return removed_values, properties
 
 class plot:
+	properties_default = {
+			'confidence': 0.95,
+			'legend': True,
+			'xsize': 16,
+			'ysize': 9,
+			'dpi': 300,
+			'legendfontsize': 16,
+			'xlabelfontsize': 17,
+			'ylabelfontsize': 17,
+			'ytickfontsize': 15,
+			'xtickfontsize': 15,
+			'barfontsize': 15,
+			'titlefontsize': 20,
+			'watermark': 'Powered by cbenchsuite (http://cbench.allfex.org)',
+			'watermarkfontsize': 13,
+			'file-type': 'svg',
+			'line-nr-ticks': 300
+			}
 	known_properties = {
 			'xlabel': str,
 			'ylabel': str,
@@ -353,18 +495,19 @@ class plot:
 			'watermark': str,
 			'watermarkfontsize': float,
 			'line-xtick-data': str,
-			'line-nr-runs': int,
+			'line-nr-ticks': int,
 			'file-type': str,
 			'plot-depth': int
 			}
-	def __init__(self, db, filters, plugin_sha, combos, levels, base_path, replacerules = None):
+	def __init__(self, db, filters, plugin_sha, combos, levels, group_path, base_path, replacerules = None):
 		super(plot, self).__init__()
+		self.group_path = group_path
 		self.plugin_sha = plugin_sha
 		self.combos = combos
 		self.db = db
 		self.threaddb = None
 		self.filters = filters
-		self.properties = {}
+		self.properties = self.properties_default.copy()
 		self.removed_values = {}
 		self.removed_properties = {}
 		self.thread = None
@@ -387,6 +530,7 @@ class plot:
 		self.module_name = row[3]
 		self.name = row[4]
 		self.base_path = os.path.join(base_path, self.module_name + '.' + self.name)
+		self.rel_path = self.module_name + '.' + self.name
 
 		self.properties['title'] = self.module_name + '.' + self.name
 
@@ -456,13 +600,12 @@ class plot:
 						last_uuid = row[0]
 					if last_uuid != row[0]:
 						ct += 1
-						if 'line-nr-runs' in self.properties:
-							if ct >= self.properties['line-nr-runs']:
-								break
 						datas.append(data)
 						data = []
 						last_uuid = row[0]
 						offset += last_x + last_x * 0.05
+					if 'line-nr-ticks' in self.properties and offset + row[2] > self.properties['line-nr-ticks']:
+						break
 					data.append((offset + row[2], row[1]))
 					last_x = row[2]
 			else:
@@ -473,13 +616,12 @@ class plot:
 					if last_uuid != row[0]:
 						last_uuid = row[0]
 						ct += 1
-						if 'line-nr-runs' in self.properties:
-							if ct >= self.properties['line-nr-runs']:
-								break
 						datas.append(data)
 						data = []
 						offset += last_x * 0.05
 						last_x = 0
+					if 'line-nr-ticks' in self.properties and offset + last_x > self.properties['line-nr-ticks']:
+						break
 					data.append((offset + last_x, row[2]))
 					last_x += 1
 			if len(data) > 0:
@@ -525,6 +667,106 @@ class plot:
 			return
 		self.thread = threading.Thread(target=self._plot)
 		self.thread.start()
+	def parameter_to_html(self, level, name, value=None):
+		unit = ''
+		description = ''
+		if name == 'data':
+			if not value:
+				return ''
+			res = self.threaddb.execute('SELECT name, description, unit FROM plugin_data_meta WHERE plugin_sha = \'' + self.plugin_sha + '\' AND name = \'' + value + '\';')
+			row = res.fetchone()
+			name = row[0]
+			description = row[1]
+			unit = row[2]
+			value = None
+		elif name == 'system':
+			if not value:
+				return ''
+			description = 'a system'
+		elif name.startswith('option.'):
+			name = name[7:]
+			res = self.threaddb.execute('SELECT name, description, unit FROM plugin_opt_meta WHERE plugin_sha = \'' + self.plugin_sha + '\' AND name = \'' + name + '\';')
+			row = res.fetchone()
+			description = row[1]
+			unit = row[2]
+		name = translate(name, self.replacerules)
+		if not value:
+			return html.legend(level, name, unit, description)
+		else:
+			value = translate(value, self.replacerules)
+			return html.prop(level, name, unit, description, value)
+	def _html_cb(self, nodepath, last_node):
+		path = self.base_path
+		last_path = ''
+		for n in nodepath:
+			last_path = '#'.join(translate(n[0].name, self.replacerules)) + '__' + '#'.join(translate(n[1].vals, self.replacerules))
+			path = os.path.join(path, last_path)
+		try:
+			os.makedirs(os.path.dirname(path))
+		except:
+			pass
+		depth = last_node.depth()
+		s = ''
+
+		if len(nodepath) > 0:
+			prv = nodepath[-1]
+			hdg = ''
+			descr = ''
+			if prv[0].name[0] != 'data' and prv[0].name[0] != 'system':
+				hdg += '/'.join(translate(prv[0].name, self.replacerules)) + '='
+			hdg += '/'.join(translate(prv[1].vals, self.replacerules))
+		else:
+			res = self.threaddb.execute("SELECT description FROM plugin WHERE plugin_sha = '" + self.plugin_sha + "';")
+			row = res.fetchone()
+			hdg = self.module_name + '.' + self.name
+			descr = row[0]
+
+		s += html.level_start(depth, hdg)
+		if descr != '':
+			s += '<div class="description">' + descr + '</div>'
+
+		if self.properties['plot-depth'] == last_node.depth():
+			s += html.figure(os.path.basename(path) + '.' + self.properties['file-type'])
+
+		data_legend = ''
+
+		if self.properties['plot-depth'] >= depth:
+			if len(nodepath) > 0:
+				sub = ''
+				for n in nodepath:
+					for i in range(len(n[0].name)):
+						if n[0].name[i] == 'data':
+							data_legend = self.parameter_to_html(depth, n[0].name[i], n[1].vals[i])
+							continue
+						sub += self.parameter_to_html(depth, n[0].name[i], n[1].vals[i])
+				if sub != '':
+					s += html.props_start(depth)
+					s += sub
+					s += html.props_end()
+
+			if depth > 0 or data_legend != '':
+				s += html.legend_start(depth)
+				s += data_legend
+				node = last_node
+				while len(node.name) > 0:
+					self.parameter_to_html(depth, node.name[0])
+					node = node.childs[0].ptr
+				s += html.legend_end()
+
+		if self.properties['plot-depth'] < last_node.depth():
+			s += last_node.child_cb(self._html_cb, nodepath)
+		s += html.level_end(depth)
+		html.write_to_file(path, s)
+		if self.properties['plot-depth'] < depth:
+			return html.update_pathes(s, last_path)
+		return s
+	def generate_html(self):
+		self.threaddb = self.db
+		if self.dummy:
+			return ''
+		s = self._html_cb([], self.root)
+		self.threaddb = None
+		return html.update_pathes(s, self.rel_path)
 	def plot_wait(self):
 		if self.dummy:
 			return
@@ -810,9 +1052,10 @@ def plotgrps_generate(db, filters, levels):
 		for psha, p in plugs.items():
 			for i in p:
 				names.add(i['name'])
-		local_path = os.path.join(path, '#'.join(sorted(list(names))))
+		group_path = '#'.join(sorted(list(names)))
+		local_path = os.path.join(path, group_path)
 		for psha,p in plugs.items():
-			plots.append(plot(db, filters, psha, p, levels, local_path, default_replacements))
+			plots.append(plot(db, filters, psha, p, levels, group_path, local_path, default_replacements))
 		if len(plots) > 0:
 			plot_grps.append(plots)
 	return plot_grps
@@ -1245,6 +1488,44 @@ Arguments:
 			i.plot()
 		for i in sel:
 			i.plot_wait()
+	def do_html_generate(self, arg):
+		'''Usage: plot_generate <plot id> <property> <value>
+
+Generate and save one or multiple plots. This will create the final file and
+put it in the appropriate directory. All plots are created in parallel.
+
+Arguments:
+	plot id: An identifier for a plot. Possible is: '*', 'plotgroup.*' 
+		and 'plotgroup.plot', where plotgroup is the number of the group
+		and plot the number of the plot within a group. See 'plots' for
+		the numbers.
+'''
+		args = arg.split()
+		if len(args) == 0:
+			print("Arguments required")
+			return
+		sel = self.get_selected_plots([args[0]])
+		if args[0] == '*':
+			sel = self.plotgrps
+		else:
+			try:
+				sel = [self.plotgrps[int(args[0])]]
+			except:
+				print("Invalid selection")
+				return
+		s = ''
+		for i in sel:
+			sub = ''
+			hdg = '<h2>Group</h2><ul class="groups">'
+			for j in i:
+				hdg += '<li>' + j.module_name + '.' + j.name + '</li>'
+				sub += j.generate_html()
+			hdg += '</ul>'
+			sub = hdg + sub
+			group_path = os.path.join(parsed.outdir, i[0].group_path)
+			html.write_to_file(group_path, sub)
+			s += html.update_pathes(sub, i[0].group_path)
+		html.write_to_file(parsed.outdir, s)
 
 	def do_EOF(self, arg):
 		return True
