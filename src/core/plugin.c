@@ -504,10 +504,12 @@ static void plugin_exec_persist(struct plugin_exec *exec, int persist_types)
 		list_add_tail(&data->run_data, &data_to_persist);
 	}
 
-	ret = storage_add_data(&exec->exec_env->env->storage, plug, &data_to_persist);
-	if (ret) {
-		printk(KERN_ERR "Failed persisting data\n");
-		exec->exec_env->error_shutdown = 1;
+	if (!list_empty(&data_to_persist)) {
+		ret = storage_add_data(&exec->exec_env->env->storage, plug, &data_to_persist);
+		if (ret) {
+			printk(KERN_ERR "Failed persisting data\n");
+			exec->exec_env->error_shutdown = 1;
+		}
 	}
 
 	list_for_each_entry_safe(data, ndata, &data_to_persist, run_data) {

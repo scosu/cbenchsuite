@@ -68,6 +68,7 @@ static int sqlite3_bind_cbench_value(sqlite3_stmt *stmt, int ind, struct value *
 	case VALUE_DOUBLE:
 		return sqlite3_bind_double(stmt, ind, val->v_dbl);
 	default:
+		printk(KERN_ERR "bind value: unknown value\n");
 		return -1;
 	}
 }
@@ -224,8 +225,10 @@ static int sqlite3_store_header_metadata(struct sqlite3_data *d,
 				(persist_data_scale ? ",more_is_better" : ""),
 				(persist_data_scale ? ",?" : ""));
 	ret = sqlite3_prepare_v2(d->db, *stmt, -1, &sqstmt, NULL);
-	if (ret != SQLITE_OK)
+	if (ret != SQLITE_OK) {
+		printk(KERN_ERR "Failed to prepare statement %s\n", *stmt);
 		return -1;
+	}
 
 	for (i = 0; hdr[i].name != NULL; ++i) {
 		sha256_context ctx;
@@ -257,8 +260,10 @@ static int sqlite3_store_header_metadata(struct sqlite3_data *d,
 		ret |= sqlite3_bind_text(sqstmt, 5, (hdr[i].unit ? hdr[i].unit : ""), -1, SQLITE_STATIC);
 		if (persist_data_scale)
 			ret |= sqlite3_bind_int(sqstmt, 6, hdr[i].data_type == DATA_MORE_IS_BETTER);
-		if (ret != SQLITE_OK)
+		if (ret != SQLITE_OK) {
+			printk(KERN_ERR "Failed to bind values for header metadata %s\n", table);
 			goto error;
+		}
 
 		ret = sqlite3_step(sqstmt);
 		if (ret != SQLITE_DONE) {
@@ -268,8 +273,10 @@ static int sqlite3_store_header_metadata(struct sqlite3_data *d,
 		}
 
 		ret = sqlite3_reset(sqstmt);
-		if (ret != SQLITE_OK)
+		if (ret != SQLITE_OK) {
+			printk(KERN_ERR "Failed resetting metadata statement\n");
 			goto error;
+		}
 	}
 	sqlite3_finalize(sqstmt);
 	return 0;
@@ -435,7 +442,7 @@ static int sqlite3_prepare_insert_stmt(sqlite3 *db, sqlite3_stmt **sqstmt, char 
 
 	ret = sqlite3_prepare_v2(db, *stmt, -1, sqstmt, NULL);
 	if (ret != SQLITE_OK) {
-		printk(KERN_ERR "Failed to prepare sqlite statement %d\n", ret);
+		printk(KERN_ERR "Failed to prepare sqlite statement %s %d\n", *stmt, ret);
 		return -1;
 	}
 	return 0;
@@ -486,6 +493,7 @@ static int sqlite3_add_sysinfo(void *storage, struct system *sys)
 	ret |= sqlite3_bind_text(sqstmt, 2, sys->hw.cpus_sha256, -1, SQLITE_STATIC);
 	ret |= sqlite3_bind_data(sqstmt, 3, dat);
 	if (ret != SQLITE_OK) {
+		printk(KERN_ERR "Failed binding all values for system info\n");
 		goto error;
 	}
 
@@ -537,6 +545,7 @@ static int sqlite3_add_sysinfo(void *storage, struct system *sys)
 		ret = sqlite3_step(sqstmt);
 		data_put(dat);
 		if (ret != SQLITE_DONE) {
+			printk(KERN_ERR "Failed executing statement for system cpu\n");
 			goto error;
 		}
 
@@ -676,8 +685,10 @@ static int sqlite3_plugin_store_options(struct sqlite3_data *d,
 	for (i = 0; opts[i].name != NULL; ++i) {
 		ret |= sqlite3_bind_cbench_value(sqstmt, 2 + i, &opts[i].opt_val);
 	}
-	if (ret != SQLITE_OK)
+	if (ret != SQLITE_OK) {
+		printk(KERN_ERR "Failed binding all values for plugin_opts\n");
 		goto error;
+	}
 
 	ret = sqlite3_step(sqstmt);
 	if (ret != SQLITE_DONE) {
@@ -900,6 +911,11 @@ static int sqlite3_init_plugin_grp(void *storage, struct list_head *plugins,
 			ret |= sqlite3_bind_text(sqstmt, 8, comp_vers_table, -1, SQLITE_STATIC);
 		else
 			ret |= sqlite3_bind_text(sqstmt, 8, "", -1, SQLITE_STATIC);
+		if (ret != SQLITE_OK) {
+			printk(KERN_ERR "Failed to bind all values for plugin\n");
+			sqlite3_finalize(sqstmt);
+			return -1;
+		}
 		ret = sqlite3_step(sqstmt);
 		sqlite3_finalize(sqstmt);
 		if (ret != SQLITE_DONE) {
@@ -992,8 +1008,10 @@ static int sqlite3_add_data(void *storage, struct plugin *plug,
 	sqlite3_stmt *sqstmt;
 
 	ret = sqlite3_exec(d->db, "BEGIN TRANSACTION;", NULL, NULL, NULL);
-	if (ret != SQLITE_OK)
+	if (ret != SQLITE_OK) {
+		printk(KERN_ERR "Failed to begin transaction\n");
 		return -1;
+	}
 
 	hdr = plugin_data_hdr(plug);
 	if (!hdr) {
@@ -1033,8 +1051,10 @@ static int sqlite3_add_data(void *storage, struct plugin *plug,
 	}
 	sqlite3_finalize(sqstmt);
 	ret = sqlite3_exec(d->db, "END TRANSACTION;", NULL, NULL, NULL);
-	if (ret != SQLITE_OK)
+	if (ret != SQLITE_OK) {
+		printk(KERN_ERR "Failed to end transaction\n");
 		return -1;
+	}
 	return 0;
 error:
 	sqlite3_finalize(sqstmt);
