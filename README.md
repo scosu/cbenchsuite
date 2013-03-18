@@ -55,9 +55,11 @@ module module/example/.
 
 Requirements
 ------------
-- gcc
+- gcc (>= 4.6, I tested 4.5.3 and it did not compile due to union problems)
 - libuuid
 - sqlite3
+- ncurses
+- gperf
 - matplotlib for python >= 3 (for plotter)
 - python >= 3 (for plotter)
 
@@ -476,6 +478,15 @@ Help
 					measurements.
 		--stderr N		Percent of the standard error that need to be
 					reached within the other runtime bounds. (float)
+
+Acknowledgements
+----------------
+
+- [kconfig-frontends](http://ymorin.is-a-geek.org/projects/kconfig-frontends) (Build configuration)
+- [Linux](http://kernel.org) (Some datastructures like list etc.)
+- [Matplotlib](http://matplotlib.org/)
+- [sha256 C implementation](https://github.com/lentinj/u-boot/commit/b571afde0295b007a45055ee49f8822c753a5651)
+- [statistics.py](https://github.com/nitsanw/javanetperf/blob/master/statistics.py)
 
 License
 -------
