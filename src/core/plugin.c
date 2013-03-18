@@ -242,7 +242,7 @@ static inline void plugin_exec_function(int (*func)(struct plugin *plug),
 {
 	int ret;
 	if (func == NULL)
-		goto barrier_only;
+		goto barrier_only_no_notify;
 	if (exec->local_error)
 		goto barrier_only;
 
@@ -258,6 +258,7 @@ static inline void plugin_exec_function(int (*func)(struct plugin *plug),
 barrier_only:
 	if (notify_bg_procs)
 		plugin_exec_stop_bg(exec);
+barrier_only_no_notify:
 
 	plugin_exec_barrier(exec);
 
