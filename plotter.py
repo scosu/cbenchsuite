@@ -706,7 +706,7 @@ class plot:
 		self.thread.start()
 	def system_to_html(self, system):
 		div_uuid = 'uuid' + str(uuid.uuid1())
-		res = self.threaddb.execute('SELECT COUNT(system_cpu.sha) as nrcpus, cache_size, stepping, model_name, address_sizes, flags FROM system, system_cpu USING(cpus_sha), cpu_type USING(cpu_type_sha) WHERE system_sha=\'' + system + '\' GROUP BY cpu_type_sha;')
+		res = self.threaddb.execute('SELECT COUNT(system_cpu.sha) as nrcpus, governor, min_freq, max_freq, cache_size, stepping, model_name, address_sizes, flags FROM system, system_cpu USING(cpus_sha), cpu_type USING(cpu_type_sha) WHERE system_sha=\'' + system + '\' GROUP BY cpu_type_sha, governor, min_freq, max_freq;')
 		verbose = '''
 <a href="javascript:void(0)" onclick='$("#''' + div_uuid + '''").slideToggle();'><p class="system_alias">''' + translate(system, self.replacerules) + '''</p></a>
 <div class="system" id="''' + div_uuid + '''" style="display:none">'''
@@ -714,6 +714,8 @@ class plot:
 			verbose += str(row['nrcpus']) + 'x ' + row['model_name'] + "<br />\n"
 			verbose += "<div class=\"system_cpu\">Cache size: " + str(row['cache_size']) + " KB<br />\n"
 			verbose += "Address sizes: " + row['address_sizes'] + "<br />\n"
+			verbose += "Governor: " + row['governor'] + "<br />\n"
+			verbose += "Frequency: {:.2f}-{:.2f}GHz".format(row['min_freq']/1000000, row['max_freq']/1000000) + "<br />\n"
 			verbose += "Flags: " + row['flags'] + "<br /></div>\n"
 		res = self.threaddb.execute('SELECT * FROM system WHERE system_sha=\'' + system + '\';')
 		row = res.fetchone()
