@@ -24,6 +24,7 @@ import os
 import plot_utils
 import threading
 import json
+import uuid
 
 parser = argparse.ArgumentParser()
 
@@ -42,17 +43,24 @@ class css:
 		f.write('''
 div.level {
 	background-color: rgb(240,240,240);
-	margin-left: 3%;
-	padding: 1%;
+	margin: 10px;
+	padding: 5px;
 }
 div.level div.level {
 	background-color: rgb(225,225,225);
+}
+div.level div.level div.level {
+	background-color: rgb(210,210,210);
+}
+div.level div.level div.level div.level {
+	background-color: rgb(195,195,195);
 }
 ul.groups {
 	font-size: 120%;
 }
 p.heading_level {
 	font-size: 150%;
+	margin: 0px;
 }
 p.prop_heading_level {
 	font-size: 120%;
@@ -61,11 +69,11 @@ p.legend_heading_level {
 	font-size: 120%;
 }
 table.prop_level {
-	margin-left: 5%;
+	margin-left: 10px;
 	width: 95%;
 }
 table.legend_level {
-	margin-left: 5%;
+	margin-left: 10px;
 	width: 95%;
 }
 td.name {
@@ -79,17 +87,26 @@ tr.header {
 	font-size: 110%;
 }
 img {
-	width: 96%;
-	padding: 2%;
-	text-align: center;
+	width: 100%;
+}
+a {
+	text-decoration: none;
+}
+a:hover {
+	color: rgb(0,0,0);
 }
 ''')
 
 class html:
-	def level_start(level, heading):
-		s = '<div class="level">' + "\n"
+	def level_start(level, heading, description=''):
+		div_uuid = 'uuid' + str(uuid.uuid1())
+		s = ''
+		s += '<div class="level">' + "\n"
 		if heading:
-			s += '<p class="heading_level">' + heading + '</p>' + "\n"
+			s += '''<a href="javascript:void(0)" onclick='$("#''' + div_uuid + '''").slideToggle();'><p class="heading_level">''' + heading + '</p></a>' + "\n"
+		if description != '':
+			s += '<div class="level_description">' + description + '</div>' + "\n"
+		s += '<div style="display:none;" class="level_content" id="' + div_uuid + '">' + "\n"
 		return s
 
 	def props_start(level):
@@ -128,7 +145,7 @@ class html:
 		return '</table>' + "\n"
 
 	def level_end(level):
-		return '</div>' + "\n"
+		return '</div></div>' + "\n"
 
 	def write_to_file(base_path, source, title='cbenchsuite'):
 		if os.path.isdir(base_path):
@@ -140,15 +157,18 @@ class html:
 		f.write('<html><head>')
 		f.write('<link rel="stylesheet" type="text/css" href="style.css">')
 		f.write('<title>' + title + '</title></head><body>' + "\n")
-		f.write(source.replace('###CBENCH_PATH_PREFIX###', '').replace('#', '%23'))
+		f.write(source.replace('###CBENCH_PATH_PREFIX###', ''))
+		f.write('<script src="http://code.jquery.com/jquery-latest.js"></script>')
 		f.write('</body></html>')
 		f.close()
 		print("Generated HTML " + path)
 	def figure(fig_name):
+		fig_name = fig_name.replace('#', '%23')
 		return '<img src="###CBENCH_PATH_PREFIX###' + fig_name + '" />' + "\n"
 	def update_pathes(s, path):
 		if path == '':
 			return s
+		path = path.replace('#', '%23')
 		return s.replace('###CBENCH_PATH_PREFIX###', '###CBENCH_PATH_PREFIX###' + path + '/')
 
 
@@ -685,7 +705,7 @@ class plot:
 			description = 'a system'
 		elif name.startswith('option.'):
 			name = name[7:]
-			res = self.threaddb.execute('SELECT name, description, unit FROM plugin_opt_meta WHERE plugin_sha = \'' + self.plugin_sha + '\' AND name = \'' + name + '\';')
+			res = self.threaddb.execute('SELECT name, description, unit FROM plugin_option_meta WHERE plugin_sha = \'' + self.plugin_sha + '\' AND name = \'' + name + '\';')
 			row = res.fetchone()
 			description = row[1]
 			unit = row[2]
@@ -721,9 +741,7 @@ class plot:
 			hdg = self.module_name + '.' + self.name
 			descr = row[0]
 
-		s += html.level_start(depth, hdg)
-		if descr != '':
-			s += '<div class="description">' + descr + '</div>'
+		s += html.level_start(depth, hdg, descr)
 
 		if self.properties['plot-depth'] == last_node.depth():
 			s += html.figure(os.path.basename(path) + '.' + self.properties['file-type'])
@@ -749,7 +767,7 @@ class plot:
 				s += data_legend
 				node = last_node
 				while len(node.name) > 0:
-					self.parameter_to_html(depth, node.name[0])
+					s += self.parameter_to_html(depth, node.name[0])
 					node = node.childs[0].ptr
 				s += html.legend_end()
 
@@ -766,6 +784,8 @@ class plot:
 			return ''
 		s = self._html_cb([], self.root)
 		self.threaddb = None
+		if self.root.depth() <= self.properties['plot-depth']:
+			return s
 		return html.update_pathes(s, self.rel_path)
 	def plot_wait(self):
 		if self.dummy:
