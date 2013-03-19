@@ -20,7 +20,7 @@ struct system_raw {
 };
 
 struct system_sw {
-	const char *gcc;
+	char gcc[64];
 	char *libc;
 	char *libpthread;
 };

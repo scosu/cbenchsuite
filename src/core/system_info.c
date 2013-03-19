@@ -436,8 +436,8 @@ int system_info_init(struct system *sys, const char *custom_info)
 		goto error_libpthread_acq;
 	}
 
-#define GCC_VER_TO_STRING(major, minor, patch) #major "." #minor "." #patch
-	sys->sw.gcc = GCC_VER_TO_STRING(__GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+#define GCC_VER_TO_STRING(major, minor, patch) major "." minor "." patch
+	sprintf(sys->sw.gcc, "%d.%d.%d", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
 #undef GCC_VER_TO_STRING
 
 	sys->machine = sys->raw.uname.machine;
@@ -472,7 +472,7 @@ void system_info_free(struct system *sys)
 	free(sys->sw.libc);
 }
 
-#define system_info_fields 11
+#define system_info_fields 14
 const struct header *system_info_hdr(struct system *sys)
 {
 	static const struct header hdr[system_info_fields + 1] = {
@@ -490,6 +490,9 @@ const struct header *system_info_hdr(struct system *sys)
 		{ .name = "mem_totalhigh" },
 		{ .name = "mem_unit" },
 		{ .name = "swap_total" },
+		{ .name = "gcc" },
+		{ .name = "libc" },
+		{ .name = "libpthread" },
 		{ /* Sentinel */ }
 	};
 	return hdr;
@@ -513,6 +516,9 @@ struct data *system_info_data(struct system *sys)
 	data_add_int64(d, sys->hw.mem.mem_totalhigh);
 	data_add_int64(d, sys->hw.mem.mem_unit);
 	data_add_int64(d, sys->hw.mem.swap_total);
+	data_add_str(d, sys->sw.gcc);
+	data_add_str(d, sys->sw.libc);
+	data_add_str(d, sys->sw.libpthread);
 
 	return d;
 }
