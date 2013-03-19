@@ -41,6 +41,9 @@ class css:
 	def write_css(path):
 		f = open(path, 'w')
 		f.write('''
+body {
+	max-width:1100px;
+}
 div.level {
 	background-color: rgb(240,240,240);
 	margin: 10px;
