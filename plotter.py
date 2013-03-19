@@ -44,7 +44,7 @@ class css:
 div.level {
 	background-color: rgb(240,240,240);
 	margin: 10px;
-	padding: 5px;
+	padding: 10px;
 }
 div.level div.level {
 	background-color: rgb(225,225,225);
@@ -54,6 +54,9 @@ div.level div.level div.level {
 }
 div.level div.level div.level div.level {
 	background-color: rgb(195,195,195);
+}
+div.system_cpu {
+	padding-left: 10px;
 }
 ul.groups {
 	font-size: 120%;
@@ -67,6 +70,10 @@ p.prop_heading_level {
 }
 p.legend_heading_level {
 	font-size: 120%;
+}
+p.system_alias {
+	padding: 0px;
+	margin: 0px;
 }
 table.prop_level {
 	margin-left: 10px;
@@ -98,12 +105,16 @@ a:hover {
 ''')
 
 class html:
-	def level_start(level, heading, description=''):
+	def level_start(level, heading, img_parent = False, description=''):
 		div_uuid = 'uuid' + str(uuid.uuid1())
 		s = ''
 		s += '<div class="level">' + "\n"
 		if heading:
-			s += '''<a href="javascript:void(0)" onclick='$("#''' + div_uuid + '''").slideToggle();'><p class="heading_level">''' + heading + '</p></a>' + "\n"
+			if img_parent:
+				img_func = '''toggle("#''' + div_uuid + '''");'''
+			else:
+				img_func = ''
+			s += """<a href="javascript:void(0)" onclick='""" + img_func + '''$("#''' + div_uuid + '''").slideToggle();'><p class="heading_level">''' + heading + '</p></a>' + "\n"
 		if description != '':
 			s += '<div class="level_description">' + description + '</div>' + "\n"
 		s += '<div style="display:none;" class="level_content" id="' + div_uuid + '">' + "\n"
@@ -156,15 +167,21 @@ class html:
 		f = open(path, 'w')
 		f.write('<html><head>')
 		f.write('<link rel="stylesheet" type="text/css" href="style.css">')
+		f.write('<script src="http://code.jquery.com/jquery-latest.js"></script>')
+		f.write('''
+<script type="text/javascript">
+	function toggle(uuid) {
+		$(uuid).find('img.figure').each(function () { $(this).attr('src', $(this).attr('data-original')); });
+	}
+</script>''')
 		f.write('<title>' + title + '</title></head><body>' + "\n")
 		f.write(source.replace('###CBENCH_PATH_PREFIX###', ''))
-		f.write('<script src="http://code.jquery.com/jquery-latest.js"></script>')
 		f.write('</body></html>')
 		f.close()
 		print("Generated HTML " + path)
 	def figure(fig_name):
 		fig_name = fig_name.replace('#', '%23')
-		return '<img src="###CBENCH_PATH_PREFIX###' + fig_name + '" />' + "\n"
+		return '<img class="figure" src="" data-original="###CBENCH_PATH_PREFIX###' + fig_name + '" />' + "\n"
 	def update_pathes(s, path):
 		if path == '':
 			return s
@@ -687,7 +704,29 @@ class plot:
 			return
 		self.thread = threading.Thread(target=self._plot)
 		self.thread.start()
-	def parameter_to_html(self, level, name, value=None):
+	def system_to_html(self, system):
+		div_uuid = 'uuid' + str(uuid.uuid1())
+		res = self.threaddb.execute('SELECT COUNT(system_cpu.sha) as nrcpus, cache_size, stepping, model_name, address_sizes, flags FROM system, system_cpu USING(cpus_sha), cpu_type USING(cpu_type_sha) WHERE system_sha=\'' + system + '\' GROUP BY cpu_type_sha;')
+		verbose = '''
+<a href="javascript:void(0)" onclick='$("#''' + div_uuid + '''").slideToggle();'><p class="system_alias">''' + translate(system, self.replacerules) + '''</p></a>
+<div class="system" id="''' + div_uuid + '''" style="display:none">'''
+		for row in res:
+			verbose += str(row['nrcpus']) + 'x ' + row['model_name'] + "<br />\n"
+			verbose += "<div class=\"system_cpu\">Cache size: " + str(row['cache_size']) + " KB<br />\n"
+			verbose += "Address sizes: " + row['address_sizes'] + "<br />\n"
+			verbose += "Flags: " + row['flags'] + "<br /></div>\n"
+		res = self.threaddb.execute('SELECT * FROM system WHERE system_sha=\'' + system + '\';')
+		row = res.fetchone()
+		verbose += 'Custom info: ' + row['custom_info'] + '<br />'
+		verbose += 'Kernel: ' + row['kernel'] + '<br />'
+		verbose += 'Memory: {:.2f}'.format(row['mem_total'] / 1024 / 1024) + 'MB<br />'
+		verbose += 'Swap: {:.2f}'.format(row['swap_total'] / 1024 / 1024) + 'MB<br />'
+		verbose += 'GCC: ' + row['gcc'] + '<br />'
+		verbose += 'Libc: ' + row['libc'] + '<br />'
+		verbose += 'Libpthread: ' + row['libpthread'] + '<br />'
+		verbose += '</div>'
+		return verbose
+	def parameter_to_html(self, level, name, value=None, lastnode = None):
 		unit = ''
 		description = ''
 		if name == 'data':
@@ -700,9 +739,25 @@ class plot:
 			unit = row[2]
 			value = None
 		elif name == 'system':
+			description = 'System specification'
 			if not value:
-				return ''
-			description = 'a system'
+				if not lastnode:
+					return ''
+				nodes = lastnode.find_nodes('system')
+				shas = set()
+				for i in nodes:
+					ind = 0
+					for j in i.name:
+						ind += 1
+						if j == 'system':
+							break
+					for e in i.childs:
+						shas.add(e.vals[ind])
+				value = ''
+				for sys in shas:
+					value += self.system_to_html(e.vals[ind])
+			else:
+				value = self.system_to_html(value)
 		elif name.startswith('option.'):
 			name = name[7:]
 			res = self.threaddb.execute('SELECT name, description, unit FROM plugin_option_meta WHERE plugin_sha = \'' + self.plugin_sha + '\' AND name = \'' + name + '\';')
@@ -727,6 +782,7 @@ class plot:
 			pass
 		depth = last_node.depth()
 		s = ''
+		img = self.properties['plot-depth'] >= depth
 
 		if len(nodepath) > 0:
 			prv = nodepath[-1]
@@ -741,26 +797,30 @@ class plot:
 			hdg = self.module_name + '.' + self.name
 			descr = row[0]
 
-		s += html.level_start(depth, hdg, descr)
+		s += html.level_start(depth, hdg, img, descr)
 
-		if self.properties['plot-depth'] == last_node.depth():
+		if img:
 			s += html.figure(os.path.basename(path) + '.' + self.properties['file-type'])
 
 		data_legend = ''
 
-		if self.properties['plot-depth'] >= depth:
-			if len(nodepath) > 0:
-				sub = ''
-				for n in nodepath:
-					for i in range(len(n[0].name)):
-						if n[0].name[i] == 'data':
-							data_legend = self.parameter_to_html(depth, n[0].name[i], n[1].vals[i])
-							continue
-						sub += self.parameter_to_html(depth, n[0].name[i], n[1].vals[i])
-				if sub != '':
-					s += html.props_start(depth)
-					s += sub
-					s += html.props_end()
+		if img:
+			sub = ''
+			for k,v in self.removed_values.items():
+				if k == 'data':
+					data_legend = self.parameter_to_html(depth, k, v)
+					continue
+				sub += self.parameter_to_html(depth, k, v)
+			for n in nodepath:
+				for i in range(len(n[0].name)):
+					if n[0].name[i] == 'data':
+						data_legend = self.parameter_to_html(depth, n[0].name[i], n[1].vals[i])
+						continue
+					sub += self.parameter_to_html(depth, n[0].name[i], n[1].vals[i])
+			if sub != '':
+				s += html.props_start(depth)
+				s += sub
+				s += html.props_end()
 
 			if depth > 0 or data_legend != '':
 				s += html.legend_start(depth)
