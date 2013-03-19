@@ -124,15 +124,17 @@ static int monitor_stat_get(struct plugin *plug, struct monitor_stats *stat)
 	while (0 < getline(&d->buf, &d->buf_len, f)) {
 		int ret;
 
-		ret = sscanf(d->buf, "cpu %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 "\n",
-				&stat->cpu_user, &stat->cpu_nice, &stat->cpu_system,
-				&stat->cpu_idle, &stat->cpu_iowait,
-				&stat->cpu_irq, &stat->cpu_softirq,
-				&stat->cpu_steal, &stat->cpu_guest,
-				&stat->cpu_guest_nice);
-		if (ret == 10) {
-			found |= 0x1;
-			continue;
+		if (!strncmp(d->buf, "cpu ", 4)) {
+			ret = sscanf(d->buf, "cpu %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 "\n",
+					&stat->cpu_user, &stat->cpu_nice, &stat->cpu_system,
+					&stat->cpu_idle, &stat->cpu_iowait,
+					&stat->cpu_irq, &stat->cpu_softirq,
+					&stat->cpu_steal, &stat->cpu_guest,
+					&stat->cpu_guest_nice);
+			if (ret == 10) {
+				found |= 0x1;
+				continue;
+			}
 		}
 
 		ret = sscanf(d->buf, "intr %" PRIu64 " ", &stat->intr_total);
