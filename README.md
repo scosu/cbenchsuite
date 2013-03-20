@@ -11,6 +11,10 @@ storage backend.
 Features
 --------
 
+- Complete framework
+	- Benchmarking systems
+	- Storage in sqlite3 databases
+	- Automatically generate figures and websites for the results
 - Efficient benchmark framework
 	- written in C
 	- unloads unnecessary modules before benchmarking
@@ -35,33 +39,6 @@ Features
 	  as a seperate benchsuite inside a module
 	- Plugins can have options and different versions
 
-
-Write your own module/plugin/benchsuite
----------------------------------------
-
-Every plugin or benchsuite has to be within a module. Each module can contain
-an arbitrary number of plugins or benchsuites. Modules can be used in cbenchsuite
-without changing any cbenchsuite source files. It will be autodetected by cbenchsuite
-Makefiles.
-
-In order to get your module registered, you need three files:
-
-	your_module/your_module.c      Module c file
-	your_module/CBench.mk          Makefile to compile your module
-	your_module/Kconfig            Compiletime configurations for your module
-
-The structure and content of these files is described in the example
-module module/example/.
-
-Requirements
-------------
-- gcc (>= 4.6, I tested 4.5.3 and it did not compile due to union problems)
-- libuuid
-- sqlite3
-- ncurses
-- gperf
-- matplotlib for python >= 3 (for plotter)
-- python >= 3 (for plotter)
 
 Example plot
 ------------
@@ -424,6 +401,33 @@ Usage
 	As you can see, bar charts can automatically plot up to 3 hierarchy levels
 	of data. You can customize the levels via the properties.
 
+Write your own module/plugin/benchsuite
+---------------------------------------
+
+Every plugin or benchsuite has to be within a module. Each module can contain
+an arbitrary number of plugins or benchsuites. Modules can be used in cbenchsuite
+without changing any cbenchsuite source files. It will be autodetected by cbenchsuite
+Makefiles.
+
+In order to get your module registered, you need three files:
+
+	your_module/your_module.c      Module c file
+	your_module/CBench.mk          Makefile to compile your module
+	your_module/Kconfig            Compiletime configurations for your module
+
+The structure and content of these files is described in the example
+module module/example/.
+
+Requirements
+------------
+- gcc (>= 4.6, I tested 4.5.3 and it did not compile due to union problems)
+- libuuid
+- sqlite3
+- ncurses
+- gperf
+- matplotlib for python >= 3 (for plotter)
+- python >= 3 (for plotter)
+
 FAQ
 ---
 
@@ -435,49 +439,6 @@ FAQ
 	messages. Also be aware that some plugins can not be executed as normal
 	user. If you are not able to start cbenchsuite as root, you can ignore
 	those messages without a problem.
-
-Help
-----
-
-	By default, cbenchsuite interpretes arguments without '-' at the beginning as
-	benchsuite names and executes them.
-
-	Commands:
-		--list,-l		List available Modules/Plugins. All other
-					command line arguments are parsed as module
-					identifiers. If non is given, it lists all
-					modules. This command will show more information
-					with the verbose option.
-		--plugins,-p		Parse all arguments as plugin identifiers
-					and execute them. Please see
-					doc/identifier_specifications for more
-					information.
-		--help,-h		Displays this help and exits.
-
-	Options:
-		--log-level,-g N 	Log level used, from 1 to 7(debugging)
-		--storage,-s STR	Storage backend to use. Currently available are:
-						sqlite3 and csv
-		--db-path,-db DB	Database directory. Default: /tmp/cbenchsuite/
-		--verbose,-v		Verbose output. (more information, but not the
-					same as log-level)
-		--module-dir,-m PATH	Module directory.
-		--work_dir,-w PATH	Working directory. IMPORTANT! Depending on the
-					location of this work directory, the benchmark
-					results could vary. Default: /tmp/cbenchsuite/work
-		--sysinfo,-i INFO	Additional system information. This will
-					seperate the results of the executed benchmarks
-					from others. For example you can use any code
-					revision or simple names for different test
-					conditions.
-		--min-runs N		Minimum number of runs executed.
-		--max-runs N		Maximum number of runs executed.
-		--min-runtime SECONDS	Minimum runtime per independent result value.
-		--max-runtime SECONDS	Maximum runtime per independent result value.
-		--warmup-runs N		Number of warmup runs before the actual
-					measurements.
-		--stderr N		Percent of the standard error that need to be
-					reached within the other runtime bounds. (float)
 
 Acknowledgements
 ----------------
