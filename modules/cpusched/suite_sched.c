@@ -94,7 +94,6 @@ static struct plugin_link *suite_sched_groups[] = {
 	suite_sched_hackbench_grps[7],
 	suite_sched_hackbench_grps[8],
 	suite_sched_hackbench_grps[9],
-	suite_sched_hackbench_grps[10],
 	suite_sched_pipe_grps[0],
 	suite_sched_fork_grps[0],
 	suite_sched_fork_grps[1],
