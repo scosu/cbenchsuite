@@ -11,6 +11,7 @@
 #define KERN_INFO	"<6>"	/* informational			*/
 #define KERN_DEBUG	"<7>"	/* debug-level messages			*/
 #define KERN_CNT	"<c>"	/* continue the last printed message	*/
+#define KERN_STATUS 	"<8>" 	/* Update status line. Do not use this in threaded context */
 
 int printk(const char *format, ...);
 
