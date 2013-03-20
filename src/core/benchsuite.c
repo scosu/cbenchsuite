@@ -32,6 +32,10 @@ int benchsuite_execute(struct mod_mgr *mm, struct environment *env,
 {
 	int i;
 	int ret = 0;
+	int nr_groups;
+	for (i = 0; suite->id->plugin_grps[i] != NULL
+			&& suite->id->plugin_grps[i]->name != NULL; ++i);
+	nr_groups = i;
 	for (i = 0; suite->id->plugin_grps[i] != NULL
 			&& suite->id->plugin_grps[i]->name != NULL; ++i) {
 		struct plugin_link *grp = suite->id->plugin_grps[i];
@@ -57,6 +61,7 @@ int benchsuite_execute(struct mod_mgr *mm, struct environment *env,
 
 		mod_mgr_unload_unused(mm);
 
+		printk(KERN_INFO "Group %d/%d\n", i+1, nr_groups);
 		ret = plugins_execute(env, &pgrp);
 
 error_populating_group:
