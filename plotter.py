@@ -41,8 +41,9 @@ class css:
 	def write_css(path):
 		f = open(path, 'w')
 		f.write('''
-body {
-	max-width:1100px;
+#bodydiv {
+	max-width:1000px;
+	margin: auto;
 }
 div.level {
 	background-color: rgb(240,240,240);
@@ -78,6 +79,12 @@ p.system_alias {
 	padding: 0px;
 	margin: 0px;
 }
+p.imgressource {
+	padding: 0px;
+	margin: 0px;
+	font-size: 80%;
+	text-align: right;
+}
 table.prop_level {
 	margin-left: 10px;
 	width: 95%;
@@ -101,9 +108,16 @@ img {
 }
 a {
 	text-decoration: none;
+	color: rgb(0,0,200);
 }
 a:hover {
 	color: rgb(0,0,0);
+}
+a:visited {
+	color: rgb(0,0,200);
+}
+a:active {
+	color: rgb(0,0,200);
 }
 ''')
 
@@ -114,7 +128,7 @@ class html:
 		s += '<div class="level">' + "\n"
 		if heading:
 			if img_parent:
-				img_func = '''toggle("#''' + div_uuid + '''");'''
+				img_func = '''load_image("#''' + div_uuid + '''");'''
 			else:
 				img_func = ''
 			s += """<a href="javascript:void(0)" onclick='""" + img_func + '''$("#''' + div_uuid + '''").slideToggle();'><p class="heading_level">''' + heading + '</p></a>' + "\n"
@@ -173,18 +187,30 @@ class html:
 		f.write('<script src="http://code.jquery.com/jquery-latest.js"></script>')
 		f.write('''
 <script type="text/javascript">
-	function toggle(uuid) {
+	function load_image(uuid) {
 		$(uuid).find('img.figure').each(function () { $(this).attr('src', $(this).attr('data-original')); });
 	}
+	function togglewidth() {
+		var boddiv = $("#bodydiv")
+		if (boddiv.css("max-width") != "1000px") {
+			boddiv.animate({maxWidth: "1000px"});
+		} else {
+			boddiv.animate({maxWidth: "100%"});
+		}
+	}
 </script>''')
-		f.write('<title>' + title + '</title></head><body>' + "\n")
+		f.write('<title>' + title + '</title></head><body><div id="bodydiv">' + "\n")
 		f.write(source.replace('###CBENCH_PATH_PREFIX###', ''))
-		f.write('</body></html>')
+		f.write('</div></body></html>')
 		f.close()
 		print("Generated HTML " + path)
 	def figure(fig_name):
 		fig_name = fig_name.replace('#', '%23')
-		return '<img class="figure" src="" data-original="###CBENCH_PATH_PREFIX###' + fig_name + '" />' + "\n"
+		s = '<a href="javascript:void(0)" onclick="togglewidth()">' + "\n"
+		s += '<img class="figure" src="" data-original="###CBENCH_PATH_PREFIX###' + fig_name + '" />' + "\n"
+		s += '</a>'
+		s += '<p class="imgressource"><a href="###CBENCH_PATH_PREFIX###' + fig_name + '">Figure download</a></p>' + "\n"
+		return s
 	def update_pathes(s, path):
 		if path == '':
 			return s
