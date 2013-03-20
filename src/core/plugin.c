@@ -44,6 +44,7 @@
 
 struct plugin_exec;
 
+
 static int received_sigstop = 0;
 void plugins_sighandler(int signum)
 {
@@ -70,6 +71,10 @@ struct plugin_exec_env {
 	struct environment *env;
 	struct plugin_exec *execs;
 	int nr_plugins;
+	u64 max_runtime;
+	u64 min_runtime;
+	const char *status_prefix;
+	const char *status_running;
 
 	pthread_barrier_t barrier;
 	struct timespec time_started;
@@ -89,6 +94,41 @@ struct mon_data {
 	int stop;
 	struct plugin_exec_env *exec_env;
 };
+
+static void update_status(struct plugin_exec_env *exec_env, const char *action)
+{
+	int max_hours = exec_env->max_runtime / 3600;
+	int max_minutes = exec_env->max_runtime / 60 % 60;
+	int max_runs = exec_env->settings->runs_max;
+	if (exec_env->state == EXEC_WARMUP) {
+		printk(KERN_STATUS "%s\nGroup Warmup %2d/%02d              Max remaining: Runs %3d   Time %2d:%2d\nExecuting %s\n%s",
+				exec_env->status_prefix,
+				exec_env->run + 1, exec_env->settings->warmup_runs,
+				max_runs, max_hours, max_minutes,
+				exec_env->status_running, action);
+	} else {
+		struct timespec now;
+		int runtime_hours;
+		int runtime_minutes;
+		int rem_hours;
+		int rem_minutes;
+		u64 runtime;
+
+		clock_gettime(CLOCK_MONOTONIC, &now);
+		runtime = now.tv_sec - exec_env->time_started.tv_sec;
+		runtime_hours = runtime / 3600;
+		runtime_minutes = runtime / 60 % 60;
+		rem_hours = max_hours - runtime_hours;
+		rem_minutes = max_minutes - runtime_minutes;
+
+		printk(KERN_STATUS "%s\nGroup Run %3d   Time %2d:%2d      Max remaining: Runs %3d   Time %2d:%2d\nExecuting %s\n%s",
+				exec_env->status_prefix,
+				exec_env->run + 1, runtime_hours, runtime_minutes,
+				max_runs - exec_env->run,
+				rem_hours, rem_minutes,
+				exec_env->status_running, action);
+	}
+}
 
 void plugin_id_print_version(struct version *v, int verbose)
 {
@@ -356,6 +396,20 @@ finished:
 	return 1;
 }
 
+#define NR_FUNCTION_SLOTS_SEQ 10
+static const char *function_slot_names[] = {
+	"init_pre",
+	"init",
+	"init_post",
+	"run_pre",
+	"run",
+	"run_post",
+	"parse_results",
+	"exit_pre",
+	"exit",
+	"exit_post",
+};
+
 static const int exec_funcs_before_run = 4;
 static const int exec_funcs_after_run = 5;
 
@@ -524,14 +578,21 @@ static void plugin_exec_persist(struct plugin_exec *exec, int persist_types)
 }
 
 static void plugins_exec_controller(struct plugin_exec_env *exec_env,
-		int nr_funcs)
+		int nr_funcs, int off)
 {
 	struct plugin_exec *execs = exec_env->execs;
 	int nr_plugins = exec_env->nr_plugins;
 	int i;
+	char buf[64];
 	for (i = 0; i != nr_funcs; ++i) {
 		int j;
+		sprintf(buf, "Executing  function slot %d/%d:  %s\n", i+1,
+				NR_FUNCTION_SLOTS_SEQ, function_slot_names[off + i]);
+		update_status(exec_env, buf);
 		plugin_execenv_barrier(exec_env);
+		sprintf(buf, "Persisting function slot %d/%d:  %s\n", i+1,
+				NR_FUNCTION_SLOTS_SEQ, function_slot_names[off + i]);
+		update_status(exec_env, buf);
 		for (j = 0; j != nr_plugins; ++j) {
 			if (exec_env->state == EXEC_WARMUP)
 				plugin_exec_drop_data(&execs[j]);
@@ -690,7 +751,8 @@ void *plugin_thread_monitor(void *data)
 	return NULL;
 }
 
-int plugins_execute(struct environment *env, struct list_head *plugins)
+int plugins_execute(struct environment *env, struct list_head *plugins,
+		const char *status_prefix)
 {
 	int i;
 	int nr_plugins;
@@ -714,12 +776,14 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 	struct run_settings *settings = exec_env.settings;
 	struct timespec time_now;
 	u64 time_diff;
-	unsigned int min_time;
-	unsigned int max_time;
 	int max_ind_values = 1;
 	char sha256[65];
+	char status_running[1024];
 	sighandler_t sigterm_handler;
 	sighandler_t sigint_handler;
+
+	exec_env.status_prefix = status_prefix;
+	exec_env.status_running = status_running;
 
 	sigterm_handler = signal(SIGTERM, plugins_sighandler);
 	sigint_handler = signal(SIGINT, plugins_sighandler);
@@ -759,9 +823,11 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 	 */
 
 	i = 0;
-	printk(KERN_INFO "Running plugins:");
+	status_running[0] = '\0';
 	list_for_each_entry(plg, plugins, plugin_grp) {
-		printk(KERN_CNT " %s.%s", plg->mod->name, plg->id->name);
+		strcat(status_running, plg->mod->name);
+		strcat(status_running, ".");
+		strcat(status_running, plg->id->name);
 		execs[i].plug = plg;
 		execs[i].exec_env = &exec_env;
 		plg->exec_data = &exec_env;
@@ -770,14 +836,16 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 
 		++i;
 	}
-	printk(KERN_CNT "\n");
-	min_time = exec_env.env->settings.runtime_min * max_ind_values;
-	max_time = exec_env.env->settings.runtime_max * max_ind_values;
-	printk(KERN_INFO "\tRuntime without warmup between %02uh%02u and %02uh%02u\n",
-			min_time / 3600, min_time / 60,
-			max_time / 3600, max_time / 60);
+	printk(KERN_INFO "\t%s\n", status_running);
+
+	exec_env.min_runtime = exec_env.env->settings.runtime_min * max_ind_values;
+	exec_env.max_runtime = exec_env.env->settings.runtime_max * max_ind_values;
+	printk(KERN_INFO "\tRuntime without warmup between %02u:%02u and %02u:%02u\n",
+			exec_env.min_runtime / 3600, exec_env.min_runtime / 60,
+			exec_env.max_runtime / 3600, exec_env.max_runtime / 60);
 
 	printk(KERN_INFO "\tInstalling plugins\n");
+	update_status(&exec_env, "Installing plugins");
 	plugins_install(&exec_env);
 
 	if (exec_env.error_shutdown) {
@@ -799,9 +867,12 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 
 	while (exec_env.state != EXEC_STOP && !received_sigstop) {
 		char uuid[37];
+		char buf[64];
 		uuid_t uuid_raw;
 		uuid_generate(uuid_raw);
 		uuid_unparse_lower(uuid_raw, uuid);
+
+		update_status(&exec_env, "Starting new run\n");
 
 		if (exec_env.state == EXEC_WARMUP) {
 			if (exec_env.run >= settings->warmup_runs) {
@@ -815,12 +886,12 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 		}
 
 		if (exec_env.state == EXEC_RUN) {
-			printk(KERN_INFO "\tExecution run %d uuid:'%s'\n",
+			printk(KERN_INFO "Execution:%3d uuid:'%s'\n",
 					exec_env.run + 1, uuid);
 			storage_init_run(&env->storage, uuid,
 					exec_env.run + settings->warmup_runs);
 		} else {
-			printk(KERN_INFO "\tWarmup run %d\n", exec_env.run + 1);
+			printk(KERN_INFO "Execution:%3d %d\n", exec_env.run + 1);
 		}
 		printk(KERN_DEBUG "Loop run %d state %d\n", exec_env.run,
 				exec_env.state);
@@ -828,7 +899,7 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 
 
 
-		plugins_exec_controller(&exec_env, exec_funcs_before_run);
+		plugins_exec_controller(&exec_env, exec_funcs_before_run, 0);
 
 
 
@@ -843,9 +914,17 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 			exec_env.error_shutdown = 1;
 		}
 
+		sprintf(buf, "Executing  function slot %d/%d:  %s\n", 5,
+				NR_FUNCTION_SLOTS_SEQ, function_slot_names[4]);
+		update_status(&exec_env, buf);
+
 		plugin_execenv_barrier(&exec_env);
 		// Waiting for execution to finish
 		plugin_execenv_barrier(&exec_env);
+
+		sprintf(buf, "Persisting function slot %d/%d:  %s\n", 5,
+				NR_FUNCTION_SLOTS_SEQ, function_slot_names[4]);
+		update_status(&exec_env, buf);
 
 		monitor.stop = 1;
 		ret = pthread_join(monitor.thread, NULL);
@@ -867,7 +946,7 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 
 
 
-		plugins_exec_controller(&exec_env, exec_funcs_after_run);
+		plugins_exec_controller(&exec_env, exec_funcs_after_run, exec_funcs_before_run + 1);
 
 
 		if (exec_env.state == EXEC_RUN) {
@@ -883,10 +962,10 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 			exec_env.state = EXEC_UNDECIDED;
 			clock_gettime(CLOCK_MONOTONIC_RAW, &time_now);
 			time_diff = time_now.tv_sec - exec_env.time_started.tv_sec;
-			if (time_diff < min_time) {
+			if (time_diff < exec_env.min_runtime) {
 				printk(KERN_INFO "\t\tMinimum runtime not reached, continuing\n");
 				exec_env.state = EXEC_FORCE_CONTINUE;
-			} else if (time_diff > max_time) {
+			} else if (time_diff > exec_env.max_runtime) {
 				printk(KERN_INFO "\t\tMaximum runtime reached, stopping\n");
 				exec_env.state = EXEC_STOP;
 			} else if (settings->runs_min > exec_env.run) {
@@ -928,7 +1007,10 @@ int plugins_execute(struct environment *env, struct list_head *plugins)
 
 uninstall:
 	printk(KERN_INFO "\tUninstalling plugins\n");
+	update_status(&exec_env, "Uninstalling plugins");
 	plugins_uninstall(&exec_env);
+
+	update_status(&exec_env, "DONE");
 
 	storage_exit_plg_grp(&env->storage);
 

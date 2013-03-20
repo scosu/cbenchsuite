@@ -42,6 +42,7 @@ int benchsuite_execute(struct mod_mgr *mm, struct environment *env,
 		int j;
 		struct list_head pgrp;
 		struct plugin *plg, *nplg;
+		char buf[128];
 
 		INIT_LIST_HEAD(&pgrp);
 
@@ -62,7 +63,8 @@ int benchsuite_execute(struct mod_mgr *mm, struct environment *env,
 		mod_mgr_unload_unused(mm);
 
 		printk(KERN_INFO "Group %d/%d\n", i+1, nr_groups);
-		ret = plugins_execute(env, &pgrp);
+		sprintf(buf, "--------------------------------------------------------------------------------\nGroup %2d/%d", i + 1, nr_groups);
+		ret = plugins_execute(env, &pgrp, buf);
 
 error_populating_group:
 		list_for_each_entry_safe(plg, nplg, &pgrp, plugin_grp) {

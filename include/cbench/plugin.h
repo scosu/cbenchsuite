@@ -141,7 +141,8 @@ static inline void plugin_add_results(struct plugin *plug, struct data *data)
 	list_add_tail(&data->run_data, &plug->run_data);
 }
 
-int plugins_execute(struct environment *env, struct list_head *plugins);
+int plugins_execute(struct environment *env, struct list_head *plugins,
+		const char *status_prefix);
 
 void plugin_calc_sha256(struct plugin *plug);
 
