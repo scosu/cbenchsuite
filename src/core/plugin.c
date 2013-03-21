@@ -101,7 +101,7 @@ static void update_status(struct plugin_exec_env *exec_env, const char *action)
 	int max_minutes = exec_env->max_runtime / 60 % 60;
 	int max_runs = exec_env->settings->runs_max;
 	if (exec_env->state == EXEC_WARMUP) {
-		printk(KERN_STATUS "%s\nGroup Warmup %2d/%02d              Max remaining: Runs %3d   Time %2d:%2d\nExecuting %s\n%s",
+		printk(KERN_STATUS "%s\nGroup Warmup %2d/%02d              Max remaining: Runs %3d   Time %2d:%02d\nExecuting %s\n%s",
 				exec_env->status_prefix,
 				exec_env->run + 1, exec_env->settings->warmup_runs,
 				max_runs, max_hours, max_minutes,
@@ -121,7 +121,7 @@ static void update_status(struct plugin_exec_env *exec_env, const char *action)
 		rem_hours = max_hours - runtime_hours;
 		rem_minutes = max_minutes - runtime_minutes;
 
-		printk(KERN_STATUS "%s\nGroup Run %3d   Time %2d:%2d      Max remaining: Runs %3d   Time %2d:%2d\nExecuting %s\n%s",
+		printk(KERN_STATUS "%s\nGroup Run %3d   Time %2d:%02d      Max remaining: Runs %3d   Time %2d:%02d\nExecuting %s\n%s",
 				exec_env->status_prefix,
 				exec_env->run + 1, runtime_hours, runtime_minutes,
 				max_runs - exec_env->run,
@@ -381,7 +381,7 @@ static int plugin_generic_stderr_check(struct plugin *plug, double std_err_perce
 		std_err = std_dev / sqrt(nr_values);
 		std_err_thresh = mean / 100.0 * std_err_percent;
 
-		printk(KERN_DEBUG "check_stderr: nr_values: %d mean: %f variance: %f std_dev: %f std_err: %f std_err_thresh: %f\n",
+		printk(KERN_INFO "check_stderr: nr_values: %d mean: %f variance: %f std_dev: %f std_err: %f std_err_thresh: %f\n",
 				nr_values, mean, variance, std_dev, std_err,
 				std_err_thresh);
 
@@ -828,6 +828,7 @@ int plugins_execute(struct environment *env, struct list_head *plugins,
 		strcat(status_running, plg->mod->name);
 		strcat(status_running, ".");
 		strcat(status_running, plg->id->name);
+		strcat(status_running, " ");
 		execs[i].plug = plg;
 		execs[i].exec_env = &exec_env;
 		plg->exec_data = &exec_env;
@@ -891,7 +892,7 @@ int plugins_execute(struct environment *env, struct list_head *plugins,
 			storage_init_run(&env->storage, uuid,
 					exec_env.run + settings->warmup_runs);
 		} else {
-			printk(KERN_INFO "Execution:%3d %d\n", exec_env.run + 1);
+			printk(KERN_INFO "Execution:%3d\n", exec_env.run + 1);
 		}
 		printk(KERN_DEBUG "Loop run %d state %d\n", exec_env.run,
 				exec_env.state);
