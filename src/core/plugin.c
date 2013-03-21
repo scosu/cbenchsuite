@@ -296,7 +296,7 @@ static inline void plugin_exec_function(int (*func)(struct plugin *plug),
 	}
 
 barrier_only:
-	if (notify_bg_procs)
+	if (notify_bg_procs && exec->plug->id->data_hdr)
 		plugin_exec_stop_bg(exec);
 barrier_only_no_notify:
 
