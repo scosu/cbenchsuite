@@ -28,7 +28,7 @@
 #include <cbench/plugin.h>
 
 int benchsuite_execute(struct mod_mgr *mm, struct environment *env,
-		struct benchsuite *suite)
+		struct benchsuite *suite, int *skip)
 {
 	int i;
 	int ret = 0;
@@ -43,6 +43,12 @@ int benchsuite_execute(struct mod_mgr *mm, struct environment *env,
 		struct list_head pgrp;
 		struct plugin *plg, *nplg;
 		char buf[128];
+
+		if (*skip) {
+			--*skip;
+			printk(KERN_INFO "Skipping group %d/%d\n", i + 1, nr_groups);
+			continue;
+		}
 
 		INIT_LIST_HEAD(&pgrp);
 

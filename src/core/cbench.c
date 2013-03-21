@@ -52,6 +52,7 @@ struct arguments {
 	const char *min_runtime;
 	const char *max_runtime;
 	const char *std_err;
+	const char *skip;
 
 	int cmd_list;
 	int cmd_plugins;
@@ -110,6 +111,7 @@ Options:\n\
 				measurements.\n\
 	--stderr N		Percent of the standard error that need to be\n\
 				reached within the other runtime bounds. (float)\n\
+	--skip N 		Skip N groups of the execution.\n\
 ", stdout);
 }
 
@@ -160,6 +162,8 @@ int args_parse(struct arguments *pargs, int argc, char **argv)
 			parse_arg_tgt = &pargs->max_runtime;
 		} else if (!strcmp(arg, "--stderr")) {
 			parse_arg_tgt = &pargs->std_err;
+		} else if (!strcmp(arg, "--skip")) {
+			parse_arg_tgt = &pargs->skip;
 		} else if (*arg == '-') {
 			printk(KERN_ERR "Unknown option '%s'\n", arg);
 			return -1;
@@ -302,7 +306,7 @@ void put_run_combo(struct plugin_link *c)
 		put_plugin_link(&c[i]);
 	free(c);
 }
-int execute_benchsuite_args(struct mod_mgr *mm, struct environment *env,
+int execute_benchsuite_args(struct mod_mgr *mm, struct environment *env, int skip,
 		struct arguments *pargs, int argc, char **argv)
 {
 	int i;
@@ -333,7 +337,7 @@ int execute_benchsuite_args(struct mod_mgr *mm, struct environment *env,
 			return -1;
 		}
 
-		ret = benchsuite_execute(mm, env, suite);
+		ret = benchsuite_execute(mm, env, suite, &skip);
 
 		if (vers)
 			free(vers);
@@ -346,7 +350,7 @@ int execute_benchsuite_args(struct mod_mgr *mm, struct environment *env,
 	return 0;
 }
 
-int execute_cmd_args(struct mod_mgr *mm, struct environment *env,
+int execute_cmd_args(struct mod_mgr *mm, struct environment *env, int skip,
 		struct arguments *pargs, int argc, char **argv)
 {
 	int ret = 0;
@@ -409,7 +413,7 @@ int execute_cmd_args(struct mod_mgr *mm, struct environment *env,
 	suite->mod = NULL;
 	suite->id = suite_id;
 
-	ret = benchsuite_execute(mm, env, suite);
+	ret = benchsuite_execute(mm, env, suite, &skip);
 
 error_combo_loop:
 	if (ct) {
@@ -430,6 +434,7 @@ int cmd_execute(struct arguments *pargs, int argc, char **argv, int as_benchsuit
 	struct system sys;
 	struct mod_mgr mm;
 	int ret;
+	int skip = 0;
 	struct environment env = {
 		.work_dir = pargs->work_dir,
 		.bin_dir = pargs->module_dir,
@@ -453,6 +458,8 @@ int cmd_execute(struct arguments *pargs, int argc, char **argv, int as_benchsuit
 		env.settings.runtime_max = atoi(pargs->max_runtime);
 	if (pargs->warmup_runs)
 		env.settings.warmup_runs = atoi(pargs->warmup_runs);
+	if (pargs->skip)
+		skip = atoi(pargs->skip);
 
 	ret = system_info_init(&sys, pargs->custom_sysinfo);
 	if (ret) {
@@ -489,9 +496,9 @@ int cmd_execute(struct arguments *pargs, int argc, char **argv, int as_benchsuit
 	}
 
 	if (as_benchsuite)
-		ret = execute_benchsuite_args(&mm, &env, pargs, argc, argv);
+		ret = execute_benchsuite_args(&mm, &env, skip, pargs, argc, argv);
 	else
-		ret = execute_cmd_args(&mm, &env, pargs, argc, argv);
+		ret = execute_cmd_args(&mm, &env, skip, pargs, argc, argv);
 	if (ret) {
 		printk(KERN_ERR "Failed executing all commandline arguments\n");
 		goto error_storage_sysinfo;

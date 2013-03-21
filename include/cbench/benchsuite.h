@@ -25,7 +25,7 @@ struct benchsuite {
 };
 
 int benchsuite_execute(struct mod_mgr *mm, struct environment *env,
-		struct benchsuite *suite);
+		struct benchsuite *suite, int *skip);
 
 void benchsuite_id_print(const struct benchsuite_id *suite, int verbose);
 
