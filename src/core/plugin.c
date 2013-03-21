@@ -349,7 +349,10 @@ static int plugin_generic_stderr_check(struct plugin *plug, double std_err_perce
 			++nr_values;
 		}
 
-		if (nr_values <= 1)
+		if (nr_values <= 0)
+			return 1;
+
+		if (nr_values == 1)
 			return 0;
 
 		mean = sum / nr_values;
