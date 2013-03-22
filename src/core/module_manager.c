@@ -215,6 +215,7 @@ struct module *mod_mgr_find_module(struct mod_mgr *mm, const char *fid)
 		if (strncmp(mod->name, mod_start, mod_len))
 			continue;
 
+		module_load(mod);
 		return mod;
 	}
 	return NULL;
