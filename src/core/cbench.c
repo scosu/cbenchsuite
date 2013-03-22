@@ -57,6 +57,7 @@ struct arguments {
 	int cmd_list;
 	int cmd_plugins;
 	int cmd_help;
+	int cmd_continue;
 	int verbose;
 };
 
@@ -82,6 +83,9 @@ Commands:\n\
 				and execute them. Please see\n\
 				doc/identifier_specifications for more\n\
 				information.\n\
+	--continue,-c		Continue the last command on the given database.\n\
+				This will use the log file to start the command\n\
+				again and skip all finished executions.\n\
 	--help,-h		Displays this help and exits.\n\
 \n\
 Options:\n\
@@ -148,6 +152,8 @@ int args_parse(struct arguments *pargs, int argc, char **argv)
 			pargs->cmd_plugins = 1;
 		} else if (arg_match(arg, "--help", "-h")) {
 			pargs->cmd_help = 1;
+		} else if (arg_match(arg, "--continue", "-c")) {
+			pargs->cmd_continue = 1;
 		} else if (arg_match(arg, "--sysinfo", "-i")) {
 			parse_arg_tgt = &pargs->custom_sysinfo;
 		} else if (!strcmp(arg, "--warmup-runs")) {
@@ -417,7 +423,7 @@ int execute_cmd_args(struct mod_mgr *mm, struct environment *env, int skip,
 
 error_combo_loop:
 	if (ct) {
-		while (--ct) {
+		while (ct--) {
 			put_run_combo(combos[ct]);
 		}
 	}
@@ -476,7 +482,6 @@ int cmd_execute(struct arguments *pargs, int argc, char **argv, int as_benchsuit
 		return -1;
 	}
 
-
 	if (ret) {
 		printk(KERN_ERR "Failed storage init, %s possibly not compiled into cbenchsuite?\n",
 				pargs->storage);
@@ -501,9 +506,11 @@ int cmd_execute(struct arguments *pargs, int argc, char **argv, int as_benchsuit
 		ret = execute_cmd_args(&mm, &env, skip, pargs, argc, argv);
 	if (ret) {
 		printk(KERN_ERR "Failed executing all commandline arguments\n");
-		goto error_storage_sysinfo;
+		goto error_modmgr;
 	}
 
+error_modmgr:
+	mod_mgr_exit(&mm);
 error_storage_sysinfo:
 	storage_exit(&env.storage);
 error_storage_init:

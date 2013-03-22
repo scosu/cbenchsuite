@@ -149,7 +149,7 @@ static int sqlite3_alter_by_hdr(const char *table, struct sqlite3_data *d,
 	for (i = 0; i != nr_vals; ++i)
 		sum_found += vp.present[i];
 	if (sum_found == nr_vals)
-		return 0;
+		goto out;
 	if (sum_found == 0) {
 
 		ret = header_to_csv(hdr, buf, buf_len, QUOTE_SINGLE);
@@ -196,6 +196,8 @@ static int sqlite3_alter_by_hdr(const char *table, struct sqlite3_data *d,
 			}
 		}
 	}
+
+out:
 	free(vp.present);
 	return 0;
 
@@ -927,7 +929,8 @@ static int sqlite3_init_plugin_grp(void *storage, struct list_head *plugins,
 		ret = mem_grow((void**)stmt, stmt_size,
 				+ strlen(group_sha) + strlen(sha)
 				+ strlen(plug->sha256)
-				+ strlen(plug->opt_sha256) + 128);
+				+ strlen(plug->opt_sha256)
+				+ strlen(plug->ver_sha256) + 128);
 		if (ret) {
 			return -1;
 		}
@@ -1068,12 +1071,18 @@ static void sqlite3_exit(void *storage)
 
 	sqlite3_close(d->db);
 
-	if (d->buf1)
+	if (d->buf1) {
+		printk(KERN_DEBUG "Freeing buf1\n");
 		free(d->buf1);
-	if (d->buf2)
+	}
+	if (d->buf2) {
+		printk(KERN_DEBUG "Freeing buf2\n");
 		free(d->buf2);
-	if (d->stmt)
+	}
+	if (d->stmt) {
+		printk(KERN_DEBUG "Freeing stmt\n");
 		free(d->stmt);
+	}
 	free(d);
 }
 

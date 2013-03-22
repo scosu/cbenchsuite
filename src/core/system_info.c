@@ -200,6 +200,8 @@ static void system_cpus_free(struct system *sys)
 			free(cpu->power_management);
 		if (cpu->cpufreq)
 			system_cpu_cpufreq_free(cpu);
+		if (cpu->flags)
+			free(cpu->flags);
 	}
 	free(sys->hw.cpus);
 }

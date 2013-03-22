@@ -484,7 +484,7 @@ void mod_mgr_unload_unused(struct mod_mgr *mm)
 	struct module *mod;
 
 	list_for_each_entry(mod, &mm->modules, modules) {
-		if (!list_empty(&mod->plugins))
+		if (list_empty(&mod->plugins))
 			module_unload(mod);
 	}
 }
