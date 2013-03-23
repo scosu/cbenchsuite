@@ -179,7 +179,8 @@ static int sqlite3_alter_by_hdr(const char *table, struct sqlite3_data *d,
 		for (i = 0; vp.vals[i].name != NULL; ++i) {
 			if (vp.present[i])
 				continue;
-			ret = mem_grow((void**)stmt, stmt_size, strlen(hdr[i].name)
+			ret = mem_grow((void**)stmt, stmt_size,
+					strlen(vp.vals[i].name)
 					+ strlen(table) + 128);
 			if (ret) {
 				goto error_table_info;
@@ -217,7 +218,7 @@ static int sqlite3_store_header_metadata(struct sqlite3_data *d,
 	sqlite3_stmt *sqstmt;
 
 	ret = mem_grow((void**)stmt, stmt_len, strlen(table) + strlen(join_sha)
-				+ 128);
+				+ strlen(sha_name) + 160);
 	if (ret)
 		return -1;
 
@@ -246,14 +247,6 @@ static int sqlite3_store_header_metadata(struct sqlite3_data *d,
 			sha256_add_str(&ctx, hdr[i].unit);
 
 		sha256_finish_str(&ctx, sha_meta);
-
-		ret = mem_grow((void **)stmt, stmt_len, strlen(table) + strlen(sha_name)
-				+ strlen(sha_meta) + strlen(sha)
-				+ strlen(hdr[i].name)
-				+ (hdr[i].description ? strlen(hdr[i].description) : 0)
-				+ (hdr[i].unit ? strlen(hdr[i].unit) : 0) + 128);
-		if (ret)
-			goto error;
 
 		ret = sqlite3_bind_text(sqstmt, 1, sha_meta, -1, SQLITE_STATIC);
 		ret |= sqlite3_bind_text(sqstmt, 2, sha, -1, SQLITE_STATIC);
@@ -671,7 +664,7 @@ static int sqlite3_plugin_store_options(struct sqlite3_data *d,
 
 	ret = mem_grow((void**)buf2, buf2_len, strlen(plug->mod->name)
 			+ strlen(plug->id->name) + strlen(plug->version->version)
-			+ 32);
+			+ 64);
 	if (ret)
 		return -1;
 
@@ -729,7 +722,7 @@ static int sqlite3_plugin_store_versions(struct sqlite3_data *d,
 			+ strlen(plug->id->name)
 			+ strlen(plug->version->version)
 			+ strlen(*buf1)
-			+ 128);
+			+ 160);
 	if (ret)
 		return -1;
 
@@ -761,7 +754,7 @@ static int sqlite3_plugin_store_versions(struct sqlite3_data *d,
 			+ strlen(*buf1)
 			+ strlen(*buf2)
 			+ strlen(plug->ver_sha256)
-			+ 128);
+			+ 160);
 	if (ret)
 		return -1;
 	sprintf(*stmt, "INSERT OR IGNORE INTO \"plugin_comp_vers_%s__%s__%s\"("
@@ -871,13 +864,6 @@ static int sqlite3_init_plugin_grp(void *storage, struct list_head *plugins,
 		sprintf(comp_vers_table, "plugin_comp_vers_%s__%s__%s",
 				plug->mod->name, plug->id->name, plug->version->version);
 
-		ret = mem_grow((void**)stmt, stmt_size, strlen(plug->sha256)
-				+ 4 * strlen(plug->mod->name)
-				+ (plug->id->description ? strlen(plug->id->description) : 0)
-				+ 4 * strlen(plug->version->version)
-				+ 3 * strlen(plug->id->name));
-		if (ret)
-			return -1;
 		ret = sqlite3_prepare_v2(d->db, "INSERT OR IGNORE INTO plugin("
 					"plugin_sha,"
 					"module,"
@@ -1024,7 +1010,7 @@ static int sqlite3_add_data(void *storage, struct plugin *plug,
 	}
 
 	ret = mem_grow((void**)buf2, buf2_size, strlen(plug->mod->name)
-			+ strlen(plug->id->name) + strlen(plug->version->version));
+			+ strlen(plug->id->name) + strlen(plug->version->version) + 64);
 	if (ret)
 		return -1;
 
