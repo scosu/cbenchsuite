@@ -626,14 +626,35 @@ class plot:
 			if 'data' not in self.removed_values:
 				return {}
 			data_field = self.removed_values['data']
+		fquery = ''
+		for i in lastnode.combo:
+			s = '('
+			if i['plugin_opts_sha'] != '':
+				s += "plugin_opts_sha = '" + i['plugin_opts_sha'] + "'"
+			if i['plugin_comp_vers_sha'] != '':
+				if s == '(':
+					s += ' and '
+				s += "plugin_comp_vers_sha = '" + i['plugin_comp_vers_sha'] + "'"
+			if s != '(':
+				if fquery == '':
+					fquery += ' and ('
+				else:
+					fquery += ' or '
+				fquery += s + ')'
+		if fquery != '':
+			fquery += ')'
 		if self.barchart:
 			query = 'SELECT "' + self.tables['results'] + '"."' + data_field + '''"
 				FROM
 					unique_run,
-					"''' + self.tables['results'] + '''" USING(run_uuid)
+					"''' + self.tables['results'] + '''" USING(run_uuid),
+					plugin_group USING(plugin_group_sha)
 				WHERE
-					system_sha = ''' + "'" + lastnode.combo['system'] + """' and
-					plugin_group_sha = '""" + lastnode.combo['group'] + """';"""
+					(system_sha = ''' + "'" + lastnode.combo[0]['system_sha'] + """' and
+					plugin_group_sha = '""" + lastnode.combo[0]['plugin_group_sha'] + """')
+				GROUP BY run_uuid,""" + '"' + self.tables['results'] + '"."' + data_field + '" '
+			if fquery != '':
+				query += fquery
 			res = self.threaddb.execute(query)
 			data = []
 			for row in res:
@@ -646,13 +667,18 @@ class plot:
 			query += '''"
 				FROM
 					unique_run,
-					"''' + self.tables['results'] + '''" USING(run_uuid)
-				WHERE
-					system_sha = ''' + "'" + lastnode.combo['system'] + """' and
-					plugin_group_sha = '""" + lastnode.combo['group'] + "' ORDER BY run_uuid "
+					"''' + self.tables['results'] + '''" USING(run_uuid),
+					plugin_group USING(plugin_group_sha)
+				WHERE run_uuid in (SELECT run_uuid FROM unique_run, plugin_group USING(plugin_group_sha) WHERE
+					(system_sha = ''' + "'" + lastnode.combo[0]['system_sha'] + """' and
+					plugin_group_sha = '""" + lastnode.combo[0]['plugin_group_sha'] + "')"
+			if fquery != '':
+				query += fquery
+			query += ' GROUP BY run_uuid) ORDER BY run_uuid '
 			if 'line-xtick-data' in self.properties:
 				query += ',"' + self.tables['results'] + '"."' + self.properties['line-xtick-data']
 			query += '"'
+			print(query)
 			res = self.threaddb.execute(query)
 			data = []
 			datas = []
@@ -790,13 +816,17 @@ class plot:
 			else:
 				value = self.system_to_html(value)
 		elif name.startswith('option.'):
-			name = name[7:]
-			res = self.threaddb.execute('SELECT name, description, unit FROM plugin_option_meta WHERE plugin_sha = \'' + self.plugin_sha + '\' AND name = \'' + name + '\';')
+			ident = name.split('.', 3)
+			mod = ident[1]
+			name = ident[2]
+			option = ident[3]
+			res = self.threaddb.execute('SELECT plugin_option_meta.name, plugin_option_meta.description, unit FROM plugin_option_meta,plugin USING(plugin_sha) WHERE module = \'' + mod + '\' and plugin.name=\'' + name + '\' AND plugin_option_meta.name = \'' + option + '\';')
 			row = res.fetchone()
 			description = row[1]
 			unit = row[2]
+			name = mod + "." + name + " " + option
 		name = translate(name, self.replacerules)
-		if not value:
+		if value == None:
 			return html.legend(level, name, unit, description)
 		else:
 			value = translate(value, self.replacerules)
@@ -837,7 +867,8 @@ class plot:
 
 		if img:
 			sub = ''
-			for k,v in self.removed_values.items():
+			for k in sorted(self.removed_values.keys()):
+				v = self.removed_values[k]
 				if k == 'data':
 					data_legend = self.parameter_to_html(depth, k, v)
 					continue
@@ -907,33 +938,8 @@ class plot:
 				if level == 'system':
 					for pind in range(len(ptrs)):
 						ptrs[pind].set_name('system')
-						ptrs[pind] = ptrs[pind].add_child(combo['system'])
-				elif level == 'option':
-					if self.tables['options'] == '':
-						continue
-					res = self.db.execute('SELECT * FROM "' + self.tables['options'] + '" WHERE plugin_opts_sha = \'' + combo['options'] + '\';')
-					row = res.fetchone()
-					for k in sorted(row.keys()):
-						v = row[k]
-						if k == "plugin_opts_sha":
-							continue
-						self.replacerules['option.' + k] = k.capitalize()
-						for pind in range(len(ptrs)):
-							ptrs[pind].set_name('option.' + k)
-							ptrs[pind] = ptrs[pind].add_child(v)
-				elif level == 'version':
-					if self.tables['versions'] == '':
-						continue
-					res = self.db.execute('SELECT * FROM "' + self.tables['versions'] + '" WHERE plugin_comp_vers_sha = \'' + combo['versions'] + '\';')
-					row = res.fetchone()
-					for k in sorted(row.keys()):
-						v = row[k]
-						if k == "plugin_comp_vers_sha":
-							continue
-						self.replacerules['version.' + k] = k.capitalize()
-						for pind in range(len(ptrs)):
-							ptrs[pind].set_name('version.' + k)
-							ptrs[pind] = ptrs[pind].add_child(v)
+						ptrs[pind] = ptrs[pind].add_child(plug['system_sha'])
+					continue
 				elif level == 'data':
 					for pind in range(len(ptrs)):
 						ptrs[pind].set_name('data')
@@ -953,6 +959,38 @@ class plot:
 								tmp_child.properties['ylabel'] += ' (' + row['unit'] + ')'
 							new_ptrs.append(tmp_child)
 					ptrs = new_ptrs
+					continue
+
+				for plug in combo:
+					pname = plug['module'] + '.' + plug['name']
+					if level == 'option':
+						if plug['plugin_opt_table'] == '':
+							continue
+						res = self.db.execute('SELECT * FROM "' + plug['plugin_opt_table'] + '" WHERE plugin_opts_sha = \'' + plug['plugin_opts_sha'] + '\';')
+						row = res.fetchone()
+						for k in sorted(row.keys()):
+							v = row[k]
+							if k == "plugin_opts_sha":
+								continue
+							ik = 'option.' + pname + '.' + k
+							self.replacerules[ik] = pname + ' ' + k.capitalize()
+							for pind in range(len(ptrs)):
+								ptrs[pind].set_name(ik)
+								ptrs[pind] = ptrs[pind].add_child(v)
+					elif level == 'version':
+						if plug['plugin_comp_vers_table'] == '':
+							continue
+						res = self.db.execute('SELECT * FROM "' + plug['plugin_comp_vers_table'] + '" WHERE plugin_comp_vers_sha = \'' + plug['plugin_comp_vers_sha'] + '\';')
+						row = res.fetchone()
+						for k in sorted(row.keys()):
+							v = row[k]
+							if k == "plugin_comp_vers_sha":
+								continue
+							ik = 'version.' + pname + '.' + k
+							self.replacerules[ik] = pname + ' ' + k.capitalize()
+							for pind in range(len(ptrs)):
+								ptrs[pind].set_name(ik)
+								ptrs[pind] = ptrs[pind].add_child(v)
 			for ptr in ptrs:
 				ptr.combo = combo
 		self.root = root
@@ -1106,7 +1144,7 @@ def input_get_selected(prompt, select_list, max_ct):
 		return []
 def plotgrps_generate(db, filters, levels):
 	default_replacements = {}
-	res = db_generic_run_exec(db, filters, "plugin_group_sha, plugin_sha, system_sha, plugin_group.plugin_opts_sha, plugin_group.plugin_comp_vers_sha, system.custom_info, system.nr_cpus_on, system.kernel, module, name",
+	res = db_generic_run_exec(db, filters, "plugin_group_sha, plugin_sha, plugin_table, plugin_opt_table, plugin_comp_vers_table, system_sha, plugin_group.plugin_opts_sha, plugin_group.plugin_comp_vers_sha, system.custom_info, system.nr_cpus_on, system.kernel, module, name",
 			group_by = "plugin_group_sha, plugin_sha, system_sha, plugin_group.plugin_opts_sha, plugin_group.plugin_comp_vers_sha")
 
 	grp_sys_rows = {}
@@ -1146,27 +1184,16 @@ def plotgrps_generate(db, filters, levels):
 	for combo in grps:
 		plots = []
 
-		plugs = {}
+		plugs = set()
+		names = set()
 		for g in combo:
 			for inst in g:
-				k = inst['plugin_sha']
-
-				if k not in plugs:
-					plugs[k] = []
-				plugs[k].append({'system': inst['system_sha'],
-						'options': inst['plugin_opts_sha'],
-						'versions': inst['plugin_comp_vers_sha'],
-						'group': inst['plugin_group_sha'],
-						'name': inst['module'] + '.' + inst['name']})
-
-		names = set()
-		for psha, p in plugs.items():
-			for i in p:
-				names.add(i['name'])
-		group_path = '#'.join(sorted(list(names)))
+				plugs.add(inst['plugin_sha'])
+				names.add(inst['module'] + '.' + inst['name'])
+		group_path = '__'.join(sorted(list(names)))
 		local_path = os.path.join(path, group_path)
-		for psha,p in plugs.items():
-			plots.append(plot(db, filters, psha, p, levels, group_path, local_path, default_replacements))
+		for psha in plugs:
+			plots.append(plot(db, filters, psha, combo, levels, group_path, local_path, default_replacements))
 		if len(plots) > 0:
 			plot_grps.append(plots)
 	return plot_grps
