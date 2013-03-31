@@ -8,6 +8,11 @@ modules/Kconfig
 *.log
 .libs
 gen/
+cbenchsuite
+
+__pycache__/
+
+#define PWM_FREQ 4
 
 # kconfig-frontend stuff
 
