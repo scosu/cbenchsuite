@@ -25,6 +25,7 @@ import plot_utils
 import threading
 import json
 import uuid
+import sys
 
 parser = argparse.ArgumentParser()
 
@@ -122,24 +123,28 @@ a:active {
 ''')
 
 class html:
-	def level_start(level, heading, img_parent = False, description=''):
+	def level_start(level, heading, img_parent = False, description='', dummy=False):
 		div_uuid = 'uuid' + str(uuid.uuid1())
 		s = ''
 		s += '<div class="level">' + "\n"
 		if heading:
-			if img_parent:
-				img_func = '''load_image("#''' + div_uuid + '''");'''
-			else:
-				img_func = ''
-			s += """<a href="javascript:void(0)" onclick='""" + img_func + '''$("#''' + div_uuid + '''").slideToggle();'><p class="heading_level">''' + heading + '</p></a>' + "\n"
+			if not dummy:
+				if img_parent:
+					img_func = '''load_image("#''' + div_uuid + '''");'''
+				else:
+					img_func = ''
+				s += """<a href="javascript:void(0)" onclick='""" + img_func + '''$("#''' + div_uuid + '''").slideToggle();'>'''
+			s += '''<p class="heading_level">''' + heading + '</p>'
+			if not dummy:
+				s += '</a>' + "\n"
 		if description != '':
 			s += '<div class="level_description">' + description + '</div>' + "\n"
 		s += '<div style="display:none;" class="level_content" id="' + div_uuid + '">' + "\n"
 		return s
 
-	def props_start(level):
+	def props_start(level, heading='Properties'):
 		s = ''
-		s += '<p class="prop_heading_level">Properties</p>' + "\n"
+		s += '<p class="prop_heading_level">' + heading + '</p>' + "\n"
 		s += '<table class="prop_level">' + "\n"
 		s += '<tr class="header"><td>Name</td><td>Unit</td><td>Description</td><td>Value</td></tr>' + "\n"
 		return s
@@ -225,7 +230,7 @@ def indent(nr):
 	return s
 
 def translate(name, replacements, append_original = False):
-	if isinstance(name, list) or isinstance(name,tuple):
+	if isinstance(name, list) or isinstance(name, tuple):
 		n = name
 	else:
 		n = [name]
@@ -242,6 +247,15 @@ def translate(name, replacements, append_original = False):
 		return ret
 	else:
 		return ret[0]
+def translate_path(name, replacements, append_original = False):
+	ret = translate(name, replacements, append_original)
+	if isinstance(ret, list) or isinstance(ret, tuple):
+		res = []
+		for i in ret:
+			res.append(i.replace(' ', '_').replace('#', '_'))
+		return res
+	else:
+		return i.replace(' ', '_').replace('#', '_')
 
 class filter:
 	def __init__(self, table, condition, desc = None):
@@ -272,8 +286,13 @@ class diff_tree:
 		s = ''
 		if len(self.name) == 0:
 			return ''
+		pairs = {}
 		for e in self.childs:
-			s += cb(nodepath + [(self, e)], e.ptr)
+			pairs['/'.join([str(i) for i in e.vals])] = e
+		pair_keys = sorted(pairs.keys(), key=plot_utils.parameter_sort_create)
+		for k in pair_keys:
+			v = pairs[k]
+			s += cb(nodepath + [(self, v)], v.ptr)
 		return s
 	def set_name(self, name):
 		self.name = [name]
@@ -540,7 +559,11 @@ class plot:
 			'watermark': 'Powered by cbenchsuite (http://cbench.allfex.org)',
 			'watermarkfontsize': 13,
 			'file-type': 'svg',
-			'line-nr-ticks': 300
+			'line-nr-ticks': 300,
+			'grid-axis': 'y',
+			'grid-ticks': 'both',
+			'grid': True,
+			'plot-depth': 1,
 			}
 	known_properties = {
 			'xlabel': str,
@@ -563,7 +586,10 @@ class plot:
 			'line-xtick-data': str,
 			'line-nr-ticks': int,
 			'file-type': str,
-			'plot-depth': int
+			'plot-depth': int,
+			'grid-axis': str,
+			'grid-ticks': str,
+			'grid': bool
 			}
 	def __init__(self, db, filters, plugin_sha, combos, levels, group_path, base_path, replacerules = None):
 		super(plot, self).__init__()
@@ -609,12 +635,14 @@ class plot:
 				self.barchart = False
 				self.linechart = True
 				self.levels = levels['line']
+				self.properties['grid-axis'] = 'both'
 			else:
 				self.barchart = True
 				self.linechart = False
 				self.levels = levels['bar']
 		self.root = None
 		self.rebuild_tree()
+
 	def _plot_db_cb(self, nodepath, lastnode):
 		data_field = None
 		for (node,edge) in nodepath:
@@ -630,11 +658,11 @@ class plot:
 		for i in lastnode.combo:
 			s = '('
 			if i['plugin_opts_sha'] != '':
-				s += "plugin_opts_sha = '" + i['plugin_opts_sha'] + "'"
+				s += " plugin_opts_sha = '" + i['plugin_opts_sha'] + "' "
 			if i['plugin_comp_vers_sha'] != '':
-				if s == '(':
+				if s != '(':
 					s += ' and '
-				s += "plugin_comp_vers_sha = '" + i['plugin_comp_vers_sha'] + "'"
+				s += " plugin_comp_vers_sha = '" + i['plugin_comp_vers_sha'] + "' "
 			if s != '(':
 				if fquery == '':
 					fquery += ' and ('
@@ -655,7 +683,12 @@ class plot:
 				GROUP BY run_uuid,""" + '"' + self.tables['results'] + '"."' + data_field + '" '
 			if fquery != '':
 				query += fquery
-			res = self.threaddb.execute(query)
+			try:
+				res = self.threaddb.execute(query)
+			except Exception as ex:
+				print(query)
+				print(ex)
+				raise ex
 			data = []
 			for row in res:
 				data.append(row[0])
@@ -678,7 +711,6 @@ class plot:
 			if 'line-xtick-data' in self.properties:
 				query += ',"' + self.tables['results'] + '"."' + self.properties['line-xtick-data']
 			query += '"'
-			print(query)
 			res = self.threaddb.execute(query)
 			data = []
 			datas = []
@@ -695,10 +727,10 @@ class plot:
 						datas.append(data)
 						data = []
 						last_uuid = row[0]
-						offset += last_x + last_x * 0.05
+						offset += last_x
 					if 'line-nr-ticks' in self.properties and offset + row[2] > self.properties['line-nr-ticks']:
 						break
-					data.append((offset + row[2], row[1]))
+					data.append((row[2], row[1]))
 					last_x = row[2]
 			else:
 				last_x = 0
@@ -710,20 +742,21 @@ class plot:
 						ct += 1
 						datas.append(data)
 						data = []
-						offset += last_x * 0.05
+						offset += last_x
 						last_x = 0
 					if 'line-nr-ticks' in self.properties and offset + last_x > self.properties['line-nr-ticks']:
 						break
-					data.append((offset + last_x, row[2]))
+					data.append((last_x, row[2]))
 					last_x += 1
 			if len(data) > 0:
 				datas.append(data)
 			return datas
 
+
 	def _plot_cb(self, nodepath, last_node):
 		path = self.base_path
 		for n in nodepath:
-			path = os.path.join(path, '#'.join(translate(n[0].name, self.replacerules)) + '__' + '#'.join(translate(n[1].vals, self.replacerules)))
+			path = os.path.join(path, '#'.join(translate_path(n[0].name, self.replacerules)) + '__' + '#'.join(translate_path(n[1].vals, self.replacerules)))
 
 		try:
 			os.makedirs(os.path.dirname(path))
@@ -749,11 +782,13 @@ class plot:
 		else:
 			plot_utils.plot_line_chart(data, path, props)
 		del data
+
 	def _plot(self):
 		self.threaddb = sqlite3.connect(os.path.expanduser(parsed.database));
 		self.root.plot(self._plot_cb, self.properties['plot-depth'], [])
 		self.threaddb.close()
 		self.threaddb = None
+
 	def plot(self):
 		if self.dummy:
 			return
@@ -835,7 +870,7 @@ class plot:
 		path = self.base_path
 		last_path = ''
 		for n in nodepath:
-			last_path = '#'.join(translate(n[0].name, self.replacerules)) + '__' + '#'.join(translate(n[1].vals, self.replacerules))
+			last_path = '#'.join(translate_path(n[0].name, self.replacerules)) + '__' + '#'.join(translate_path(n[1].vals, self.replacerules))
 			path = os.path.join(path, last_path)
 		try:
 			os.makedirs(os.path.dirname(path))
@@ -843,9 +878,11 @@ class plot:
 			pass
 		depth = last_node.depth()
 		s = ''
-		img = self.properties['plot-depth'] >= depth
+		img = not self.dummy and self.properties['plot-depth'] >= depth
 
-		if len(nodepath) > 0:
+		static_props = ''
+
+		if len(nodepath) > 0 and not self.dummy:
 			prv = nodepath[-1]
 			hdg = ''
 			descr = ''
@@ -858,7 +895,17 @@ class plot:
 			hdg = self.module_name + '.' + self.name
 			descr = row[0]
 
-		s += html.level_start(depth, hdg, img, descr)
+			for k in sorted(self.removed_values.keys()):
+				v = self.removed_values[k]
+				if k == 'data':
+					continue
+				static_props += self.parameter_to_html(depth, k, v)
+
+		s += html.level_start(depth, hdg, img, descr, self.dummy)
+		if static_props:
+			s += html.props_start(depth, "Constant Properties")
+			s += static_props
+			s += html.props_end()
 
 		if img:
 			s += html.figure(os.path.basename(path) + '.' + self.properties['file-type'])
@@ -872,7 +919,6 @@ class plot:
 				if k == 'data':
 					data_legend = self.parameter_to_html(depth, k, v)
 					continue
-				sub += self.parameter_to_html(depth, k, v)
 			for n in nodepath:
 				for i in range(len(n[0].name)):
 					if n[0].name[i] == 'data':
@@ -891,9 +937,25 @@ class plot:
 				while len(node.name) > 0:
 					s += self.parameter_to_html(depth, node.name[0])
 					node = node.childs[0].ptr
+				nodes = [last_node]
+				while len(nodes[0].name) > 0:
+					next_nodes = []
+					if 'system' in nodes[0].name:
+						ind = nodes[0].name.index('system')
+						systems = set()
+						for n in nodes:
+							for e in n.childs:
+								systems.add(e.vals[ind])
+						for i in systems:
+							s += self.parameter_to_html(depth, 'system', i)
+						break
+					for n in nodes:
+						for e in n.childs:
+							next_nodes.append(e.ptr)
+					nodes = next_nodes
 				s += html.legend_end()
 
-		if self.properties['plot-depth'] < last_node.depth():
+		if self.properties['plot-depth'] < last_node.depth() and not self.dummy:
 			s += last_node.child_cb(self._html_cb, nodepath)
 		s += html.level_end(depth)
 		html.write_to_file(path, s)
@@ -902,8 +964,6 @@ class plot:
 		return s
 	def generate_html(self):
 		self.threaddb = self.db
-		if self.dummy:
-			return ''
 		s = self._html_cb([], self.root)
 		self.threaddb = None
 		if self.root.depth() <= self.properties['plot-depth']:
@@ -930,6 +990,7 @@ class plot:
 		self.properties['plot-depth'] = depth
 	def rebuild_tree(self):
 		if self.dummy:
+			self.root = diff_tree()
 			return
 		root = diff_tree()
 		for combo in self.combos:
@@ -973,7 +1034,10 @@ class plot:
 							if k == "plugin_opts_sha":
 								continue
 							ik = 'option.' + pname + '.' + k
-							self.replacerules[ik] = pname + ' ' + k.capitalize()
+							if pname == self.module_name + '.' + self.name:
+								self.replacerules[ik] = k.capitalize()
+							else:
+								self.replacerules[ik] = pname + ' ' + k.capitalize()
 							for pind in range(len(ptrs)):
 								ptrs[pind].set_name(ik)
 								ptrs[pind] = ptrs[pind].add_child(v)
@@ -987,7 +1051,10 @@ class plot:
 							if k == "plugin_comp_vers_sha":
 								continue
 							ik = 'version.' + pname + '.' + k
-							self.replacerules[ik] = pname + ' ' + k.capitalize()
+							if pname == self.module_name + '.' + self.name:
+								self.replacerules[ik] = k.capitalize()
+							else:
+								self.replacerules[ik] = pname + ' ' + k.capitalize()
 							for pind in range(len(ptrs)):
 								ptrs[pind].set_name(ik)
 								ptrs[pind] = ptrs[pind].add_child(v)
@@ -1494,7 +1561,7 @@ It is recommended to use this command because it removes unnecessary levels
 from the hierarchy.
 
 Arguments:
-	plot id: An identifier for a plot. Possible is: '*', 'plotgroup.*' 
+	plot id: An identifier for a plot. Possible is: '*', 'plotgroup.*'
 		and 'plotgroup.plot', where plotgroup is the number of the group
 		and plot the number of the plot within a group. See 'plots' for
 		the numbers.
@@ -1510,7 +1577,7 @@ Squash multiple levels of the parameter hierarchy into one. All levelname
 arguments will afterwards be represented in only one level.
 
 Arguments:
-	plot id: An identifier for a plot. Possible is: '*', 'plotgroup.*' 
+	plot id: An identifier for a plot. Possible is: '*', 'plotgroup.*'
 		and 'plotgroup.plot', where plotgroup is the number of the group
 		and plot the number of the plot within a group. See 'plots' for
 		the numbers.
@@ -1570,7 +1637,7 @@ Setup a replacement rule for names and values. Those replacement will be
 applied when creating the plots.
 
 Arguments:
-	plot id: An identifier for a plot. Possible is: '*', 'plotgroup.*' 
+	plot id: An identifier for a plot. Possible is: '*', 'plotgroup.*'
 		and 'plotgroup.plot', where plotgroup is the number of the group
 		and plot the number of the plot within a group. See 'plots' for
 		the numbers.
@@ -1591,7 +1658,7 @@ Arguments:
 Set a plot property.
 
 Arguments:
-	plot id: An identifier for a plot. Possible is: '*', 'plotgroup.*' 
+	plot id: An identifier for a plot. Possible is: '*', 'plotgroup.*'
 		and 'plotgroup.plot', where plotgroup is the number of the group
 		and plot the number of the plot within a group. See 'plots' for
 		the numbers.
@@ -1612,7 +1679,7 @@ Generate and save one or multiple plots. This will create the final file and
 put it in the appropriate directory. All plots are created in parallel.
 
 Arguments:
-	plot id: An identifier for a plot. Possible is: '*', 'plotgroup.*' 
+	plot id: An identifier for a plot. Possible is: '*', 'plotgroup.*'
 		and 'plotgroup.plot', where plotgroup is the number of the group
 		and plot the number of the plot within a group. See 'plots' for
 		the numbers.
@@ -1633,7 +1700,7 @@ Generate and save one or multiple plots. This will create the final file and
 put it in the appropriate directory. All plots are created in parallel.
 
 Arguments:
-	plot id: An identifier for a plot. Possible is: '*', 'plotgroup.*' 
+	plot id: An identifier for a plot. Possible is: '*', 'plotgroup.*'
 		and 'plotgroup.plot', where plotgroup is the number of the group
 		and plot the number of the plot within a group. See 'plots' for
 		the numbers.
@@ -1655,9 +1722,13 @@ Arguments:
 		for i in sel:
 			sub = ''
 			hdg = '<h2>Group</h2><ul class="groups">'
+			named = {}
 			for j in i:
-				hdg += '<li>' + j.module_name + '.' + j.name + '</li>'
-				sub += j.generate_html()
+				named[j.module_name + '.' + j.name] = j
+			for k in sorted(named.keys()):
+				v = named[k]
+				hdg += '<li>' + k + '</li>'
+				sub += v.generate_html()
 			hdg += '</ul>'
 			sub = hdg + sub
 			group_path = os.path.join(parsed.outdir, i[0].group_path)

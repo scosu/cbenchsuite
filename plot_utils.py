@@ -121,7 +121,7 @@ def _create_figure(properties):
 	fontsize = property_get(properties, 'fontsize')
 	return pyplt.figure(figsize=(xsize, ysize), dpi=dpi)
 
-def _plot_stuff(fig, ax, properties, max_x = None):
+def _plot_stuff(fig, ax, properties, path):
 	wm = property_get(properties, 'watermark')
 	fs = property_get(properties, 'watermarkfontsize')
 	fig.text(1, 0, wm, fontsize=fs, color='black', ha='right', va='bottom', alpha=0.7)
@@ -145,8 +145,9 @@ def _plot_stuff(fig, ax, properties, max_x = None):
 	if y_label != None:
 		fs = property_get(properties, 'ylabelfontsize')
 		ax.set_ylabel(y_label, fontsize=fs)
+	ax.grid(b=properties['grid'], which=properties['grid-ticks'], axis=properties['grid-axis'])
 	no_legend = property_get(properties, 'no-legend')
-	if not no_legend and max_x != None:
+	if not no_legend:
 		fs = property_get(properties, 'legendfontsize')
 		handles, labels = ax.get_legend_handles_labels()
 		by_label = dict(zip(labels, handles))
@@ -160,8 +161,15 @@ def _plot_stuff(fig, ax, properties, max_x = None):
 			max_label = max(len(k), max_label)
 
 		est_len = (max_label * fs) / 30
-		ax.set_xlim(xmax = max_x * max(1.01, 0.00155 * est_len ** 2 - 0.0135 * est_len + 1.08))
+		xlims = ax.get_xlim()
+		x_range = xlims[1] - xlims[0]
+		ax.set_xlim(xmax = xlims[0] + x_range * max(1.01, 0.00155 * est_len ** 2 - 0.0135 * est_len + 1.09))
 		ax.legend(handles, labels, loc='center right', bbox_to_anchor=(1.13, 0.5), fancybox=True, shadow=True, fontsize=fs)
+
+	path += '.' + property_get(properties, 'file-type')
+	fig.savefig(path)
+	fig.delaxes(ax)
+	print("Generated figure " + path)
 
 
 # Takes something like this:
@@ -170,6 +178,7 @@ def _plot_stuff(fig, ax, properties, max_x = None):
 #		'y': [(0,1), (2,1), (3,2), (4,5)],
 #		'z': [(0,[1,2,3,2,2,2,2]), (1,[2,3,2,2,3,3,3,3]), (2,2), (3,5)]
 #}
+
 def plot_line_chart(data, path, properties=None, fmts_arg = None, x_keys = None):
 	fig = _create_figure(properties)
 	ax = fig.add_subplot(111)
@@ -202,8 +211,30 @@ def plot_line_chart(data, path, properties=None, fmts_arg = None, x_keys = None)
 	if x_keys == None:
 		x_keys = _sort_keys(data.keys())
 
+	start_offsets = [0]
+	ct = 0
+	while True:
+		offset = start_offsets[-1]
+		for k in x_keys:
+			if k not in data:
+				continue
+			v = data[k]
+			if not (isinstance(v[0][0], list) or isinstance(v[0][0], tuple)):
+				continue
+			if len(v) <= ct:
+				continue
+			offset = max(offset, start_offsets[-1] + v[ct][-1][0])
+		if offset == start_offsets[-1]:
+			break
+		start_offsets.append(offset)
+		ct += 1
+		if properties['line-nr-ticks'] < offset:
+			break
+
 	max_overall_x = None
 	min_overall_x = None
+	max_overall_y = None
+	min_overall_y = None
 	for k in x_keys:
 		if k not in data:
 			continue
@@ -212,37 +243,55 @@ def plot_line_chart(data, path, properties=None, fmts_arg = None, x_keys = None)
 			dats = data[k]
 		else:
 			dats = [data[k]]
-		for v in dats:
+		for xind in range(len(dats)):
 			xs = []
 			ys = []
 			yerrs = []
 			yerr_not_zero = False
+			v = dats[xind]
+			if len(start_offsets) <= xind:
+				break
 			for pt in v:
-				xs.append(pt[0])
+				xval = pt[0] + start_offsets[xind]
+				if xval > properties['line-nr-ticks']:
+					break
+				xs.append(xval)
 				if max_overall_x == None:
-					max_overall_x = pt[0]
-					min_overall_x = pt[0]
+					max_overall_x = xval
+					min_overall_x = xval
 				else:
-					max_overall_x = max(max_overall_x, pt[0])
-					min_overall_x = min(min_overall_x, pt[0])
+					max_overall_x = max(max_overall_x, xval)
+					min_overall_x = min(min_overall_x, xval)
 				if isinstance(pt[1], list):
 					m, h = mean_confidence_interval(pt[1])
 					yerrs.append(h)
 					ys.append(m)
 					yerr_not_zero = True
+					if max_overall_y == None:
+						max_overall_y = m
+						min_overall_y = m
+					else:
+						max_overall_y = max(max_overall_y, m)
+						min_overall_y = min(min_overall_y, m)
 				else:
 					ys.append(pt[1])
 					yerrs.append(0.0)
+					if max_overall_y == None:
+						max_overall_y = pt[1]
+						min_overall_y = pt[1]
+					else:
+						max_overall_y = max(max_overall_y, pt[1])
+						min_overall_y = min(min_overall_y, pt[1])
 			if yerr_not_zero:
 				ax.errorbar(xs, ys, yerrs, label=k, linestyle=fmt['linestyle'], marker=fmt['marker'], color=fmt['color'])
 			else:
 				ax.plot(xs, ys, label=k, linestyle=fmt['linestyle'], marker=fmt['marker'], color=fmt['color'])
-	rang = max_overall_x - min_overall_x
-	ax.set_xlim(xmin = (min_overall_x - rang*0.05))
-	_plot_stuff(fig, ax, properties, max_x=(max_overall_x + rang*0.05))
-	path += '.' + property_get(properties, 'file-type')
-	fig.savefig(path)
-	print("Generated figure " + path)
+
+	ylims = ax.get_ylim()
+	ax.vlines(start_offsets[1:-1], ylims[0], ylims[1], linestyles='dotted')
+	ax.set_ylim(ylims)
+
+	_plot_stuff(fig, ax, properties, path)
 
 
 # Works with all those structures:
@@ -270,6 +319,7 @@ def plot_line_chart(data, path, properties=None, fmts_arg = None, x_keys = None)
 # @param confidence_arg
 #
 # @return
+
 def plot_bar_chart(data, path, properties = None, l1_keys = None, l2_keys = None, l3_keys = None, colors_arg = None):
 	fig = _create_figure(properties)
 	ax = fig.add_subplot(111)
@@ -360,6 +410,7 @@ def plot_bar_chart(data, path, properties = None, l1_keys = None, l2_keys = None
 
 				else:
 					max_val = 0
+					values = []
 					for l3_key in l3_keys:
 						if l3_key not in l2_val:
 							continue
@@ -368,7 +419,10 @@ def plot_bar_chart(data, path, properties = None, l1_keys = None, l2_keys = None
 							max_val = max(sum(l3_val)/len(l3_val), max_val)
 						else:
 							max_val = max(l3_val, max_val)
-						_plt_bar(x, l3_val, l3_key)
+						values.append((x, l3_val, l3_key))
+
+					for l3_vals in sorted(values, key=operator.itemgetter(1), reverse=True):
+						_plt_bar(l3_vals[0], l3_vals[1], l3_vals[2])
 
 					fs = property_get(properties, 'barfontsize')
 					rot = min((len(l2_key) - 1)*30, 90)
@@ -376,15 +430,10 @@ def plot_bar_chart(data, path, properties = None, l1_keys = None, l2_keys = None
 					x += 1
 			x += 1
 	if levels == 3:
-		ax.set_ylim(ymin = 0, ymax=1.2*max_overall)
+		ax.set_ylim(ymin = 0, ymax=1.2*ax.get_ylim()[1])
 	else:
 		ax.set_ylim(ymin = 0)
 	ax.set_xticks(xxticks)
 	ax.set_xticklabels(xticks)
-	_plot_stuff(fig, ax, properties, max_x = x-0.5)
-
-	path += '.' + property_get(properties, 'file-type')
-	fig.savefig(path)
-	print("Generated figure " + path)
-
+	_plot_stuff(fig, ax, properties, path)
 
