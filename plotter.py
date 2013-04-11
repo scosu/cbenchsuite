@@ -1739,6 +1739,20 @@ Arguments:
 			html.write_to_file(group_path, sub)
 			s += html.update_pathes(sub, i[0].group_path)
 		html.write_to_file(parsed.outdir, s)
+	def do_automagic(self, arg):
+		'''Usage: automagic
+
+This command does everything as it thinks it should be. This will probably not
+generate the best possible graphs for your use case, but they are still very
+good and show what you need to know about the results.
+'''
+		self.do_plots_create("")
+		self.do_plot_autoremove("*")
+		self.do_plot_autosquash("all_line 10")
+		self.do_plot_autosquash("all_bar 8 8 10")
+		self.do_plots("")
+		self.do_plot_generate("*")
+		self.do_html_generate("*")
 
 	def do_EOF(self, arg):
 		return True
