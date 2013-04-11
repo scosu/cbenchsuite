@@ -354,7 +354,7 @@ class diff_tree:
 			self.name += self.childs[0].ptr.name
 			new_childs = []
 			for e in self.childs:
-				for prop, val in e.ptr.properties:
+				for prop, val in e.ptr.properties.items():
 					self.properties[prop] = val
 				for ce in e.ptr.childs:
 					new_childs.append(diff_tree_edge(e.vals[:] + ce.vals[:], ce.ptr))
@@ -1098,12 +1098,15 @@ class plot:
 		self.root.autosquash(max_values)
 		self.update_plot_depth()
 	def line_autosquash(self, max_values):
+		if self.dummy:
+			return
 		if self.linechart:
 			self.autosquash_levels(max_values)
 	def bar_autosquash(self, max_values):
+		if self.dummy:
+			return
 		if self.barchart:
 			self.autosquash_levels(max_values)
-		self.update_plot_depth()
 	def add_replace_rule(self, src, tgt):
 		self.replacerules[src] = tgt
 	def add_property(self, prop, val):
@@ -1624,12 +1627,13 @@ Arguments:
 			print("Missing level#values argument")
 			return
 		for i in sel:
+			mvals = max_values[:]
 			if args[0] == 'all_bar':
-				i.bar_autosquash(max_values)
+				i.bar_autosquash(mvals)
 			elif args[0] == 'all_line':
-				i.line_autosquash(max_values)
+				i.line_autosquash(mvals)
 			else:
-				i.autosquash_levels(max_values)
+				i.autosquash_levels(mvals)
 	def do_plot_replace_rule(self, arg):
 		'''Usage: plot_replace_rule <plot id> <parameter id> <replacement>
 
