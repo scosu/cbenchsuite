@@ -355,6 +355,7 @@ def plot_bar_chart(data, path, properties = None, l1_keys = None, l2_keys = None
 	colorid = 0
 	x = 1
 	max_overall = 0
+	min_val = None
 	def _xtick(label, x_val = None):
 		nonlocal x
 		if x_val == None:
@@ -371,17 +372,22 @@ def plot_bar_chart(data, path, properties = None, l1_keys = None, l2_keys = None
 			return True, label_colors[label]
 	def _plt_bar(x, y, label):
 		nonlocal confidence
+		nonlocal min_val
 		set_label, color = _color_get(label)
 		if isinstance(y, list):
 			nonlocal max_overall
 			m,h = mean_confidence_interval(y, confidence)
 			max_overall = max(m, max_overall)
+			if not min_val: min_val = m
+			min_val = min(min_val, m)
 			if label == None or not set_label:
 				ax.bar(x, m, align="center", color = color, ecolor='r', yerr = h)
 			else:
 				ax.bar(x, m, align="center", color = color, ecolor='r', label = label, yerr = h)
 		else:
 			max_overall = max(max_overall, y)
+			if not min_val: min_val = y
+			min_val = min(min_val, y)
 			if label == None or not set_label:
 				ax.bar(x, y, align="center", color = color)
 			else:
@@ -429,10 +435,13 @@ def plot_bar_chart(data, path, properties = None, l1_keys = None, l2_keys = None
 					ax.text(x, max_val + max_overall * 0.02, l2_key, horizontalalignment='center', verticalalignment='bottom', rotation=rot, fontsize = fs)
 					x += 1
 			x += 1
+	ax.relim()
+	lims = ax.get_ylim()
+	new_min = max(0, min_val - (lims[1] - min_val) / 4)
 	if levels == 3:
-		ax.set_ylim(ymin = 0, ymax=1.2*ax.get_ylim()[1])
+		ax.set_ylim((new_min, lims[1] * 1.2))
 	else:
-		ax.set_ylim(ymin = 0)
+		ax.set_ylim((new_min, lims[1]))
 	ax.set_xticks(xxticks)
 	ax.set_xticklabels(xticks)
 	_plot_stuff(fig, ax, properties, path)
