@@ -31,27 +31,27 @@ parser.add_argument('-f', '--force', default=False, action="store_true", help="F
 parsed = parser.parse_args()
 
 if os.path.exists(parsed.outdb):
-	if parsed.force:
-		os.unlink(parsed.outdb)
-	else:
-		print("Error: Target database " + parsed.outdb + " already exists and overwrite was not forced.")
-		sys.exit(-1)
+    if parsed.force:
+        os.unlink(parsed.outdb)
+    else:
+        print("Error: Target database " + parsed.outdb + " already exists and overwrite was not forced.")
+        sys.exit(-1)
 
 db = sqlite3.connect(parsed.outdb)
 db.row_factory = sqlite3.Row
 
 for i in parsed.indb:
-#	db.execute("BEGIN TRANSACTION;")
-	db.execute("ATTACH '" + i + "' AS tomerge;")
+#    db.execute("BEGIN TRANSACTION;")
+    db.execute("ATTACH '" + i + "' AS tomerge;")
 
-	res = db.execute("SELECT name, sql FROM tomerge.sqlite_master WHERE type = 'table' AND name not in (SELECT name FROM sqlite_master WHERE type='table');")
-	for row in res:
-		print(row['name'])
-		db.execute(row['sql'])
+    res = db.execute("SELECT name, sql FROM tomerge.sqlite_master WHERE type = 'table' AND name not in (SELECT name FROM sqlite_master WHERE type='table');")
+    for row in res:
+        print(row['name'])
+        db.execute(row['sql'])
 
-	res = db.execute("SELECT name FROM tomerge.sqlite_master WHERE type = 'table';")
-	for row in res:
-		db.execute('INSERT OR IGNORE INTO "' + row['name'] + '" SELECT * FROM tomerge."' + row['name'] + '";')
+    res = db.execute("SELECT name FROM tomerge.sqlite_master WHERE type = 'table';")
+    for row in res:
+        db.execute('INSERT OR IGNORE INTO "' + row['name'] + '" SELECT * FROM tomerge."' + row['name'] + '";')
 
-	db.execute("DETACH tomerge;")
-#	db.execute("END TRANSACTION;")
+    db.execute("DETACH tomerge;")
+#    db.execute("END TRANSACTION;")
