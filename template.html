@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cbenchsuite Result Browser</title>
+    <script type="text/javascript">
+      function update_content(path) {
+        $('#contentdiv').load(path);
+        $('html, body').animate({ scrollTop: $('#page-title').offset().top }, 'fast');
+      }
+      function menu_focus() {
+        $('html, body').animate({ scrollTop: $('#menudiv').offset().top }, 'fast');
+      }
+    </script>
+
+    <!-- Bootstrap -->
+    <link href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="theme.css" rel="stylesheet">
+  </head>
+  <body>
+    <div class="row" style="margin: 0px;">
+      <div class="col-lg-1 lg-only" style="background:rgb(200,200,200); height: 100vh;"></div>
+      <div class="col-lg-3 col-md-4 col-sm-4 panel panel-default" id="menudiv">
+        <div class="panel-body">
+        <ul class="nav nav-pills nav-stacked" style="padding-left: 0px;">
+###INDEX###
+        </ul>
+      </div>
+      </div>
+      <div id="contentdiv" class="col-lg-7 col-md-8 col-sm-8">
+      <div class="page-header" id="page-title"><h1>Cbenchsuite: Result Browser</h1></div>
+      <div class="panel panel-default">
+        <div class="panel-heading">Usage</div>
+        <div class="panel-body">
+          <p>This is the cbenchsuite integrated result browser. On the left side
+          you can see a menu which presents all the results. They are grouped
+          into groups. A group is a collection of plugins that were executed in
+          parallel. Not all of them contain any actual plots as they may be
+          used to produce reliable results.</p>
+          <p>For detailed information about cbenchsuite, visit <a href="http://cbench.allfex.org">http://cbench.allfex.org</a></p>
+        </div>
+      </div>
+      </div>
+      <div class="col-lg-1 lg-only" style="background:rgb(200,200,200); height: 100vh;"></div>
+    </div>
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+  </body>
+</html>
+<!-- vim: set ts=2 sw=2 expandtab: -->

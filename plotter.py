@@ -26,6 +26,7 @@ import threading
 import json
 import uuid
 import sys
+import shutil
 
 parser = argparse.ArgumentParser()
 
@@ -38,190 +39,139 @@ parsed = parser.parse_args()
 db = sqlite3.connect(os.path.expanduser(parsed.database));
 db.row_factory = sqlite3.Row
 
-class css:
-    def write_css(path):
-        f = open(path, 'w')
-        f.write('''
-#bodydiv {
-    max-width:1000px;
-    margin: auto;
-}
-div.level {
-    background-color: rgb(240,240,240);
-    margin: 10px;
-    padding: 10px;
-}
-div.level div.level {
-    background-color: rgb(225,225,225);
-}
-div.level div.level div.level {
-    background-color: rgb(210,210,210);
-}
-div.level div.level div.level div.level {
-    background-color: rgb(195,195,195);
-}
-div.system_cpu {
-    padding-left: 10px;
-}
-ul.groups {
-    font-size: 120%;
-}
-p.heading_level {
-    font-size: 150%;
-    margin: 0px;
-}
-p.prop_heading_level {
-    font-size: 120%;
-}
-p.legend_heading_level {
-    font-size: 120%;
-}
-p.system_alias {
-    padding: 0px;
-    margin: 0px;
-}
-p.imgressource {
-    padding: 0px;
-    margin: 0px;
-    font-size: 80%;
-    text-align: right;
-}
-table.prop_level {
-    margin-left: 10px;
-    width: 95%;
-}
-table.legend_level {
-    margin-left: 10px;
-    width: 95%;
-}
-td.name {
-    font-weight: bold;
-}
-td.unit {
-    font-style: italic;
-}
-tr.header {
-    font-style: bold;
-    font-size: 110%;
-}
-img {
-    width: 100%;
-}
-a {
-    text-decoration: none;
-    color: rgb(0,0,200);
-}
-a:hover {
-    color: rgb(0,0,0);
-}
-a:visited {
-    color: rgb(0,0,200);
-}
-a:active {
-    color: rgb(0,0,200);
-}
-''')
-
 class html:
-    def level_start(level, heading, img_parent = False, description='', dummy=False):
+    def level_start(level, heading, is_leaf=False, is_img=False, url=''):
         div_uuid = 'uuid' + str(uuid.uuid1())
         s = ''
-        s += '<div class="level">' + "\n"
+        s += '<li>' + "\n"
         if heading:
-            if not dummy:
-                if img_parent:
-                    img_func = '''load_image("#''' + div_uuid + '''");'''
-                else:
-                    img_func = ''
-                s += """<a href="javascript:void(0)" onclick='""" + img_func + '''$("#''' + div_uuid + '''").slideToggle();'>'''
-            s += '''<p class="heading_level">''' + heading + '</p>'
-            if not dummy:
-                s += '</a>' + "\n"
-        if description != '':
-            s += '<div class="level_description">' + description + '</div>' + "\n"
-        s += '<div style="display:none;" class="level_content" id="' + div_uuid + '">' + "\n"
+            if is_leaf:
+                s += """<a href="javascript:void(0)" onclick="update_content('""" + url + """');">"""
+            else:
+                s += """<a href="javascript:void(0)" onclick="$('#""" + div_uuid + """').slideToggle();"><span class="caret"></span>"""
+            s += heading
+            if is_img:
+                s += ' <span class="glyphicon glyphicon-stats"></span>'
+            s += '</a>' + "\n"
+        s += '<ul style="display:none;" class="nav nav-pills nav-stacked" id="' + div_uuid + '">' + "\n"
         return s
 
+    def level_end(level):
+        return '</ul></li>' + "\n"
+
+    def group_start(nr):
+        return '<li>Group ' + nr + '</li><ul class="nav nav-pills nav-stacked">'
+
+    def group_end():
+        return '</ul>'
+
     def props_start(level, heading='Properties'):
-        s = ''
-        s += '<p class="prop_heading_level">' + heading + '</p>' + "\n"
-        s += '<table class="prop_level">' + "\n"
-        s += '<tr class="header"><td>Name</td><td>Unit</td><td>Description</td><td>Value</td></tr>' + "\n"
-        return s
+        return '''
+<div class="panel panel-default">
+  <div class="panel-heading"><h3>{:s}</h3></div>
+  <div class="panel-body">
+  <table class="table table-condensed table-hover">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Unit</th>
+        <th>Description</th>
+        <th>Value</th>
+      </tr>
+    </thead>
+    <tbody>'''.format(heading)
+
+    def props_end():
+        return '</tbody></table></div></div>' + "\n"
 
     def prop(level, name, unit, description, value):
         s = '<tr>' + "\n"
-        s += '<td class="name">' + name + '</td>' + "\n"
-        s += '<td class="unit">' + unit + '</td>' + "\n"
-        s += '<td class="description">' + description + '</td>' + "\n"
-        s += '<td class="value">' + str(value) + '</td>' + "\n"
+        s += '<td>' + name + '</td>' + "\n"
+        s += '<td>' + unit + '</td>' + "\n"
+        s += '<td>' + description + '</td>' + "\n"
+        s += '<td>' + str(value) + '</td>' + "\n"
         s += '</tr>' + "\n"
         return s
-
-    def props_end():
-        return '</table>' + "\n"
 
     def legend_start(level):
-        s = '' + "\n"
-        s += '<p class="legend_heading_level">Legend</p>' + "\n"
-        s += '<table class="legend_level">' + "\n"
-        s += '<tr class="header"><td>Name</td><td>Unit</td><td>Description</td></tr>' + "\n"
-        return s
+        return '''
+<div class="panel panel-default">
+  <div class="panel-heading"><h3>Legend</h3></div>
+  <div class="panel-body">
+  <table class="table table-condensed table-hover">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Unit</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>'''
+
+    def legend_end():
+        return html.props_end()
+
     def legend(level, name, unit, description):
         s = '<tr>' + "\n"
-        s += '<td class="name">' + name + '</td>' + "\n"
-        s += '<td class="unit">' + unit + '</td>' + "\n"
-        s += '<td class="description">' + description + '</td>' + "\n"
+        s += '<td>' + name + '</td>' + "\n"
+        s += '<td>' + unit + '</td>' + "\n"
+        s += '<td>' + description + '</td>' + "\n"
         s += '</tr>' + "\n"
         return s
-    def legend_end():
-        return '</table>' + "\n"
 
-    def level_end(level):
-        return '</div></div>' + "\n"
+    def plugin_description(name, parameter, description):
+        return '''
+<script type="text/javascript">document.title = 'Cbenchsuite: {:s}';</script>
+<div class="page-header" id="page-title"><h1>Cbenchsuite: Plugin {:s}<br /><small>{:s}</small></h1></div>
+<div class="panel panel-default">
+  <div class="panel-body">{:s}</div>
+</div>
+'''.format(name, name, parameter, description)
 
-    def write_to_file(base_path, source, title='cbenchsuite'):
+    def write_index(base_path, source):
+        indf = open('template.html', 'r')
+        index = indf.read()
+        indf.close()
+
+        index = index.replace('###INDEX###', source)
+
         if os.path.isdir(base_path):
             path = os.path.join(base_path, 'index.html')
         else:
             path = base_path + '.html'
-        css.write_css(os.path.dirname(path) + '/style.css')
+
+        shutil.copy('style.css', os.path.dirname(path) + '/style.css')
+
         f = open(path, 'w')
-        f.write('<html><head>')
-        f.write('<link rel="stylesheet" type="text/css" href="style.css">')
-        f.write('<script src="http://code.jquery.com/jquery-latest.js"></script>')
-        f.write('''
-<script type="text/javascript">
-    function load_image(uuid) {
-        $(uuid).find('img.figure').each(function () { $(this).attr('src', $(this).attr('data-original')); });
-    }
-    function togglewidth() {
-        var boddiv = $("#bodydiv")
-        if (boddiv.css("max-width") != "1000px") {
-            boddiv.animate({maxWidth: "1000px"});
-        } else {
-            boddiv.animate({maxWidth: "100%"});
-        }
-    }
-</script>''')
-        f.write('<title>' + title + '</title></head><body><div id="bodydiv">' + "\n")
-        f.write(source.replace('###CBENCH_PATH_PREFIX###', ''))
-        f.write('</div></body></html>')
+        f.write(index)
         f.close()
         print("Generated HTML " + path)
-    def figure(fig_name):
-        fig_name = fig_name.replace('#', '%23')
-        s = '<a href="javascript:void(0)" onclick="togglewidth()">' + "\n"
-        s += '<img class="figure" src="" data-original="###CBENCH_PATH_PREFIX###' + fig_name + '" />' + "\n"
-        s += '</a>'
-        s += '<p class="imgressource"><a href="###CBENCH_PATH_PREFIX###' + fig_name + '">Figure download</a></p>' + "\n"
-        return s
-    def update_pathes(s, path):
-        if path == '':
-            return s
-        path = path.replace('#', '%23')
-        return s.replace('###CBENCH_PATH_PREFIX###', '###CBENCH_PATH_PREFIX###' + path + '/')
 
+    def write_content(base_path, content):
+        if os.path.isdir(base_path):
+            path = os.path.join(base_path, 'index.html')
+        else:
+            path = base_path + '.html'
+
+        f = open(path, 'w')
+        f.write(content)
+        f.close()
+        print("Generated HTML " + path)
+
+        return path
+
+    def figure(fig_path):
+        fig_path = fig_path.replace('#', '%23')
+        return '''
+<div class="panel panel-default">
+  <div class="panel-heading"><h3>Plot</h3></div>
+  <div class="panel-body">
+    <a href="{:s}" target="_blank">
+      <img class="img-responsive" src="{:s}" />
+    </a>
+  </div>
+</div>
+'''.format(fig_path, fig_path)
 
 def indent(nr):
     s = ''
@@ -866,34 +816,35 @@ class plot:
         else:
             value = translate(value, self.replacerules)
             return html.prop(level, name, unit, description, value)
-    def _html_cb(self, nodepath, last_node):
-        path = self.base_path
-        last_path = ''
-        for n in nodepath:
-            last_path = '#'.join(translate_path(n[0].name, self.replacerules)) + '__' + '#'.join(translate_path(n[1].vals, self.replacerules))
-            path = os.path.join(path, last_path)
-        try:
-            os.makedirs(os.path.dirname(path))
-        except:
-            pass
-        depth = last_node.depth()
-        s = ''
-        img = not self.dummy and self.properties['plot-depth'] >= depth
 
-        static_props = ''
+    def _html_cb(self, nodepath, last_node):
+        depth = last_node.depth()
+        is_leaf = self.properties['plot-depth'] >= depth
+        is_img = not self.dummy and is_leaf
+        url = ''
 
         if len(nodepath) > 0 and not self.dummy:
             prv = nodepath[-1]
             hdg = ''
-            descr = ''
             if prv[0].name[0] != 'data' and prv[0].name[0] != 'system':
                 hdg += '/'.join(translate(prv[0].name, self.replacerules)) + '='
             hdg += '/'.join(translate(prv[1].vals, self.replacerules))
         else:
+            hdg = self.module_name + '.' + self.name
+
+        # Content generation
+        if is_leaf:
+            static_props = ''
+            content = ''
             res = self.threaddb.execute("SELECT description FROM plugin WHERE plugin_sha = '" + self.plugin_sha + "';")
             row = res.fetchone()
-            hdg = self.module_name + '.' + self.name
             descr = row[0]
+
+            path = self.base_path
+            last_path = ''
+            for n in nodepath:
+                last_path = '#'.join(translate_path(n[0].name, self.replacerules)) + '__' + '#'.join(translate_path(n[1].vals, self.replacerules))
+                path = os.path.join(path, last_path)
 
             for k in sorted(self.removed_values.keys()):
                 v = self.removed_values[k]
@@ -901,74 +852,86 @@ class plot:
                     continue
                 static_props += self.parameter_to_html(depth, k, v)
 
-        s += html.level_start(depth, hdg, img, descr, self.dummy)
-        if static_props:
-            s += html.props_start(depth, "Constant Properties")
-            s += static_props
-            s += html.props_end()
+            content += html.plugin_description(self.name, hdg, descr)
 
-        if img:
-            s += html.figure(os.path.basename(path) + '.' + self.properties['file-type'])
+            if is_img:
+                img_path = path[len(parsed.outdir):]
+                content += html.figure(img_path + '.' + self.properties['file-type'])
 
-        data_legend = ''
-
-        if img:
-            sub = ''
-            for k in sorted(self.removed_values.keys()):
-                v = self.removed_values[k]
-                if k == 'data':
-                    data_legend = self.parameter_to_html(depth, k, v)
-                    continue
-            for n in nodepath:
-                for i in range(len(n[0].name)):
-                    if n[0].name[i] == 'data':
-                        data_legend = self.parameter_to_html(depth, n[0].name[i], n[1].vals[i])
+                sub = ''
+                for k in sorted(self.removed_values.keys()):
+                    v = self.removed_values[k]
+                    if k == 'data':
+                        data_legend = self.parameter_to_html(depth, k, v)
                         continue
-                    sub += self.parameter_to_html(depth, n[0].name[i], n[1].vals[i])
-            if sub != '':
-                s += html.props_start(depth)
-                s += sub
-                s += html.props_end()
+                for n in nodepath:
+                    for i in range(len(n[0].name)):
+                        if n[0].name[i] == 'data':
+                            data_legend = self.parameter_to_html(depth, n[0].name[i], n[1].vals[i])
+                            continue
+                        sub += self.parameter_to_html(depth, n[0].name[i], n[1].vals[i])
+                if sub != '':
+                    content += html.props_start(depth)
+                    content += sub
+                    content += html.props_end()
 
-            if depth > 0 or data_legend != '':
-                s += html.legend_start(depth)
-                s += data_legend
-                node = last_node
-                while len(node.name) > 0:
-                    s += self.parameter_to_html(depth, node.name[0])
-                    node = node.childs[0].ptr
-                nodes = [last_node]
-                while len(nodes[0].name) > 0:
-                    next_nodes = []
-                    if 'system' in nodes[0].name:
-                        ind = nodes[0].name.index('system')
-                        systems = set()
+                if depth > 0 or data_legend != '':
+                    content += html.legend_start(depth)
+                    content += data_legend
+                    node = last_node
+                    while len(node.name) > 0:
+                        content += self.parameter_to_html(depth, node.name[0])
+                        node = node.childs[0].ptr
+                    nodes = [last_node]
+                    while len(nodes[0].name) > 0:
+                        next_nodes = []
+                        if 'system' in nodes[0].name:
+                            ind = nodes[0].name.index('system')
+                            systems = set()
+                            for n in nodes:
+                                for e in n.childs:
+                                    systems.add(e.vals[ind])
+                            for i in systems:
+                                content += self.parameter_to_html(depth, 'system', i)
+                            break
                         for n in nodes:
                             for e in n.childs:
-                                systems.add(e.vals[ind])
-                        for i in systems:
-                            s += self.parameter_to_html(depth, 'system', i)
-                        break
-                    for n in nodes:
-                        for e in n.childs:
-                            next_nodes.append(e.ptr)
-                    nodes = next_nodes
-                s += html.legend_end()
+                                next_nodes.append(e.ptr)
+                        nodes = next_nodes
+                    content += html.legend_end()
 
-        if self.properties['plot-depth'] < last_node.depth() and not self.dummy:
+            if static_props:
+                content += html.props_start(depth, "Constant Properties")
+                content += static_props
+                content += html.props_end()
+
+            url = html.write_content(path, content)
+            url = url[len(parsed.outdir):]
+
+
+
+
+        s = ''
+
+        # Menu generation
+        s += html.level_start(depth, hdg, is_leaf=is_leaf, is_img=is_img, url=url)
+
+        if not is_leaf:
             s += last_node.child_cb(self._html_cb, nodepath)
+
         s += html.level_end(depth)
-        html.write_to_file(path, s)
-        if self.properties['plot-depth'] < depth:
-            return html.update_pathes(s, last_path)
+
+
         return s
+
     def generate_html(self):
         self.threaddb = self.db
         s = self._html_cb([], self.root)
         self.threaddb = None
         if self.root.depth() <= self.properties['plot-depth']:
             return s
-        return html.update_pathes(s, self.rel_path)
+        return s
+
     def plot_wait(self):
         if self.dummy:
             return
@@ -1723,22 +1686,18 @@ Arguments:
                 print("Invalid selection")
                 return
         s = ''
+        ct = 1
         for i in sel:
-            sub = ''
-            hdg = '<h2>Group</h2><ul class="groups">'
+            s += html.group_start(str(ct))
             named = {}
             for j in i:
                 named[j.module_name + '.' + j.name] = j
             for k in sorted(named.keys()):
                 v = named[k]
-                hdg += '<li>' + k + '</li>'
-                sub += v.generate_html()
-            hdg += '</ul>'
-            sub = hdg + sub
-            group_path = os.path.join(parsed.outdir, i[0].group_path)
-            html.write_to_file(group_path, sub)
-            s += html.update_pathes(sub, i[0].group_path)
-        html.write_to_file(parsed.outdir, s)
+                s += v.generate_html()
+            s += html.group_end()
+            ct += 1
+        html.write_index(parsed.outdir, s)
     def do_automagic(self, arg):
         '''Usage: automagic
 
