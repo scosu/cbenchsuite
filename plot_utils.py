@@ -22,6 +22,7 @@ import matplotlib.pyplot as pyplt
 import statistics
 import operator
 import re
+import datetime
 
 
 def property_get(properties, key):
@@ -121,10 +122,18 @@ def _create_figure(properties):
     fontsize = property_get(properties, 'fontsize')
     return pyplt.figure(figsize=(xsize, ysize), dpi=dpi)
 
-def _plot_stuff(fig, ax, properties, path):
+def _plot_stuff(fig, ax, properties, path, legend_handles=None, legend_labels=None, nr_runs=None):
     wm = property_get(properties, 'watermark')
     fs = property_get(properties, 'watermarkfontsize')
     fig.text(1, 0, wm, fontsize=fs, color='black', ha='right', va='bottom', alpha=0.7)
+
+    if nr_runs:
+        additional_info = 'Benchmark repetitions: ' + str(min(nr_runs)) + " - " + str(max(nr_runs)) + "\n"
+
+    additional_info += datetime.date.today().isoformat()
+
+    fig.text(0, 0, additional_info, fontsize=fs, color='black', ha='left', va='bottom', alpha=0.7)
+
     fs = property_get(properties, 'xtickfontsize')
     ax.tick_params(axis='x', which='major', labelsize=fs)
     ax.tick_params(axis='x', which='minor', labelsize=fs)
@@ -149,13 +158,17 @@ def _plot_stuff(fig, ax, properties, path):
     no_legend = property_get(properties, 'no-legend')
     if not no_legend:
         fs = property_get(properties, 'legendfontsize')
-        handles, labels = ax.get_legend_handles_labels()
-        by_label = dict(zip(labels, handles))
-        labels = []
-        for k,v in by_label.items():
-            labels.append((k,v))
-        hl = sorted(labels, key=parameter_sort_create)
-        labels, handles = zip(*hl)
+        if legend_handles and legend_labels:
+            handles = legend_handles
+            labels = legend_labels
+        else:
+            handles, labels = ax.get_legend_handles_labels()
+            by_label = dict(zip(labels, handles))
+            labels = []
+            for k,v in by_label.items():
+                labels.append((k,v))
+            hl = sorted(labels, key=parameter_sort_create)
+            labels, handles = zip(*hl)
         max_label = 0
         for k in labels:
             max_label = max(len(k), max_label)
@@ -446,3 +459,136 @@ def plot_bar_chart(data, path, properties = None, l1_keys = None, l2_keys = None
     ax.set_xticklabels(xticks)
     _plot_stuff(fig, ax, properties, path)
 
+# Works with all those structures:
+#data = {'a':1, 'b':4, 'c':2}
+#data = {
+#        'a': {'1': 2, '2': 1, 'dummy': 4},
+#        'b': {'1': 3, '2': 1, 'dummy': 3},
+#        'c': {'1': 4, '2': 2, 'dummy': 1}
+#}
+##
+# @brief Plot a bar chart with data of up to 2 dimensions
+#
+# @param data maximal 2 level depth of dictionary with lists of floats or floats
+# as lowest children. Lists will produce errorbars. The keys of the dictionary
+# are used to sort the stuff.
+# @param l1_keys Level 1 keys, this specifies the order
+# @param l2_keys Level 2 keys, this specifies the order
+# @param colors_arg
+#
+# @return
+
+def plot_box_chart(data, path, properties = None, l1_keys = None, l2_keys = None, colors_arg = None):
+    legend_patches = []
+    legend_labels = []
+    nr_runs = []
+    fig = _create_figure(properties)
+    ax = fig.add_subplot(111)
+    if l1_keys == None:
+        l1_keys = _sort_keys(data.keys())
+    if l2_keys == None:
+        l2_keys = set()
+        for k1, v1 in data.items():
+            if not isinstance(v1, dict):
+                continue
+            for k2, v2 in v1.items():
+                l2_keys.add(k2)
+        l2_keys = _sort_keys(list(l2_keys))
+    xxticks = []
+    xticks = []
+    label_colors = {}
+    if colors_arg == None:
+        colors = ['#348ABD', '#A60628', '#467821', '#CF4457', '#188487', '#E24A33', '0.3', '0.5', '0.7']
+    else:
+        colors = colors_arg
+    colorid = 0
+    x = 1
+    def _xtick(label, x_val = None):
+        nonlocal x
+        if x_val == None:
+            x_val = x
+        xxticks.append(x_val)
+        xticks.append(label)
+    def _color_get(label):
+        nonlocal colorid
+        if label in label_colors:
+            return False, label_colors[label]
+        else:
+            label_colors[label] = colors[colorid % len(colors)]
+            colorid += 1
+            return True, label_colors[label]
+    def _plt_bar(x, y, label):
+        set_label, color = _color_get(label)
+        if isinstance(y, list):
+            box = ax.boxplot([y], positions=[x], patch_artist=True)
+            nr_runs.append(len(y))
+        else:
+            box = ax.boxplot([[y]], positions=[x], patch_artist=True)
+            nr_runs.append(1)
+        patch = box['boxes'][0]
+        patch.set_facecolor(color)
+        if label != None and set_label:
+            legend_patches.append(patch)
+            legend_labels.append(label)
+
+    levels = 0
+    for l1_key in l1_keys:
+        l1_val = data[l1_key]
+        levels = 1
+        if not isinstance(l1_val, dict):
+            _xtick(l1_key)
+            _plt_bar(x, l1_val, l1_key)
+            x += 1
+        else:
+            _xtick(l1_key, x + len(l1_val.keys()) / 2 - 0.5)
+            levels = 2
+            for l2_key in l2_keys:
+                if l2_key not in l1_val:
+                    continue
+                l2_val = l1_val[l2_key]
+                levels = 3
+                if not isinstance(l2_val, dict):
+                    _plt_bar(x, l2_val, l2_key)
+                    x += 1
+            x += 1
+
+    ax.set_xticks(xxticks)
+    ax.set_xticklabels(xticks)
+    ax.set_xlim(xmin=0.5)
+    lims = ax.get_ylim()
+    ax.set_ylim((lims[0], lims[1] + (lims[1] - lims[0]) * 0.05))
+    _plot_stuff(fig, ax, properties, path, legend_handles=legend_patches, legend_labels=legend_labels, nr_runs=nr_runs)
+
+if __name__ == '__main__':
+    props = {
+            'confidence': 0.95,
+            'legend': True,
+            'xsize': 12,
+            'ysize': 7,
+            'dpi': 300,
+            'legendfontsize': 16,
+            'xlabelfontsize': 17,
+            'ylabelfontsize': 17,
+            'ytickfontsize': 15,
+            'xtickfontsize': 15,
+            'barfontsize': 15,
+            'titlefontsize': 20,
+            'watermark': 'Powered by cbenchsuite (http://cbench.allfex.org)',
+            'watermarkfontsize': 13,
+            'file-type': 'pdf',
+            'line-nr-ticks': 300,
+            'grid-axis': 'y',
+            'grid-ticks': 'both',
+            'grid': True,
+            'plot-depth': 1,
+            }
+    data = {
+            'a': {
+                'a1': [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
+                'a2': [1,2,3,4,5,6,7,8,9,10,11,12,13,14,18],
+                },
+            'b': {
+                'a1': [1,2,3,3,2,1],
+                'a2': [1,2,3],
+                }}
+    plot_box_chart(data, 'test', properties=props)
