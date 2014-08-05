@@ -23,6 +23,7 @@ import statistics
 import operator
 import re
 import datetime
+import json
 
 
 def property_get(properties, key):
@@ -127,8 +128,9 @@ def _plot_stuff(fig, ax, properties, path, legend_handles=None, legend_labels=No
     fs = property_get(properties, 'watermarkfontsize')
     fig.text(1, 0, wm, fontsize=fs, color='black', ha='right', va='bottom', alpha=0.7)
 
+    additional_info = ''
     if nr_runs:
-        additional_info = 'Benchmark repetitions: ' + str(min(nr_runs)) + " - " + str(max(nr_runs)) + "\n"
+        additional_info += 'Benchmark repetitions: ' + str(min(nr_runs)) + " - " + str(max(nr_runs)) + "\n"
 
     additional_info += datetime.date.today().isoformat()
 
@@ -304,7 +306,11 @@ def plot_line_chart(data, path, properties=None, fmts_arg = None, x_keys = None)
     ax.vlines(start_offsets[1:-1], ylims[0], ylims[1], linestyles='dotted')
     ax.set_ylim(ylims)
 
-    _plot_stuff(fig, ax, properties, path)
+    try:
+        _plot_stuff(fig, ax, properties, path)
+    except:
+        json.dump((data, properties), open(path + '.err.json', 'w'), indent=2)
+        print("Error plotting, wrote data to " + path + '.err.json')
 
 
 # Works with all those structures:
@@ -457,7 +463,11 @@ def plot_bar_chart(data, path, properties = None, l1_keys = None, l2_keys = None
         ax.set_ylim((new_min, lims[1]))
     ax.set_xticks(xxticks)
     ax.set_xticklabels(xticks)
-    _plot_stuff(fig, ax, properties, path)
+    try:
+        _plot_stuff(fig, ax, properties, path)
+    except:
+        json.dump((data, properties), open(path + '.err.json', 'w'), indent=2)
+        print("Error plotting, wrote data to " + path + '.err.json')
 
 # Works with all those structures:
 #data = {'a':1, 'b':4, 'c':2}
@@ -520,10 +530,10 @@ def plot_box_chart(data, path, properties = None, l1_keys = None, l2_keys = None
     def _plt_bar(x, y, label):
         set_label, color = _color_get(label)
         if isinstance(y, list):
-            box = ax.boxplot([y], positions=[x], patch_artist=True)
+            box = ax.boxplot([y], positions=[x], patch_artist=True, widths=0.35)
             nr_runs.append(len(y))
         else:
-            box = ax.boxplot([[y]], positions=[x], patch_artist=True)
+            box = ax.boxplot([[y]], positions=[x], patch_artist=True, widths=0.35)
             nr_runs.append(1)
         patch = box['boxes'][0]
         patch.set_facecolor(color)
@@ -557,9 +567,14 @@ def plot_box_chart(data, path, properties = None, l1_keys = None, l2_keys = None
     ax.set_xlim(xmin=0.5)
     lims = ax.get_ylim()
     ax.set_ylim((lims[0], lims[1] + (lims[1] - lims[0]) * 0.05))
-    _plot_stuff(fig, ax, properties, path, legend_handles=legend_patches, legend_labels=legend_labels, nr_runs=nr_runs)
+    try:
+        _plot_stuff(fig, ax, properties, path, legend_handles=legend_patches, legend_labels=legend_labels, nr_runs=nr_runs)
+    except:
+        json.dump((data, properties), open(path + '.err.json', 'w'), indent=2)
+        print("Error plotting, wrote data to " + path + '.err.json')
 
 if __name__ == '__main__':
+    import sys
     props = {
             'confidence': 0.95,
             'legend': True,
@@ -575,20 +590,12 @@ if __name__ == '__main__':
             'titlefontsize': 20,
             'watermark': 'Powered by cbenchsuite (http://cbench.allfex.org)',
             'watermarkfontsize': 13,
-            'file-type': 'pdf',
+            'file-type': 'svg',
             'line-nr-ticks': 300,
             'grid-axis': 'y',
             'grid-ticks': 'both',
             'grid': True,
             'plot-depth': 1,
             }
-    data = {
-            'a': {
-                'a1': [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
-                'a2': [1,2,3,4,5,6,7,8,9,10,11,12,13,14,18],
-                },
-            'b': {
-                'a1': [1,2,3,3,2,1],
-                'a2': [1,2,3],
-                }}
-    plot_box_chart(data, 'test', properties=props)
+    data = json.load(open(sys.argv[1], 'r'))
+    plot_line_chart(data, 'test', properties=props)
