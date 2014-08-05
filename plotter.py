@@ -67,7 +67,7 @@ class html:
 
     def props_start(level, heading='Properties'):
         return '''
-<div class="panel panel-default">
+<div class="panel panel-primary">
   <div class="panel-heading"><h3>{:s}</h3></div>
   <div class="panel-body">
   <table class="table table-condensed table-hover">
@@ -95,7 +95,7 @@ class html:
 
     def legend_start(level):
         return '''
-<div class="panel panel-default">
+<div class="panel panel-primary">
   <div class="panel-heading"><h3>Legend</h3></div>
   <div class="panel-body">
   <table class="table table-condensed table-hover">
@@ -123,7 +123,7 @@ class html:
         return '''
 <script type="text/javascript">document.title = 'Cbenchsuite: {:s}';</script>
 <div class="page-header" id="page-title"><h1>Cbenchsuite: Plugin {:s}<br /><small>{:s}</small></h1></div>
-<div class="panel panel-default">
+<div class="panel panel-primary">
   <div class="panel-body">{:s}</div>
 </div>
 '''.format(name, name, parameter, description)
@@ -140,7 +140,7 @@ class html:
         else:
             path = base_path + '.html'
 
-        shutil.copy('style.css', os.path.dirname(path) + '/style.css')
+        shutil.copy('theme.css', os.path.dirname(path) + '/theme.css')
 
         f = open(path, 'w')
         f.write(index)
@@ -163,7 +163,7 @@ class html:
     def figure(fig_path):
         fig_path = fig_path.replace('#', '%23')
         return '''
-<div class="panel panel-default">
+<div class="panel panel-primary">
   <div class="panel-heading"><h3>Plot</h3></div>
   <div class="panel-body">
     <a href="{:s}" target="_blank">
@@ -541,7 +541,7 @@ class plot:
             'grid-ticks': str,
             'grid': bool
             }
-    def __init__(self, db, filters, plugin_sha, combos, levels, group_path, base_path, replacerules = None):
+    def __init__(self, db, filters, plugin_sha, combos, levels, group_path, base_path, replacerules = None, prefer_boxplot=False):
         super(plot, self).__init__()
         self.group_path = group_path
         self.plugin_sha = plugin_sha
@@ -584,10 +584,16 @@ class plot:
             if row[0] > 1:
                 self.barchart = False
                 self.linechart = True
+                self.boxchart = False
                 self.levels = levels['line']
                 self.properties['grid-axis'] = 'both'
             else:
-                self.barchart = True
+                self.boxchart = False
+                self.barchart = False
+                if prefer_boxplot:
+                    self.boxchart = True
+                else:
+                    self.barchart = True
                 self.linechart = False
                 self.levels = levels['bar']
         self.root = None
@@ -621,7 +627,7 @@ class plot:
                 fquery += s + ')'
         if fquery != '':
             fquery += ')'
-        if self.barchart:
+        if self.barchart or self.boxchart:
             query = 'SELECT "' + self.tables['results'] + '"."' + data_field + '''"
                 FROM
                     unique_run,
@@ -729,6 +735,8 @@ class plot:
 
         if self.barchart:
             plot_utils.plot_bar_chart(data, path, props)
+        elif self.boxchart:
+            plot_utils.plot_box_chart(data, path, props)
         else:
             plot_utils.plot_line_chart(data, path, props)
         del data
@@ -941,6 +949,8 @@ class plot:
         nodes = self.root.find_nodes('data')
         if self.barchart:
             depth = 3
+        elif self.boxchart:
+            depth = 2
         else:
             depth = 1
         d = self.root.depth()
@@ -1032,7 +1042,9 @@ class plot:
         else:
             if self.barchart:
                 print(indent(2) + "Chart type: bar")
-            if self.linechart:
+            elif self.barchart:
+                print(indent(2) + "Chart type: box")
+            elif self.linechart:
                 print(indent(2) + "Chart type: line")
             if len(self.removed_properties):
                 print(indent(2) + "Autoremoved properties:")
@@ -1069,6 +1081,11 @@ class plot:
         if self.dummy:
             return
         if self.barchart:
+            self.autosquash_levels(max_values)
+    def box_autosquash(self, max_values):
+        if self.dummy:
+            return
+        if self.boxchart:
             self.autosquash_levels(max_values)
     def add_replace_rule(self, src, tgt):
         self.replacerules[src] = tgt
@@ -1175,7 +1192,7 @@ def input_get_selected(prompt, select_list, max_ct):
     except:
         print("Can't parse selection " + i)
         return []
-def plotgrps_generate(db, filters, levels):
+def plotgrps_generate(db, filters, levels, prefer_boxplot=False):
     default_replacements = {}
     res = db_generic_run_exec(db, filters, "plugin_group_sha, plugin_sha, plugin_table, plugin_opt_table, plugin_comp_vers_table, system_sha, plugin_group.plugin_opts_sha, plugin_group.plugin_comp_vers_sha, system.custom_info, system.nr_cpus_on, system.kernel, module, name",
             group_by = "plugin_group_sha, plugin_sha, system_sha, plugin_group.plugin_opts_sha, plugin_group.plugin_comp_vers_sha")
@@ -1226,7 +1243,7 @@ def plotgrps_generate(db, filters, levels):
         group_path = '__'.join(sorted(list(names)))
         local_path = os.path.join(path, group_path)
         for psha in plugs:
-            plots.append(plot(db, filters, psha, combo, levels, group_path, local_path, default_replacements))
+            plots.append(plot(db, filters, psha, combo, levels, group_path, local_path, default_replacements, prefer_boxplot = prefer_boxplot))
         if len(plots) > 0:
             plot_grps.append(plots)
     return plot_grps
@@ -1243,11 +1260,27 @@ class cmdline(cmd.Cmd):
         self.plotgrps = []
         self.default_levels = {'bar': ['data', 'version', 'option', 'system'],
                     'line': ['data', 'version', 'option', 'system']}
+        self.prefer_boxplot = True
     def check_plotmode(self):
         if self.plotmode:
             print("You can not use this command in plot mode, you first have to call plots_reset")
             return True
         return False
+    def complete_chart_default(self, text, line, begidx, endidx):
+        cmpls = [['bar', 'box']]
+        return match_line(cmpls, text, line, begidx, endidx)
+    def do_chart_default(self, arg):
+        '''Usage: chart_default <box|bar>
+
+Set the default chart type for benchmark results. By default it is boxplot.
+
+Arguments:
+    box|bar Decide between boxplot or bar plot.
+'''
+        if arg == "box":
+            self.prefer_boxplot = True
+        elif arg == "bar":
+            self.prefer_boxplot = False
     def do_filters(self, arg):
         '''Usage: filters
 
@@ -1447,7 +1480,7 @@ After using this command, changing filters will have no effect.
         if self.check_plotmode():
             return
         self.plotmode = True
-        self.plotgrps = plotgrps_generate(self.db, self.filters, self.default_levels)
+        self.plotgrps = plotgrps_generate(self.db, self.filters, self.default_levels, prefer_boxplot=self.prefer_boxplot)
         self.prompt = "plots > "
     def do_plots(self, arg):
         '''Usage: plots
@@ -1565,7 +1598,7 @@ integrated parameters with only one value that can't be removed.
 
 Arguments:
     plot id: An identifier for a plot. Possible is: '*', 'plotgroup.*',
-        'plotgroup.plot', 'all_line', 'all_bar', where plotgroup
+        'plotgroup.plot', 'all_line', 'all_bar', 'all_box', where plotgroup
         is the number of the group and plot the number of the
         plot within a group. See 'plots' for the numbers. 'all_line' and
         'all_bar' will apply this for all bar or line charts.
@@ -1595,6 +1628,8 @@ Arguments:
                 i.bar_autosquash(mvals)
             elif args[0] == 'all_line':
                 i.line_autosquash(mvals)
+            elif args[0] == 'all_box':
+                i.box_autosquash(mvals)
             else:
                 i.autosquash_levels(mvals)
     def do_plot_replace_rule(self, arg):
@@ -1708,7 +1743,14 @@ good and show what you need to know about the results.
         self.do_plots_create("")
         self.do_plot_autoremove("*")
         self.do_plot_autosquash("all_line 10")
-        self.do_plot_autosquash("all_bar 8 8 10")
+        if arg != '':
+            if self.prefer_boxplot:
+                self.do_plot_autosquash("all_box " + arg)
+            else:
+                self.do_plot_autosquash("all_bar " + arg)
+        else:
+            self.do_plot_autosquash("all_bar 8 8 10")
+            self.do_plot_autosquash("all_box 5 8")
         self.do_plots("")
         self.do_plot_generate("*")
         self.do_html_generate("*")
