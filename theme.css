@@ -13,17 +13,25 @@
 	margin: 0px;
 }
 
-@media (min-width:1200px) {
-	.lg-only {
-		display:block !important;
+@media (min-width: 768px) {
+	#menudiv {
+		max-height: 100vh;
+	}
+
+	#contentdiv {
+		max-height: 100vh;
+	}
+}
+@media (max-width: 768px) {
+	#menudiv {
+		max-height: 50vh;
+	}
+
+	#contentdiv {
+		max-height: 50vh;
 	}
 }
 
-@media (max-width: 1200px) {
-	.lg-only {
-		display:none !important;
-	}
-}
 h3 {
 	margin: 0px;
 	font-size: 20px;
@@ -32,11 +40,20 @@ h3 {
 
 #menudiv {
 	padding: 0px;
-	max-height: 100vh;
 	overflow-y: auto;
 }
 
 #contentdiv {
-	max-height: 100vh;
 	overflow-y: auto;
+}
+
+body {
+	background: rgb(200,200,200);
+}
+
+#center {
+	max-width: 90em;
+	background: rgb(255,255,255);
+	margin-left: auto;
+	margin-right: auto;
 }
