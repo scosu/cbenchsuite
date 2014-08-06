@@ -864,6 +864,8 @@ class plot:
 
             if is_img:
                 img_path = path[len(parsed.outdir):]
+                while img_path[0:1] == '/':
+                    img_path = img_path[1:]
                 content += html.figure(img_path + '.' + self.properties['file-type'])
 
                 sub = ''
@@ -915,6 +917,8 @@ class plot:
 
             url = html.write_content(path, content)
             url = url[len(parsed.outdir):]
+            while url[0:1] == '/':
+                url = url[1:]
 
 
 
