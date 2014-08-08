@@ -57,3 +57,10 @@ body {
 	margin-left: auto;
 	margin-right: auto;
 }
+
+a.closed>.caret {
+	transform: rotate(-90deg);
+}
+a.opened>.caret {
+	transform: rotate(0deg);
+}

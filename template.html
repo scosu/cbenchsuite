@@ -6,12 +6,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Cbenchsuite Result Browser</title>
     <script type="text/javascript">
-      function update_content(path) {
-        $('#contentdiv').load(path);
-        $('html, body').animate({ scrollTop: $('#page-title').offset().top }, 'fast');
+      var last_active = null;
+      function update_content(obj, path) {
+        $('#contentdiv').load(path, function(response, ret, xhr) {
+              if (ret == 'error') {
+                var err = '<div class="alert alert-danger" role="alert"><strong>Error loading content</strong>' + xhr.status + ' ' + xhr.statusText + '</div>';
+                $('#contentdiv').html(err);
+              } else {
+                $('#contentdiv').animate({ scrollTop: 0 }, 'fast');
+              }
+            });
+
+        if (last_active != null) {
+          last_active.attr('class', '');
+        }
+        last_active = obj.parent();
+        last_active.attr('class', 'active');
       }
-      function menu_focus() {
-        $('html, body').animate({ scrollTop: $('#menudiv').offset().top }, 'fast');
+      function toggle_menu(obj, id) {
+        var carets = $(obj).children('.caret');
+        if ($(obj).attr('class') == 'opened') {
+          $(obj).attr('class', 'closed');
+        } else {
+          $(obj).attr('class', 'opened');
+        }
+
+        $(id).slideToggle();
       }
     </script>
 

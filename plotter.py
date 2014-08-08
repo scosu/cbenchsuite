@@ -46,9 +46,9 @@ class html:
         s += '<li>' + "\n"
         if heading:
             if is_leaf:
-                s += """<a href="javascript:void(0)" onclick="update_content('""" + url + """');">"""
+                s += """<a href="javascript:void(0)" onclick="update_content($(this), '""" + url + """');">"""
             else:
-                s += """<a href="javascript:void(0)" onclick="$('#""" + div_uuid + """').slideToggle();"><span class="caret"></span>"""
+                s += """<a href="javascript:void(0)" class="closed" onclick="toggle_menu($(this), '#""" + div_uuid + """');"><span class="caret"></span>"""
             s += heading
             if is_img:
                 s += ' <span class="glyphicon glyphicon-stats"></span>'
@@ -1250,6 +1250,7 @@ def plotgrps_generate(db, filters, levels, prefer_boxplot=False):
             plots.append(plot(db, filters, psha, combo, levels, group_path, local_path, default_replacements, prefer_boxplot = prefer_boxplot))
         if len(plots) > 0:
             plot_grps.append(plots)
+    plot_grps.sort(key=lambda x: x[0].group_path)
     return plot_grps
 
 
@@ -1525,7 +1526,7 @@ Information printed:
             r = []
             for grp in self.plotgrps:
                 r += grp
-            return r
+            return sorted(r, key=lambda x: x.group_path)
         selected = set()
         for i in args:
             grpid,_,plotid = i.partition('.')
@@ -1555,7 +1556,7 @@ Information printed:
                 print("Plot id out of range: " + i)
                 return []
             selected.add(self.plotgrps[grpid][plotid])
-        return list(selected)
+        return sorted(list(selected), key=lambda x: x.group_path)
     def do_plot_autoremove(self, arg):
         '''Usage: plot_autoremove <plot id>
 

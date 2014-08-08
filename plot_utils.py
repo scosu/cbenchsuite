@@ -25,7 +25,6 @@ import re
 import datetime
 import json
 
-
 def property_get(properties, key):
     if properties and key in properties:
         return properties[key]
@@ -126,15 +125,15 @@ def _create_figure(properties):
 def _plot_stuff(fig, ax, properties, path, legend_handles=None, legend_labels=None, nr_runs=None):
     wm = property_get(properties, 'watermark')
     fs = property_get(properties, 'watermarkfontsize')
-    fig.text(1, 0, wm, fontsize=fs, color='black', ha='right', va='bottom', alpha=0.7)
+    fig.text(0, 0, wm, fontsize=fs, color='black', ha='left', va='bottom', alpha=0.7)
 
     additional_info = ''
     if nr_runs:
-        additional_info += 'Benchmark repetitions: ' + str(min(nr_runs)) + " - " + str(max(nr_runs)) + "\n"
+        additional_info += 'Repetitions: ' + str(min(nr_runs)) + " - " + str(max(nr_runs)) + "\n"
 
     additional_info += datetime.date.today().isoformat()
 
-    fig.text(0, 0, additional_info, fontsize=fs, color='black', ha='left', va='bottom', alpha=0.7)
+    fig.text(1, 0, additional_info, fontsize=fs, color='black', ha='right', va='bottom', alpha=0.7)
 
     fs = property_get(properties, 'xtickfontsize')
     ax.tick_params(axis='x', which='major', labelsize=fs)
@@ -365,6 +364,7 @@ def plot_bar_chart(data, path, properties = None, l1_keys = None, l2_keys = None
         l3_keys = _sort_keys(list(l3_keys))
     xxticks = []
     xticks = []
+    nr_runs = []
     confidence = property_get(properties, 'confidence')
     label_colors = {}
     if colors_arg == None:
@@ -403,6 +403,7 @@ def plot_bar_chart(data, path, properties = None, l1_keys = None, l2_keys = None
                 ax.bar(x, m, align="center", color = color, ecolor='r', yerr = h)
             else:
                 ax.bar(x, m, align="center", color = color, ecolor='r', label = label, yerr = h)
+            nr_runns.append(len(y))
         else:
             max_overall = max(max_overall, y)
             if not min_val: min_val = y
@@ -411,6 +412,7 @@ def plot_bar_chart(data, path, properties = None, l1_keys = None, l2_keys = None
                 ax.bar(x, y, align="center", color = color)
             else:
                 ax.bar(x, y, align="center", color = color, label = label)
+            nr_runns.append(1)
 
     levels = 0
     for l1_key in l1_keys:
@@ -462,9 +464,9 @@ def plot_bar_chart(data, path, properties = None, l1_keys = None, l2_keys = None
     else:
         ax.set_ylim((new_min, lims[1]))
     ax.set_xticks(xxticks)
-    ax.set_xticklabels(xticks)
+    ax.set_xticklabels(xticks, rotation=15)
     try:
-        _plot_stuff(fig, ax, properties, path)
+        _plot_stuff(fig, ax, properties, path, nr_runs=nr_runs)
     except:
         json.dump((data, properties), open(path + '.err.json', 'w'), indent=2)
         print("Error plotting, wrote data to " + path + '.err.json')
@@ -563,7 +565,7 @@ def plot_box_chart(data, path, properties = None, l1_keys = None, l2_keys = None
             x += 1
 
     ax.set_xticks(xxticks)
-    ax.set_xticklabels(xticks)
+    ax.set_xticklabels(xticks, rotation=20)
     ax.set_xlim(xmin=0.5)
     lims = ax.get_ylim()
     ax.set_ylim((lims[0], lims[1] + (lims[1] - lims[0]) * 0.05))
