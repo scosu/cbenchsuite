@@ -184,7 +184,14 @@ def _plot_stuff(fig, ax, properties, path, legend_handles=None, legend_labels=No
         ax.legend(handles, labels, loc='center right', bbox_to_anchor=(1.13, 0.5), fancybox=True, shadow=True, fontsize=fs)
 
     path += '.' + property_get(properties, 'file-type')
-    fig.savefig(path)
+    for i in range(10):
+        try:
+            fig.savefig(path)
+            break
+        except Exception as err:
+            if i == 9:
+                raise(err)
+            print("Failed to plot " + path + " for the " + str(i) + " time. This may be due to some parallel rendering bugs in matplotlib, trying again.")
     fig.delaxes(ax)
     print("Generated figure " + path)
 
