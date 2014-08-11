@@ -24,6 +24,7 @@ import operator
 import re
 import datetime
 import json
+import traceback
 
 def property_get(properties, key):
     if properties and key in properties:
@@ -307,7 +308,8 @@ def plot_line_chart(data, path, properties=None, fmts_arg = None, x_keys = None)
 
     try:
         _plot_stuff(fig, ax, properties, path)
-    except:
+    except Exception as err:
+        print(traceback.print_tb(err.__traceback__))
         json.dump((data, properties), open(path + '.err.json', 'w'), indent=2)
         print("Error plotting, wrote data to " + path + '.err.json')
 
@@ -467,7 +469,8 @@ def plot_bar_chart(data, path, properties = None, l1_keys = None, l2_keys = None
     ax.set_xticklabels(xticks, rotation=15)
     try:
         _plot_stuff(fig, ax, properties, path, nr_runs=nr_runs)
-    except:
+    except Exception as err:
+        print(traceback.print_tb(err.__traceback__))
         json.dump((data, properties), open(path + '.err.json', 'w'), indent=2)
         print("Error plotting, wrote data to " + path + '.err.json')
 
@@ -571,7 +574,8 @@ def plot_box_chart(data, path, properties = None, l1_keys = None, l2_keys = None
     ax.set_ylim((lims[0], lims[1] + (lims[1] - lims[0]) * 0.05))
     try:
         _plot_stuff(fig, ax, properties, path, legend_handles=legend_patches, legend_labels=legend_labels, nr_runs=nr_runs)
-    except:
+    except Exception as err:
+        print(traceback.print_tb(err.__traceback__))
         json.dump((data, properties), open(path + '.err.json', 'w'), indent=2)
         print("Error plotting, wrote data to " + path + '.err.json')
 
