@@ -403,7 +403,7 @@ def plot_bar_chart(data, path, properties = None, l1_keys = None, l2_keys = None
                 ax.bar(x, m, align="center", color = color, ecolor='r', yerr = h)
             else:
                 ax.bar(x, m, align="center", color = color, ecolor='r', label = label, yerr = h)
-            nr_runns.append(len(y))
+            nr_runs.append(len(y))
         else:
             max_overall = max(max_overall, y)
             if not min_val: min_val = y
@@ -412,7 +412,7 @@ def plot_bar_chart(data, path, properties = None, l1_keys = None, l2_keys = None
                 ax.bar(x, y, align="center", color = color)
             else:
                 ax.bar(x, y, align="center", color = color, label = label)
-            nr_runns.append(1)
+            nr_runs.append(1)
 
     levels = 0
     for l1_key in l1_keys:
