@@ -193,6 +193,7 @@ def _plot_stuff(fig, ax, properties, path, legend_handles=None, legend_labels=No
                 raise(err)
             print("Failed to plot " + path + " for the " + str(i) + " time. This may be due to some parallel rendering bugs in matplotlib, trying again.")
     fig.delaxes(ax)
+    pyplt.close(fig)
     print("Generated figure " + path)
 
 
