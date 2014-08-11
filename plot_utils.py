@@ -124,15 +124,17 @@ def _create_figure(properties):
     return pyplt.figure(figsize=(xsize, ysize), dpi=dpi)
 
 def _plot_stuff(fig, ax, properties, path, legend_handles=None, legend_labels=None, nr_runs=None):
-    wm = property_get(properties, 'watermark')
     fs = property_get(properties, 'watermarkfontsize')
-    fig.text(0, 0, wm, fontsize=fs, color='black', ha='left', va='bottom', alpha=0.7)
 
     additional_info = ''
     if nr_runs:
-        additional_info += 'Repetitions: ' + str(min(nr_runs)) + " - " + str(max(nr_runs)) + "\n"
+        additional_info += 'Repetitions: ' + str(min(nr_runs)) + " - " + str(max(nr_runs))
 
-    additional_info += datetime.date.today().isoformat()
+    additional_info += "\n" + datetime.date.today().isoformat()
+
+    wm = property_get(properties, 'watermark')
+    if wm != '':
+        additional_info += "\n" + wm
 
     fig.text(1, 0, additional_info, fontsize=fs, color='black', ha='right', va='bottom', alpha=0.7)
 
