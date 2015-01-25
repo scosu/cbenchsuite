@@ -1,3 +1,0 @@
-config MATH
-	bool "Math module"
-	default y

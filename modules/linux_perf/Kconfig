@@ -1,3 +1,0 @@
-config LINUX_PERF
-	bool "Linux perf module"
-	default y

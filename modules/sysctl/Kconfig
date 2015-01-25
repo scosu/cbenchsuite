@@ -1,3 +1,0 @@
-config SYSCTL
-	bool "Sysctl module"
-	default y

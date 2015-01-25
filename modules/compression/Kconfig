@@ -1,4 +1,0 @@
-config COMPRESSION
-	bool "Compression module"
-	default y
-

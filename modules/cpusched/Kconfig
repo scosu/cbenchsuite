@@ -1,3 +1,0 @@
-config CPUSCHED
-	bool "CPU scheduler module"
-	default y
