@@ -32,7 +32,6 @@
 #include <klib/printk.h>
 
 #include <cbench/util.h>
-#include <cbench/config.h>
 #include <cbench/data.h>
 #include <cbench/environment.h>
 #include <cbench/module.h>
@@ -41,6 +40,8 @@
 #include <cbench/sha256.h>
 #include <cbench/storage.h>
 #include <cbench/version.h>
+
+#include <cbench_config.h>
 
 struct plugin_exec;
 

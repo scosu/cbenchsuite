@@ -26,7 +26,6 @@
 #include <cbench/core/module_manager.h>
 
 #include <cbench/benchsuite.h>
-#include <cbench/config.h>
 #include <cbench/environment.h>
 #include <cbench/plugin.h>
 #include <cbench/sha256.h>
@@ -36,6 +35,7 @@
 #include <cbench/system.h>
 #include <cbench/version.h>
 
+#include <cbench_config.h>
 
 struct arguments {
 	const char *log_level;

@@ -3,6 +3,8 @@
 
 #include <cbench/option.h>
 #include <cbench/plugin_id_helper.h>
+#include <cbench/requirement.h>
+#include <cbench/version.h>
 
 struct header plugin_p7zip_bench_defaults[] = {
 	OPTION_INT32("threads", NULL, NULL, 16),

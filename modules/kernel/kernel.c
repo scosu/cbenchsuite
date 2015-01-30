@@ -1,5 +1,4 @@
 
-#include <cbench/config.h>
 #include <cbench/exec_helper.h>
 #include <cbench/module.h>
 #include <cbench/plugin.h>

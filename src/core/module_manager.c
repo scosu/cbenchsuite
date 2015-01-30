@@ -38,7 +38,7 @@
 #include <cbench/version.h>
 
 
-static const char *module_so_name = "module.so";
+static const char *module_so_name = "libmodule.so";
 
 int module_load(struct module *mod)
 {

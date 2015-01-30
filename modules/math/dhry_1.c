@@ -15,6 +15,8 @@
  ****************************************************************************
  */
 
+#define TIME
+
 #include "dhry.h"
 #include <stdlib.h>
 #include <string.h>
