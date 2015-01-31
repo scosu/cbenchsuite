@@ -69,24 +69,21 @@ Installation
 		git clone https://github.com/scosu/cbenchsuite.git
 		cd cbenchsuite
 
-2. Configure cbenchsuite.
+2. Configure
 
-		make menuconfig
-
-	![menuconfig screenshot](http://allfex.org/files/cbenchsuite/0.1/menuconfig.png)
-
-	Here you can configure some options of cbenchsuite. However,
-	most settings only define the default values, so it is not
-	important to configure anything here.  Simply choose
-	exit and save the configuration file.
+		mkdir build
+		cd build
+		cmake ..
 
 3. Compile cbenchsuite.
 
 		make
+4. Install
 
-	There is no install target at the moment avaiable. After the build
-	everything is located where it is needed and you can directly start
-	using it.
+		make install
+
+	This will install cbenchsuite to <PREFIX>/bin/cbenchsuite and the
+	benchmark modules to <PREFIX>/lib/cbenchsuite_modules.
 
 4. Now the benchsuite is ready to use.
 
