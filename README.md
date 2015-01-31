@@ -87,7 +87,7 @@ Installation
 
 4. Now the benchsuite is ready to use.
 
-		./cbenchsuite
+		cbenchsuite
 
 Requirements
 ------------
