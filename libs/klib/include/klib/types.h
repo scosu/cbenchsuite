@@ -15,8 +15,6 @@ typedef uint32_t		gid_t;
 typedef uint16_t		uid16_t;
 typedef uint16_t		gid16_t;
 
-typedef unsigned long		uintptr_t;
-
 /* bsd */
 typedef unsigned char		u_char;
 typedef unsigned short		u_short;
