@@ -6,7 +6,7 @@ set(cbenchsuite_VERSION_MAJOR 1)
 set(cbenchsuite_VERSION_MINOR 0)
 
 set(DB_DIR "~/.cbenchsuite/db/" CACHE STRING "Directory of the cbenchsuite database")
-set(MODULE_DIR ${CMAKE_INSTALL_PREFIX}/lib/cbenchsuite_modules/ CACHE STRING "Location of modules after installing")
+set(MODULE_DIR ${CMAKE_INSTALL_PREFIX}/lib/cbenchsuite/ CACHE STRING "Location of modules after installing")
 set(WORK_DIR "~/.cbenchsuite/workdir/" CACHE STRING "Work directory of cbenchsuite")
 set(DOWNLOAD_DIR "~/.cache/cbenchsuite/downloads/" CACHE STRING "Download directory of cbenchsuite")
 

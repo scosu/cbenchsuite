@@ -83,7 +83,7 @@ Installation
 		make install
 
 	This will install cbenchsuite to <PREFIX>/bin/cbenchsuite and the
-	benchmark modules to <PREFIX>/lib/cbenchsuite_modules.
+	benchmark modules to <PREFIX>/lib/cbenchsuite.
 
 4. Now the benchsuite is ready to use.
 

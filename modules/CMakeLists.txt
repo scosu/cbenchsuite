@@ -4,7 +4,7 @@ function(cbench_module MODULE_NAME)
 	if (MODULE_${MODULE_NAME_UPPER})
 		add_library(${MODULE_NAME} SHARED ${ARGN})
 		set_target_properties(${MODULE_NAME} PROPERTIES OUTPUT_NAME module)
-		install(TARGETS ${MODULE_NAME} DESTINATION lib/cbenchsuite_modules/${MODULE_NAME})
+		install(TARGETS ${MODULE_NAME} DESTINATION lib/cbenchsuite/${MODULE_NAME})
 	endif (MODULE_${MODULE_NAME_UPPER})
 endfunction()
 
