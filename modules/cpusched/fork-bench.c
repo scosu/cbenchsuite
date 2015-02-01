@@ -61,7 +61,6 @@ static void *fork_bench_thread(void *data)
 			goto error;
 
 		if (!pid) {
-			asm volatile("mov %ax, %ax");
 			exit(0);
 		}
 
