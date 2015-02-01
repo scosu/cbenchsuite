@@ -2,8 +2,10 @@ cmake_minimum_required(VERSION 2.6)
 
 project(cbenchsuite)
 
-set(cbenchsuite_VERSION_MAJOR 1)
-set(cbenchsuite_VERSION_MINOR 0)
+set(cbenchsuite_VERSION_MAJOR 0)
+set(cbenchsuite_VERSION_MINOR 2)
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
 
 set(DB_DIR "~/.cbenchsuite/db/" CACHE STRING "Directory of the cbenchsuite database")
 set(MODULE_DIR ${CMAKE_INSTALL_PREFIX}/lib/cbenchsuite/ CACHE STRING "Location of modules after installing")
