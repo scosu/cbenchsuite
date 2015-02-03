@@ -262,7 +262,8 @@ static int system_cpus_init(struct system *sys)
 			cpu->processor = proc;
 			cpu->online = 1;
 			++nr_cpus_on;
-		} else if (!strcmpb("vendor_id", buf)) {
+		} else if (!strcmpb("vendor_id", buf) ||
+			   !strcmpb("Hardware", buf)) {
 			cpu->vendor_id = malloc(strlen(v_start) + 1);
 			if (!cpu->vendor_id)
 				goto error_alloc;
@@ -318,7 +319,8 @@ static int system_cpus_init(struct system *sys)
 				cpu->wp = 1;
 			else
 				cpu->wp = 0;
-		} else if (!strcmpb("flags", buf)) {
+		} else if (!strcmpb("flags", buf) ||
+			   !strcmpb("Features", buf)) {
 			cpu->flags = malloc(strlen(v_start) + 1);
 			if (!cpu->flags)
 				goto error_alloc;
