@@ -621,22 +621,24 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-	ret = create_dirs(&pargs);
-	if (ret) {
-		return -1;
-	}
-
 	if (pargs.log_level)
 		printk_set_log_level(atoi(pargs.log_level));
 
 	if (pargs.cmd_help || argc <= 1) {
 		print_help();
-	} else if (pargs.cmd_list) {
-		ret = cmd_list(&pargs, argc, argv);
-	} else if (pargs.cmd_plugins) {
-		ret = cmd_execute(&pargs, argc, argv, 0);
 	} else {
-		ret = cmd_execute(&pargs, argc, argv, 1);
+		ret = create_dirs(&pargs);
+		if (ret) {
+			return -1;
+		}
+
+		if (pargs.cmd_list) {
+			ret = cmd_list(&pargs, argc, argv);
+		} else if (pargs.cmd_plugins) {
+			ret = cmd_execute(&pargs, argc, argv, 0);
+		} else {
+			ret = cmd_execute(&pargs, argc, argv, 1);
+		}
 	}
 	return ret;
 }
