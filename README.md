@@ -1,6 +1,7 @@
-
-cbenchsuite - High accuracy C benchmark suite for Linux
+[cbenchsuite](http://cbenchsuite.org) - High accuracy C benchmark suite for Linux
 =================================================
+
+[cbenchsuite.org](http://cbenchsuite.org)
 
 cbenchsuite offers high accuracy performance measurements. It is written in C to
 minimize the impact of the suite itself on the running benchmarks. Cbench is
