@@ -24,8 +24,8 @@ struct module {
 };
 
 struct module_id {
-	const struct plugin_id *plugins;
-	const struct benchsuite_id *benchsuites;
+	const struct plugin_id **plugins;
+	const struct benchsuite_id **benchsuites;
 
 	int (*init)(struct module *mod);
 	int (*exit)(struct module *mod);

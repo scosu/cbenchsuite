@@ -4,6 +4,9 @@
 
 #include <cbench/option.h>
 #include <cbench/plugin_id_helper.h>
+#include <cbench/requirement.h>
+#include <cbench/version.h>
+#include <cbench/exec_helper.h>
 
 static struct requirement plugin_dc_sqrt_requirements[] = {
 	{
@@ -120,4 +123,23 @@ static const struct header *dc_sqrt_data_hdr(struct plugin *plug)
 	return hdr;
 }
 
+void dc_sqrt_init()
+{
+	char *which_args[] = {"which", NULL, NULL};
+	int ret;
+	which_args[1] = "dc";
 
+	ret = subproc_call("which", which_args);
+	if (!ret)
+		plugin_dc_sqrt_requirements[0].found = 1;
+}
+
+const struct plugin_id plugin_dc_sqrt = {
+	.name = "dc-sqrt",
+	.description = "Benchmark to calculate the square root to a fixed number of digits using dc",
+	.install = dc_sqrt_install,
+	.uninstall = dc_sqrt_uninstall,
+	.run = dc_sqrt_run,
+	.data_hdr = dc_sqrt_data_hdr,
+	.versions = plugin_dc_sqrt_versions,
+};

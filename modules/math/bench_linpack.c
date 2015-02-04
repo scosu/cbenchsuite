@@ -4,6 +4,8 @@
 
 #include <cbench/option.h>
 #include <cbench/plugin_id_helper.h>
+#include <cbench/version.h>
+#include <cbench/exec_helper.h>
 
 static struct header plugin_linpack_options[] = {
 	OPTION_INT32("loops", "Number of loops to execute", NULL, 500),
@@ -111,4 +113,12 @@ static const struct header *linpack_data_hdr(struct plugin *plug)
 	return hdr;
 }
 
-
+const struct plugin_id plugin_linpack = {
+	.name = "linpack",
+	.description = "Linpack benchmark",
+	.install = linpack_install,
+	.uninstall = linpack_uninstall,
+	.run = linpack_run,
+	.data_hdr = linpack_data_hdr,
+	.versions = plugin_linpack_versions,
+};

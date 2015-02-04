@@ -63,6 +63,9 @@ struct plugin_id {
 
 	void *data;
 
+	int (*module_init)(struct module *mod, const struct plugin_id *plug);
+	void (*module_exit)(struct module *mod, const struct plugin_id *plug);
+
 	int (*install)(struct plugin *plug);
 	int (*init_pre)(struct plugin *plug);
 	int (*init)(struct plugin *plug);

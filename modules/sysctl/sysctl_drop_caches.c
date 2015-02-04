@@ -19,9 +19,14 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include <cbench/option.h>
 #include <cbench/plugin_id_helper.h>
+#include <cbench/requirement.h>
+#include <cbench/version.h>
+
+const char vm_drop_caches[] = "/proc/sys/vm/drop_caches";
 
 static struct requirement plugin_drop_caches_requirements[] = {
 	{
@@ -70,4 +75,18 @@ static int drop_caches_func(struct plugin *plug)
 	return drop_caches();
 }
 
-#undef DROP_CACHES_FUNC
+static int drop_caches_mod_init(struct module *mod, const struct plugin_id *plug)
+{
+	if (!access(vm_drop_caches, F_OK | W_OK))
+		plugin_drop_caches_requirements[0].found = 1;
+
+	return 0;
+}
+
+const struct plugin_id plugin_drop_caches = {
+	.name = "drop-caches",
+	.description = "Helper plugin to increase benchmarking accuracy by dropping caches between runs. You have configure in which function slot the caches are dropped.",
+	.module_init = drop_caches_mod_init,
+	PLUGIN_ALL_FUNCS(drop_caches_func),
+	.versions = plugin_drop_caches_versions,
+};

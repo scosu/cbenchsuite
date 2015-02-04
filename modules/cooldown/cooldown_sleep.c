@@ -4,6 +4,7 @@
 
 #include <cbench/option.h>
 #include <cbench/plugin_id_helper.h>
+#include <cbench/version.h>
 #include <unistd.h>
 
 #define SLEEP_OPTION(func) \
@@ -22,7 +23,6 @@ struct header plugin_sleep_defaults[] = {
 	SLEEP_OPTION("exit_post"),
 	OPTION_SENTINEL
 };
-#undef SLEEP_OPTION
 
 static struct version plugin_sleep_versions[] = {
 	{
@@ -42,4 +42,9 @@ static int sleep_func(struct plugin *plug)
 	return sleep(seconds);
 }
 
-#undef DROP_CACHES_FUNC
+const struct plugin_id plugin_sleep = {
+	.name = "sleep",
+	.description = "Helper plugin. Sleeps a given time to make sure that the system had some time to cool down.",
+	PLUGIN_ALL_FUNCS(sleep_func),
+	.versions = plugin_sleep_versions,
+};

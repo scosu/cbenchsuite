@@ -20,8 +20,13 @@
 #include <inttypes.h>
 #include <stdint.h>
 #include <time.h>
+#include <stdio.h>
+#include <unistd.h>
 
 #include <cbench/data.h>
+#include <cbench/requirement.h>
+#include <cbench/version.h>
+#include <cbench/plugin.h>
 
 static const char monitor_schedstat_path[] = "/proc/schedstat";
 
@@ -211,3 +216,24 @@ static const struct header *monitor_schedstat_data_hdr(struct plugin *plug)
 
 	return hdr;
 }
+
+static int monitor_schedstat_mod_init(struct module *mod,
+				      const struct plugin_id *plug)
+{
+	if (!access(monitor_schedstat_path, F_OK | R_OK))
+		plugin_monitor_schedstat_requirements[0].found = 1;
+
+	return 0;
+}
+
+const struct plugin_id plugin_schedstat = {
+	.name = "monitor-schedstat",
+	.description = "Monitor plugin to keep track of different values shown in /proc/schedstat.",
+	.module_init = monitor_schedstat_mod_init,
+	.install = monitor_schedstat_install,
+	.uninstall = monitor_schedstat_uninstall,
+	.init = monitor_schedstat_init,
+	.monitor = monitor_schedstat_mon,
+	.versions = plugin_monitor_schedstat_versions,
+	.data_hdr = monitor_schedstat_data_hdr,
+};

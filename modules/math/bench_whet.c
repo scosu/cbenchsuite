@@ -4,6 +4,8 @@
 
 #include <cbench/option.h>
 #include <cbench/plugin_id_helper.h>
+#include <cbench/version.h>
+#include <cbench/exec_helper.h>
 
 static struct header plugin_whet_options[] = {
 	OPTION_INT64("loops", "Number of loops to execute", NULL, 2000000),
@@ -112,4 +114,12 @@ static const struct header *whet_data_hdr(struct plugin *plug)
 	return hdr;
 }
 
-
+const struct plugin_id plugin_whetstone = {
+	.name = "whetstone",
+	.description = "Whetone benchmark",
+	.install = whet_install,
+	.uninstall = whet_uninstall,
+	.run = whet_run,
+	.data_hdr = whet_data_hdr,
+	.versions = plugin_whet_versions,
+};

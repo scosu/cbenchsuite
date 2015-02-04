@@ -1,1 +1,4 @@
-cbench_module(compression compr.c)
+cbench_module(compression
+	compr.c
+	7zip.c
+)

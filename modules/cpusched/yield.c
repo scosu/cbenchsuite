@@ -186,16 +186,16 @@ static struct version yield_bench_versions[] = {
 	}
 };
 
-#define yield_bench_plugin_id { 					\
-	.name = "yield-bench", 						\
-	.description = "This benchmark stresses the cpu kernel scheduler by"\
-			" repeating sched_yield calls for a given time.",\
-	.versions = yield_bench_versions, 				\
-									\
-	.init = yield_bench_init, 					\
-	.run = yield_bench_run, 					\
-	.exit = yield_bench_exit, 					\
-	.parse_results = yield_bench_parse_results, 			\
-	.data_hdr = yield_bench_data_hdr, 				\
-},
+const struct plugin_id plugin_yield_bench = {
+	.name = "yield-bench",
+	.description = "This benchmark stresses the cpu kernel scheduler by"
+			" repeating sched_yield calls for a given time.",
+	.versions = yield_bench_versions,
+
+	.init = yield_bench_init,
+	.run = yield_bench_run,
+	.exit = yield_bench_exit,
+	.parse_results = yield_bench_parse_results,
+	.data_hdr = yield_bench_data_hdr,
+};
 

@@ -1,8 +1,15 @@
 
 #include <time.h>
+#include <stdio.h>
 
 #include <cbench/option.h>
 #include <cbench/plugin_id_helper.h>
+#include <cbench/exec_helper.h>
+
+#include "versions.c"
+
+int kernel_wget(struct plugin *plug);
+int kernel_wget_untar(struct plugin *plug, char *dst);
 
 struct kernel_compile_data {
 	char *src_path;
@@ -144,15 +151,15 @@ static struct version kernel_compile_versions[] = {
 };
 #undef KERNEL_VERSION
 
-#define kernel_compile_plugin {\
-	.name = "compile",\
-	.description = "Linux kernel compile benchmark. It measures how fast the kernel can be compiled",\
-	.install = kernel_compile_install,\
-	.uninstall = kernel_compile_uninstall,\
-	.init = kernel_compile_init,\
-	.exit = kernel_compile_exit,\
-	.run = kernel_compile_run,\
-	.parse_results = kernel_compile_parse_results,\
-	.versions = kernel_compile_versions,\
-	.data_hdr = kernel_compile_data_hdr,\
-}
+const struct plugin_id plugin_compile = {
+	.name = "compile",
+	.description = "Linux kernel compile benchmark. It measures how fast the kernel can be compiled",
+	.install = kernel_compile_install,
+	.uninstall = kernel_compile_uninstall,
+	.init = kernel_compile_init,
+	.exit = kernel_compile_exit,
+	.run = kernel_compile_run,
+	.parse_results = kernel_compile_parse_results,
+	.versions = kernel_compile_versions,
+	.data_hdr = kernel_compile_data_hdr,
+};

@@ -1,1 +1,4 @@
-cbench_module(cooldown cooldown.c)
+cbench_module(cooldown
+	cooldown.c
+	cooldown_sleep.c
+)

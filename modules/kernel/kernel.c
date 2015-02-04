@@ -4,47 +4,16 @@
 #include <cbench/plugin.h>
 #include <cbench/version.h>
 
-struct kernel_version {
-	char *version;
-	char *name;
-	char *file_name;
-	char *url;
-};
+#include "versions.c"
 
-#define KERNEL_VERSION(maj, min) KERNEL_##maj##_##min,
-enum kernel_versions {
-#include "versions.h"
-};
-#undef KERNEL_VERSION
-
-#define KERNEL_VERSION(maj, min) \
-	{ .version = #maj "." #min, .file_name = "linux-" #maj "." #min ".tar.gz",\
-	  .name = "linux-" #maj "." #min,\
-	  .url = CONFIG_KERNEL_MIRROR "/linux-" #maj "." #min ".tar.gz" },
-
-static struct kernel_version kernels[] = {
-#include "versions.h"
-	{ /* Sentinel */ }
-};
-#undef KERNEL_VERSION
-
-#define KERNEL_VERSION(maj, min) {\
-	{ .name = "kernel", .version = #maj "." #min },\
-	{ }\
-},
-struct comp_version kernel_comp_versions[][2] = {
-#include "versions.h"
-};
-#undef KERNEL_VERSION
-
-static int kernel_wget(struct plugin *plug)
+int kernel_wget(struct plugin *plug)
 {
 	enum kernel_versions ver =
 			(enum kernel_versions)plugin_get_version_data(plug);
 	return cbench_wget(plug, kernels[ver].url, kernels[ver].file_name);
 }
 
-static int kernel_wget_untar(struct plugin *plug, char *dst)
+int kernel_wget_untar(struct plugin *plug, char *dst)
 {
 	enum kernel_versions ver =
 			(enum kernel_versions)plugin_get_version_data(plug);
@@ -52,11 +21,11 @@ static int kernel_wget_untar(struct plugin *plug, char *dst)
 			NULL);
 }
 
-#include "compile.c"
+extern const struct plugin_id plugin_compile;
 
-static struct plugin_id kernel_plugins[] = {
-	kernel_compile_plugin,
-	{ /* Sentinel */ }
+static const struct plugin_id *kernel_plugins[] = {
+	&plugin_compile,
+	NULL
 };
 
 static struct module_id kernel_module_id = {

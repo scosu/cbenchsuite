@@ -4,6 +4,8 @@
 
 #include <cbench/option.h>
 #include <cbench/plugin_id_helper.h>
+#include <cbench/version.h>
+#include <cbench/exec_helper.h>
 
 static struct header plugin_dhry_options[] = {
 	OPTION_INT64("loops", "Number of loops to execute", NULL, 10000000000),
@@ -112,4 +114,12 @@ static const struct header *dhry_data_hdr(struct plugin *plug)
 	return hdr;
 }
 
-
+const struct plugin_id plugin_dhry = {
+	.name = "dhrystone",
+	.description = "Dhrystone benchmark",
+	.install = dhry_install,
+	.uninstall = dhry_uninstall,
+	.run = dhry_run,
+	.data_hdr = dhry_data_hdr,
+	.versions = plugin_dhry_versions,
+};

@@ -22,6 +22,9 @@
 
 #include <cbench/option.h>
 #include <cbench/plugin_id_helper.h>
+#include <cbench/requirement.h>
+#include <cbench/version.h>
+#include <cbench/exec_helper.h>
 
 static struct requirement plugin_swapreset_requirements[] = {
 	{
@@ -66,3 +69,20 @@ static int swapreset_func(struct plugin *plug)
 		return 0;
 	return swapreset();
 }
+
+static int swapreset_mod_init(struct module *mod, const struct plugin_id *plug)
+{
+	char *check_swap_args[] = {"which", "swapoff", "swapon", NULL};
+	if (!subproc_call("which", check_swap_args))
+		plugin_swapreset_requirements[0].found = 1;
+
+	return 0;
+}
+
+const struct plugin_id plugin_swap_reset = {
+	.name = "swap-reset",
+	.description = "Helper plugin to increase benchmarking accuracy by resetting the swap between runs. You have to configure in which function slot the swap is reset. Make sure your swap is configured in fstab so that swapoff/swapon does not  change the swap setup.",
+	.module_init = swapreset_mod_init,
+	PLUGIN_ALL_FUNCS(swapreset_func),
+	.versions = plugin_swapreset_versions,
+};

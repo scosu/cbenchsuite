@@ -208,16 +208,16 @@ static struct version fork_bench_versions[] = {
 	}
 };
 
-#define fork_bench_plugin_id { 					\
-	.name = "fork-bench", 						\
-	.description = "This benchmark stresses the fork system call by"\
-			" repeating fork calls for a given time.",\
-	.versions = fork_bench_versions, 				\
-									\
-	.init = fork_bench_init, 					\
-	.run = fork_bench_run, 					\
-	.exit = fork_bench_exit, 					\
-	.parse_results = fork_bench_parse_results, 			\
-	.data_hdr = fork_bench_data_hdr, 				\
-},
+const struct plugin_id plugin_fork_bench = {
+	.name = "fork-bench",
+	.description = "This benchmark stresses the fork system call by"
+			" repeating fork calls for a given time.",
+	.versions = fork_bench_versions,
+
+	.init = fork_bench_init,
+	.run = fork_bench_run,
+	.exit = fork_bench_exit,
+	.parse_results = fork_bench_parse_results,
+	.data_hdr = fork_bench_data_hdr,
+};
 

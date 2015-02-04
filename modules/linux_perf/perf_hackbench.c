@@ -3,6 +3,8 @@
 
 #include <cbench/option.h>
 #include <cbench/plugin_id_helper.h>
+#include <cbench/version.h>
+#include <cbench/exec_helper.h>
 
 struct header plugin_hackbench_defaults[] = {
 	OPTION_BOOL("pipe", NULL, NULL, 0),
@@ -145,4 +147,13 @@ static const struct header *hackbench_data_hdr(struct plugin *plug)
 	return hdr;
 }
 
-
+const struct plugin_id plugin_hackbench = {
+	.name = "hackbench",
+	.description = "Benchmark that spawns a number of groups that internally send/receive packets. Also known within the linux kernel perf tool as sched-messaging.",
+	.install = hackbench_install,
+	.uninstall = hackbench_uninstall,
+	.parse_results = hackbench_parse_results,
+	.run = hackbench_run,
+	.data_hdr = hackbench_data_hdr,
+	.versions = plugin_hackbench_versions,
+};

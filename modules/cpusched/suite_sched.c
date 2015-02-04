@@ -10,13 +10,6 @@
 	{ .name = "sysctl.drop-caches", .options = "init=1", },\
 	{ .name = "cooldown.sleep", .options = "init_post=20", }\
 
-//static struct plugin_link plug_grp_1[] = {
-//	{ .name = "example.bench", },
-//	{ .name = "sysctl.drop_caches", .options = "run_pre=1",
-//		.version_rules = example_version_rules, },
-//	{ /* Sentinel */ }
-//};
-
 #define SUITE_SCHED_BENCHMARK(benchname, benchoptions) \
 	{ { .name = benchname, .options = benchoptions } , SUITE_SCHED_UTILS, { }}
 
@@ -117,7 +110,9 @@ static struct plugin_link *suite_sched_groups[] = {
 	NULL
 };
 
-
-#undef SUITE_SCHED_SIZE
-#undef SUITE_SCHED_BENCHMARK
-#undef SUITE_SCHED_UTILS
+const struct benchsuite_id suite_normal = {
+	.name = "suite-normal",
+	.plugin_grps = suite_sched_groups,
+	.version = { .version = "0.2", },
+	.description = "A collection of scheduler benchmarks, while monitoring the scheduler behavior for normal computers",
+};

@@ -22,6 +22,8 @@
 #include <time.h>
 
 #include <cbench/data.h>
+#include <cbench/plugin.h>
+#include <cbench/version.h>
 
 static struct version plugin_monitor_latency_versions[] = {
 	{
@@ -130,14 +132,14 @@ static const struct header *monitor_latency_data_hdr(struct plugin *plug)
 	return hdr;
 }
 
-#define monitor_latency_plugin_id { 					\
-	.name = "latency-monitor", 						\
-	.description = "A monitor that measures the latency to wakeup a sleeping task every 0.5 seconds.",\
-	.versions = plugin_monitor_latency_versions,			\
-	.init = monitor_latency_init, 					\
-	.run = monitor_latency_run, 					\
-	.stop = monitor_latency_stop, 					\
-	.data_hdr = monitor_latency_data_hdr, 				\
-	.install = monitor_latency_install, 				\
-	.uninstall = monitor_latency_uninstall, 			\
-},
+const struct plugin_id plugin_latency_monitor = {
+	.name = "latency-monitor",
+	.description = "A monitor that measures the latency to wakeup a sleeping task every 0.5 seconds.",
+	.versions = plugin_monitor_latency_versions,
+	.init = monitor_latency_init,
+	.run = monitor_latency_run,
+	.stop = monitor_latency_stop,
+	.data_hdr = monitor_latency_data_hdr,
+	.install = monitor_latency_install,
+	.uninstall = monitor_latency_uninstall,
+};

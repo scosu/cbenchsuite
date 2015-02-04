@@ -22,6 +22,10 @@
 #include <sys/time.h>
 #include <sys/types.h>
 
+#include <cbench/plugin.h>
+#include <cbench/version.h>
+#include <cbench/plugin_id_helper.h>
+
 struct header plugin_sched_pipe_defaults[] = {
 	OPTION_INT64("loops", "Number of loops executed.", NULL, 5000000),
 	OPTION_SENTINEL
@@ -116,3 +120,11 @@ int sched_pipe_run(struct plugin *plug)
 
 	return 0;
 }
+
+const struct plugin_id plugin_sched_pipe = {
+	.name = "sched-pipe",
+	.description = "Benchmarks the pipe performance by spawning two processes and sending data between them.",
+	.run = sched_pipe_run,
+	.data_hdr = sched_pipe_data_hdr,
+	.versions = plugin_sched_pipe_versions,
+};

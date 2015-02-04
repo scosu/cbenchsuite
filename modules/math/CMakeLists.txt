@@ -1,4 +1,10 @@
-cbench_module(math math.c)
+cbench_module(math
+	math.c
+	bench_dc_sqrt.c
+	bench_dhry.c
+	bench_whet.c
+	bench_linpack.c
+)
 
 add_executable(dhry dhry_1.c dhry_2.c)
 set_target_properties(dhry PROPERTIES COMPILE_FLAGS "-Wno-implicit-function-declaration -Wno-return-type -Wno-implicit-int")

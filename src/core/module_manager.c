@@ -44,6 +44,9 @@ int module_load(struct module *mod)
 {
 	char *err;
 	struct module_id **mod_id;
+	int i;
+	int ret;
+
 	if (mod->so_handle)
 		return 0;
 
@@ -69,7 +72,7 @@ int module_load(struct module *mod)
 	mod->id = *mod_id;
 
 	if (mod->id->init) {
-		int ret = mod->id->init(mod);
+		ret = mod->id->init(mod);
 		if (ret) {
 			printk(KERN_ERR "Failed initializing module %s returncode %d\n",
 					mod->name, err);
@@ -77,13 +80,30 @@ int module_load(struct module *mod)
 		}
 	}
 
-	return 0;
+	ret = 0;
+	for (i = 0; mod->id->plugins[i]; ++i) {
+		const struct plugin_id *plug = mod->id->plugins[i];
+
+		if (plug->module_init)
+			ret |= plug->module_init(mod, plug);
+	}
+
+	return ret;
 }
 
 void module_unload(struct module *mod)
 {
+	int i;
+
 	if (!mod->so_handle || !list_empty(&mod->plugins))
 		return;
+
+	for (i = 0; mod->id->plugins[i]; ++i) {
+		const struct plugin_id *plug = mod->id->plugins[i];
+
+		if (plug->module_exit)
+			plug->module_exit(mod, plug);
+	}
 
 	if (mod->id->exit) {
 		mod->id->exit(mod);
@@ -157,7 +177,7 @@ int mod_mgr_init(struct mod_mgr *mm, const char *mod_dir)
 	DIR *md;
 	struct dirent *de;
 	struct module *mod;
-	const struct plugin_id *plug;
+	const struct plugin_id **plug;
 	int i;
 
 	INIT_LIST_HEAD(&mm->modules);
@@ -186,8 +206,8 @@ int mod_mgr_init(struct mod_mgr *mm, const char *mod_dir)
 		list_add_tail(&mod->modules, &mm->modules);
 
 		plug = mod->id->plugins;
-		for (i = 0; plug[i].name != NULL; ++i) {
-			printk(KERN_DEBUG "Plugin %s\n", plug[i].name);
+		for (i = 0; plug[i] != NULL; ++i) {
+			printk(KERN_DEBUG "Plugin %s\n", plug[i]->name);
 		}
 	}
 	closedir(md);
@@ -228,15 +248,15 @@ void mod_mgr_print_module(struct module *mod, int verbose)
 	if (verbose == 2)
 		printf("  shared object '%s'\n", mod->so_path);
 	if (mod->id->plugins) {
-		for (i = 0; mod->id->plugins[i].name; ++i) {
-			plugin_id_print(&mod->id->plugins[i], verbose);
+		for (i = 0; mod->id->plugins[i]; ++i) {
+			plugin_id_print(mod->id->plugins[i], verbose);
 		}
 		printf("\n");
 	}
 	if (mod->id->benchsuites) {
 		printf("  Benchsuites:\n");
-		for (i = 0; mod->id->benchsuites[i].name; ++i) {
-			benchsuite_id_print(&mod->id->benchsuites[i], verbose);
+		for (i = 0; mod->id->benchsuites[i]; ++i) {
+			benchsuite_id_print(mod->id->benchsuites[i], verbose);
 		}
 	}
 }
@@ -263,7 +283,7 @@ struct plugin *mod_mgr_module_get_plugin(struct mod_mgr *mm,
 		struct module *mod, const char *plug_name,
 		const char **ver_restrictions)
 {
-	const struct plugin_id *plug_ids = mod->id->plugins;
+	const struct plugin_id **plug_ids = mod->id->plugins;
 	const struct plugin_id *selected;
 	struct plugin *plug;
 	const struct version *selected_version;
@@ -271,22 +291,22 @@ struct plugin *mod_mgr_module_get_plugin(struct mod_mgr *mm,
 
 	printk(KERN_DEBUG "Module get plugin %s\n", plug_name);
 
-	for (i = 0; plug_ids[i].name; ++i) {
-		struct version *vers = plug_ids[i].versions;
+	for (i = 0; plug_ids[i]; ++i) {
+		struct version *vers = plug_ids[i]->versions;
 		int j;
 		int ret;
-		if (strcmp(plug_ids[i].name, plug_name))
+		if (strcmp(plug_ids[i]->name, plug_name))
 			continue;
 
 		for (j = 0; vers[j].version != NULL; ++j) {
 			ret = version_matching(&vers[j], ver_restrictions);
 			if (ret) {
 				ret = plugin_version_check_requirements(
-						&plug_ids[i], &vers[j]);
+						plug_ids[i], &vers[j]);
 				if (ret) {
 					printk(KERN_WARNING "Missing requirements, trying another version\n");
 				} else {
-					selected = &plug_ids[i];
+					selected = plug_ids[i];
 					selected_version = &vers[j];
 					goto found_matching_plugin;
 				}
@@ -395,7 +415,7 @@ struct benchsuite *mod_mgr_module_get_benchsuite(struct mod_mgr *mm,
 		struct module *mod, const char *bench_name,
 		const char **ver_restrictions)
 {
-	const struct benchsuite_id *benchsuites = mod->id->benchsuites;
+	const struct benchsuite_id **benchsuites = mod->id->benchsuites;
 	const struct benchsuite_id *selected;
 	struct benchsuite *suite;
 	int i;
@@ -408,13 +428,13 @@ struct benchsuite *mod_mgr_module_get_benchsuite(struct mod_mgr *mm,
 		return NULL;
 	}
 
-	for (i = 0; benchsuites[i].name; ++i) {
+	for (i = 0; benchsuites[i]; ++i) {
 		int ret;
-		if (strcmp(benchsuites[i].name, bench_name))
+		if (strcmp(benchsuites[i]->name, bench_name))
 			continue;
-		ret = version_matching(&benchsuites[i].version, ver_restrictions);
+		ret = version_matching(&benchsuites[i]->version, ver_restrictions);
 		if (ret) {
-			selected = &benchsuites[i];
+			selected = benchsuites[i];
 			goto found_matching_benchsuite;
 		}
 	}

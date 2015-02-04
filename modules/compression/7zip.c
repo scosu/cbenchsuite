@@ -5,6 +5,7 @@
 #include <cbench/plugin_id_helper.h>
 #include <cbench/requirement.h>
 #include <cbench/version.h>
+#include <cbench/exec_helper.h>
 
 struct header plugin_p7zip_bench_defaults[] = {
 	OPTION_INT32("threads", NULL, NULL, 16),
@@ -53,7 +54,7 @@ struct p7zip_bench_data {
 	char *result;
 };
 
-static int p7zip_init_7z()
+int p7zip_init_7z()
 {
 	char *args[] = {"7z", NULL};
 	char *ver_info;
@@ -94,7 +95,7 @@ error:
 	return -1;
 }
 
-static void p7zip_exit_7z()
+void p7zip_exit_7z()
 {
 	if (p7zip_comp_versions[0].version) {
 		free(p7zip_comp_versions[0].version);
@@ -229,4 +230,13 @@ static const struct header *p7zip_bench_data_hdr(struct plugin *plug)
 	return hdr;
 }
 
-
+const struct plugin_id plugin_7zip = {
+	.name = "7zip-bench",
+	.description = "p7zips integrated benchmark. The performance is measured in compression/decompression-speed.",
+	.install = p7zip_bench_install,
+	.uninstall = p7zip_bench_uninstall,
+	.parse_results = p7zip_bench_parse_results,
+	.run = p7zip_bench_run,
+	.data_hdr = p7zip_bench_data_hdr,
+	.versions = plugin_p7zip_bench_versions,
+};
