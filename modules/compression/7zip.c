@@ -54,7 +54,7 @@ struct p7zip_bench_data {
 	char *result;
 };
 
-int p7zip_init_7z()
+static int p7zip_init_7z(struct module *mod, const struct plugin_id *plug)
 {
 	char *args[] = {"7z", NULL};
 	char *ver_info;
@@ -66,7 +66,7 @@ int p7zip_init_7z()
 	ret = subproc_call_get_stdout("7z", args, &ver_info);
 
 	if (ret)
-		return -1;
+		return 0;
 
 	ver_start = strstr(ver_info, "] ");
 	if (!ver_start)
@@ -95,7 +95,7 @@ error:
 	return -1;
 }
 
-void p7zip_exit_7z()
+static void p7zip_exit_7z(struct module *mod, const struct plugin_id *plug)
 {
 	if (p7zip_comp_versions[0].version) {
 		free(p7zip_comp_versions[0].version);
@@ -233,6 +233,8 @@ static const struct header *p7zip_bench_data_hdr(struct plugin *plug)
 const struct plugin_id plugin_7zip = {
 	.name = "7zip-bench",
 	.description = "p7zips integrated benchmark. The performance is measured in compression/decompression-speed.",
+	.module_init = p7zip_init_7z,
+	.module_exit = p7zip_exit_7z,
 	.install = p7zip_bench_install,
 	.uninstall = p7zip_bench_uninstall,
 	.parse_results = p7zip_bench_parse_results,
