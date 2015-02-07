@@ -75,7 +75,7 @@ int module_load(struct module *mod)
 		ret = mod->id->init(mod);
 		if (ret) {
 			printk(KERN_ERR "Failed initializing module %s returncode %d\n",
-					mod->name, err);
+			       mod->name, ret);
 			return -1;
 		}
 	}
