@@ -48,14 +48,6 @@ static struct plugin_link suite_sched_fork_grps[][SUITE_SCHED_SIZE] = {
 	SUITE_SCHED_BENCHMARK("cpusched.fork-bench", "threads=16"),
 };
 
-static struct plugin_link suite_sched_yield_grps[][SUITE_SCHED_SIZE] = {
-	SUITE_SCHED_BENCHMARK("cpusched.yield-bench", "threads=1"),
-	SUITE_SCHED_BENCHMARK("cpusched.yield-bench", "threads=2"),
-	SUITE_SCHED_BENCHMARK("cpusched.yield-bench", "threads=4"),
-	SUITE_SCHED_BENCHMARK("cpusched.yield-bench", "threads=8"),
-	SUITE_SCHED_BENCHMARK("cpusched.yield-bench", "threads=16"),
-};
-
 static struct plugin_link suite_sched_7zip[][SUITE_SCHED_SIZE] = {
 	SUITE_SCHED_BENCHMARK("compression.7zip-bench", "threads=1"),
 	SUITE_SCHED_BENCHMARK("compression.7zip-bench", "threads=2"),
@@ -93,11 +85,6 @@ static struct plugin_link *suite_sched_groups[] = {
 	suite_sched_fork_grps[2],
 	suite_sched_fork_grps[3],
 	suite_sched_fork_grps[4],
-	suite_sched_yield_grps[0],
-	suite_sched_yield_grps[1],
-	suite_sched_yield_grps[2],
-	suite_sched_yield_grps[3],
-	suite_sched_yield_grps[4],
 	suite_sched_7zip[0],
 	suite_sched_7zip[1],
 	suite_sched_7zip[2],
