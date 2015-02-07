@@ -506,7 +506,7 @@ class plot:
             'xtickfontsize': 15,
             'barfontsize': 15,
             'titlefontsize': 20,
-            'watermark': 'Powered by cbenchsuite (http://cbench.allfex.org)',
+            'watermark': 'Powered by cbenchsuite (http://cbenchsuite.org)',
             'watermarkfontsize': 13,
             'file-type': 'svg',
             'line-nr-ticks': 300,
@@ -666,7 +666,7 @@ class plot:
             query += ' GROUP BY run_uuid) ORDER BY run_uuid '
             if 'line-xtick-data' in self.properties:
                 query += ',"' + self.tables['results'] + '"."' + self.properties['line-xtick-data']
-            query += '"'
+                query += '"'
             res = self.threaddb.execute(query)
             data = []
             datas = []
@@ -702,7 +702,7 @@ class plot:
                         last_x = 0
                     if 'line-nr-ticks' in self.properties and offset + last_x > self.properties['line-nr-ticks']:
                         break
-                    data.append((last_x, row[2]))
+                    data.append((last_x, row[1]))
                     last_x += 1
             if len(data) > 0:
                 datas.append(data)

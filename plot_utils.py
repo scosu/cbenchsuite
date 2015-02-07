@@ -18,6 +18,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 
+import matplotlib
+matplotlib.use('svg')
 import matplotlib.pyplot as pyplt
 import statistics
 import operator
@@ -604,7 +606,7 @@ if __name__ == '__main__':
             'xtickfontsize': 15,
             'barfontsize': 15,
             'titlefontsize': 20,
-            'watermark': 'Powered by cbenchsuite (http://cbench.allfex.org)',
+            'watermark': 'Powered by cbenchsuite (http://cbenchsuite.org)',
             'watermarkfontsize': 13,
             'file-type': 'svg',
             'line-nr-ticks': 300,
