@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 # Cbenchsuite - A C benchmarking suite for Linux benchmarking.
 # Copyright (C) 2013  Markus Pargmann <mpargmann@allfex.org>
