@@ -9,6 +9,25 @@ important information, like options, versions and a legend.
 
 The plotter has a command line interface to control the plot process.
 
+Automagic plotting
+------------------
+
+To create plots really fast and without much commands, just start the plotter
+with a database:
+
+	./plotter.py -d db.sqlite
+
+There is a simple 'automagic' command you can use to produce a basic set of
+plots and html websites.
+
+	This is a plotter CLI. Use help for more information
+	data  > automagic
+
+Done.
+
+This is most likely not the best representation of your data, so if you want to
+plot differently, please go through the rest of this document.
+
 Use the plotter
 ---------------
 
