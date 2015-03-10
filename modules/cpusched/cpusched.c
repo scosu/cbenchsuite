@@ -5,6 +5,7 @@ extern const struct plugin_id plugin_yield_bench;
 extern const struct plugin_id plugin_fork_bench;
 extern const struct plugin_id plugin_latency_monitor;
 extern const struct benchsuite_id suite_normal;
+extern const struct benchsuite_id suite_medium;
 
 static const struct plugin_id *cpusched_plugins[] = {
 	&plugin_yield_bench,
@@ -15,6 +16,7 @@ static const struct plugin_id *cpusched_plugins[] = {
 
 static const struct benchsuite_id *mod_suites[] = {
 	&suite_normal,
+	&suite_medium,
 	NULL
 };
 
