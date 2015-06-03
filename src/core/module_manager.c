@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 
 #include <klib/list.h>
 #include <klib/printk.h>
@@ -191,10 +192,30 @@ int mod_mgr_init(struct mod_mgr *mm, const char *mod_dir)
 	}
 
 	while ((de = readdir(md))) {
-		if (de->d_type != DT_DIR) {
+		struct stat st;
+		int ret;
+
+		if (de->d_type != DT_UNKNOWN && de->d_type != DT_DIR) {
 			printk(KERN_DEBUG "%s is no directory, continuing\n",
 					de->d_name);
 			continue;
+		} else if (de->d_type == DT_UNKNOWN) {
+			/*
+			 * d_type may not be available on a filesystem, check
+			 * again with fstatat
+			 */
+			ret = fstatat(dirfd(md), de->d_name, &st, 0);
+			if (ret) {
+				printk(KERN_ERR "Failed to stat %s\n",
+				       de->d_name);
+				return ret;
+			}
+
+			if (!S_ISDIR(st.st_mode)) {
+				printk(KERN_DEBUG "%s is no directory, continuing\n",
+				       de->d_name);
+				continue;
+			}
 		}
 		if (!strcmp(de->d_name, ".") || !strcmp(de->d_name, ".."))
 			continue;
