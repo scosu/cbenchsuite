@@ -3,21 +3,33 @@
 
 #include <cbench/option.h>
 #include <cbench/plugin_id_helper.h>
+#include <cbench/requirement.h>
 #include <cbench/version.h>
 #include <cbench/exec_helper.h>
 
 struct header plugin_hackbench_defaults[] = {
-	OPTION_BOOL("pipe", NULL, NULL, 0),
+	OPTION_BOOL("pipe", "Use a pipe instead of Unix domain sockets", NULL, 0),
 	OPTION_BOOL("process", "Use processes instead of threads.", NULL, 0),
 	OPTION_INT32("groups", "Number of groups used.", NULL, 10),
 	OPTION_INT32("loops", "Number of loops executed.", NULL, 10000),
+	OPTION_INT32("size", "Number of bytes transfered in each message.", NULL, 100),
+	OPTION_INT32("fds", "Number of file descriptor pair opened.", NULL, 20),
 	OPTION_SENTINEL
+};
+
+static struct requirement hackbench_requirements[] = {
+	{
+		.name = "hackbench",
+	}, {
+		/* Sentinel */
+	}
 };
 
 static struct version plugin_hackbench_versions[] = {
 	{
-		.version = "0.1",
+		.version = "0.2",
 		.default_options = plugin_hackbench_defaults,
+		.requirements = hackbench_requirements,
 		.nr_independent_values = 1,
 	}, {
 		/* Sentinel */
@@ -25,36 +37,52 @@ static struct version plugin_hackbench_versions[] = {
 };
 
 static char hackbench_pipe[] = "-pipe";
-static char hackbench_process[] = "process";
-static char hackbench_thread[] = "thread";
+static char hackbench_process[] = "--process";
+static char hackbench_thread[] = "--threads";
+static char hackbench_groups[] = "--groups";
+static char hackbench_loops[] = "--loops";
+static char hackbench_size[] = "--datasize";
+static char hackbench_fds[] = "--fds";
 
 struct hackbench_data {
 	char *hb_bin;
-	char loops[32];
 	char groups[32];
-	char *args[6];
+	char loops[32];
+	char size[32];
+	char fds[32];
+	char *args[12];
 
 	char *result;
 };
+
+static int hackbench_init(struct module *mod, const struct plugin_id *plug)
+{
+	char *args[] = {"hackbench", "-h", NULL};
+	int ret;
+
+	ret = subproc_call("hackbench", args);
+	if (WIFEXITED(ret) && WEXITSTATUS(ret) == 1)
+		hackbench_requirements[0].found = 1;
+
+	return 0;
+}
 
 static int hackbench_install(struct plugin *plug)
 {
 	struct hackbench_data *d = malloc(sizeof(*d));
 	const struct header *opts = plugin_get_options(plug);
-	const char *bin_path = plugin_get_bin_path(plug);
 	char *hb_bin;
 	int argi = 1;
 
 	if (!d)
 		return -1;
 
-	hb_bin = malloc(strlen(bin_path) + 24);
+	hb_bin = strdup("/usr/bin/hackbench");
 	if (!hb_bin) {
 		free(d);
 		return -1;
 	}
 
-	sprintf(hb_bin, "%s/hackbench", bin_path);
 	d->hb_bin = hb_bin;
 	d->args[0] = hb_bin;
 
@@ -63,6 +91,8 @@ static int hackbench_install(struct plugin *plug)
 		++argi;
 	}
 
+	d->args[argi] = hackbench_groups;
+	++argi;
 	sprintf(d->groups, "%d", option_get_int32(opts, "groups"));
 	d->args[argi] = d->groups;
 	++argi;
@@ -73,8 +103,22 @@ static int hackbench_install(struct plugin *plug)
 		d->args[argi] = hackbench_thread;
 	++argi;
 
+	d->args[argi] = hackbench_loops;
+	++argi;
 	sprintf(d->loops, "%d", option_get_int32(opts, "loops"));
 	d->args[argi] = d->loops;
+	++argi;
+
+	d->args[argi] = hackbench_size;
+	++argi;
+	sprintf(d->size, "%d", option_get_int32(opts, "size"));
+	d->args[argi] = d->size;
+	++argi;
+
+	d->args[argi] = hackbench_fds;
+	++argi;
+	sprintf(d->fds, "%d", option_get_int32(opts, "fds"));
+	d->args[argi] = d->fds;
 	++argi;
 
 	d->args[argi] = NULL;
@@ -107,8 +151,13 @@ static int hackbench_parse_results(struct plugin *plug)
 	struct hackbench_data *d = plugin_get_data(plug);
 	struct data *data = data_alloc(DATA_TYPE_RESULT, 1);
 	double res;
+	char *c;
 
-	res = atof(d->result);
+	c = strrchr(d->result, ':');
+	if (!c)
+		return -1;
+
+	res = atof(c+2);
 	data_add_double(data, res);
 
 	plugin_add_results(plug, data);
@@ -150,6 +199,7 @@ static const struct header *hackbench_data_hdr(struct plugin *plug)
 const struct plugin_id plugin_hackbench = {
 	.name = "hackbench",
 	.description = "Benchmark that spawns a number of groups that internally send/receive packets. Also known within the linux kernel perf tool as sched-messaging.",
+	.module_init = hackbench_init,
 	.install = hackbench_install,
 	.uninstall = hackbench_uninstall,
 	.parse_results = hackbench_parse_results,
