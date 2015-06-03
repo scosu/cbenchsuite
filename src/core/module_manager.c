@@ -217,7 +217,9 @@ int mod_mgr_init(struct mod_mgr *mm, const char *mod_dir)
 				continue;
 			}
 		}
-		if (!strcmp(de->d_name, ".") || !strcmp(de->d_name, ".."))
+
+		/* Ignore fake directories and hidden files */
+		if (de->d_name[0] == '.')
 			continue;
 
 		mod = module_create(de->d_name, mod_dir);
