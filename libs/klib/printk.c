@@ -3,7 +3,6 @@
 #include <string.h>
 #include <stdarg.h>
 
-#include <klib/compiler.h>
 #include <klib/printk.h>
 
 enum {
@@ -38,7 +37,7 @@ int printk(const char *format, ...)
 	int buf_pos = 0;
 	int i;
 
-	if (likely(format[0] == '<' && format[2] == '>')) {
+	if (format[0] == '<' && format[2] == '>') {
 		fmt_off = 3;
 		switch (format[1]) {
 		case '0' ... '8':

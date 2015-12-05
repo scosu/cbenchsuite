@@ -29,7 +29,7 @@ static struct kernel_version kernels[] = {
 	{ .name = "kernel", .version = #maj "." #min },\
 	{ }\
 },
-__maybe_unused static struct comp_version kernel_comp_versions[][2] = {
+__attribute__((unused)) static struct comp_version kernel_comp_versions[][2] = {
 #include "versions.h"
 };
 #undef KERNEL_VERSION

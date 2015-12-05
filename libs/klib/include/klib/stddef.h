@@ -1,9 +1,6 @@
 #ifndef _LINUX_STDDEF_H
 #define _LINUX_STDDEF_H
 
-#include <klib/compiler.h>
-
-
 #ifndef NULL
 #define NULL ((void *)0)
 
