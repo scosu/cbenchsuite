@@ -50,6 +50,7 @@ target_link_libraries(cbenchsuite dl)
 target_link_libraries(cbenchsuite m)
 target_link_libraries(cbenchsuite sqlite3)
 target_link_libraries(cbenchsuite uuid)
+target_link_libraries(cbenchsuite rt)
 install(TARGETS cbenchsuite DESTINATION bin)
 
 set(CBENCH_TARGETS ${CBENCHSUITE_MODULES} CACHE STRING "bla")
